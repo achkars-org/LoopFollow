@@ -250,3 +250,4 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         // Show the notification even when app is in foreground
         completionHandler([.banner, .sound, .badge])
     }
+}
