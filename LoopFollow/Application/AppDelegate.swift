@@ -11,16 +11,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     let notificationCenter = UNUserNotificationCenter.current()
 
-    // ✅ NEW: Keep the last-known token so the long-press can show it anytime
+    // Keep the last-known token so the long-press can show it anytime
     private var lastAPNSTokenString: String?
 
-    func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
         LogManager.shared.log(category: .general, message: "App started")
         LogManager.shared.cleanupOldLogs()
 
         let options: UNAuthorizationOptions = [.alert, .sound, .badge]
-        notificationCenter.requestAuthorization(options: options) {
-            didAllow, _ in
+        notificationCenter.requestAuthorization(options: options) { didAllow, _ in
             if !didAllow {
                 LogManager.shared.log(category: .general, message: "User has declined notifications")
             }
@@ -35,57 +37,55 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         let action = UNNotificationAction(identifier: "OPEN_APP_ACTION", title: "Open App", options: .foreground)
-        let category = UNNotificationCategory(identifier: "loopfollow.background.alert", actions: [action], intentIdentifiers: [], options: [])
+        let category = UNNotificationCategory(
+            identifier: "loopfollow.background.alert",
+            actions: [action],
+            intentIdentifiers: [],
+            options: []
+        )
         UNUserNotificationCenter.current().setNotificationCategories([category])
-
         UNUserNotificationCenter.current().delegate = self
 
         _ = BLEManager.shared
-        // Ensure VolumeButtonHandler is initialized so it can receive alarm notifications
         _ = VolumeButtonHandler.shared
 
-        // 🔥 START LIVE ACTIVITY HERE
+        // Start Live Activity
         LiveActivityManager.shared.startIfNeeded()
-        
-        // ✅ NEW: Add a long-press gesture to the app window to show token + bundle id
+
+        // Install long-press gesture (debug menu)
         DispatchQueue.main.async { [weak self] in
             self?.installDebugLongPressGesture()
         }
 
         // Register for remote notifications
         DispatchQueue.main.async {
-            UIApplication.shared.registerForRemoteNotifications()
+            application.registerForRemoteNotifications()
         }
+
         return true
     }
 
-    func applicationWillTerminate(_: UIApplication) {}
+    func applicationWillTerminate(_ application: UIApplication) {}
 
     // MARK: - Remote Notifications
 
-    // Called when successfully registered for remote notifications
-    func application(_: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
 
-        // ✅ NEW: store it for the long-press
         lastAPNSTokenString = tokenString
-
         Observable.shared.loopFollowDeviceToken.value = tokenString
 
-        // ✅ NEW: also log bundle id right here so you get it the moment registration succeeds
         let bundleID = Bundle.main.bundleIdentifier ?? "unknown"
         LogManager.shared.log(category: .general, message: "Bundle ID: \(bundleID)")
         LogManager.shared.log(category: .general, message: "Successfully registered for remote notifications with token: \(tokenString)")
     }
 
-    // Called when failed to register for remote notifications
-    func application(_: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         LogManager.shared.log(category: .general, message: "Failed to register for remote notifications: \(error.localizedDescription)")
     }
 
-    // Called when a remote notification is received
     func application(
-        _: UIApplication,
+        _ application: UIApplication,
         didReceiveRemoteNotification userInfo: [AnyHashable: Any],
         fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
     ) {
@@ -93,32 +93,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         if let aps = userInfo["aps"] as? [String: Any] {
 
-            // Handle visible notification (alert, sound, badge)
+            // Visible notification
             if let alert = aps["alert"] as? [String: Any] {
                 let title = alert["title"] as? String ?? ""
                 let body = alert["body"] as? String ?? ""
                 LogManager.shared.log(category: .general, message: "Notification - Title: \(title), Body: \(body)")
             }
 
-            // Handle silent notification (content-available)
+            // Silent push wake
             if let contentAvailable = aps["content-available"] as? Int, contentAvailable == 1 {
+                LogManager.shared.log(category: .general, message: "✅ SILENT PUSH WAKE at \(Date()) aps=\(aps)")
 
-                LogManager.shared.log(
-                    category: .general,
-                    message: "✅ SILENT PUSH WAKE at \(Date()) aps=\(aps)"
-                )
-
-                // Super-obvious lock screen proof
-                LiveActivityManager.shared.update(glucoseText: "WAKE", trendText: "✅")
-
-                if let commandStatus = userInfo["command_status"] as? String {
-                    LogManager.shared.log(category: .general, message: "Command status: \(commandStatus)")
+                Task {
+                    do {
+                        try await NightscoutUpdater.shared.refreshAndUpdateLiveActivity()
+                        LogManager.shared.log(category: .general, message: "✅ Nightscout → Live Activity updated")
+                        completionHandler(.newData)
+                    } catch {
+                        LogManager.shared.log(category: .general, message: "❌ Nightscout update failed: \(error)")
+                        completionHandler(.failed)
+                    }
                 }
-                if let commandType = userInfo["command_type"] as? String {
-                    LogManager.shared.log(category: .general, message: "Command type: \(commandType)")
-                }
-
-                completionHandler(.newData)
                 return
             }
         }
@@ -128,34 +123,36 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     // MARK: UISceneSession Lifecycle
 
-    func application(_: UIApplication, willFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // set the "prevent screen lock" option when the app is started
-        // This method doesn't seem to be working anymore. Added to view controllers as solution offered on SO
+    func application(
+        _ application: UIApplication,
+        willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
         UIApplication.shared.isIdleTimerDisabled = Storage.shared.screenlockSwitchState.value
-
         return true
     }
 
-    func application(_: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options _: UIScene.ConnectionOptions) -> UISceneConfiguration {
-        // Called when a new scene session is being created.
-        // Use this method to select a configuration to create the new scene with.
-        return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+    func application(
+        _ application: UIApplication,
+        configurationForConnecting connectingSceneSession: UISceneSession,
+        options: UIScene.ConnectionOptions
+    ) -> UISceneConfiguration {
+        UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
     }
 
-    func application(_: UIApplication, didDiscardSceneSessions _: Set<UISceneSession>) {}
+    func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {}
 
     // MARK: - Core Data stack
+
     lazy var persistentContainer: NSPersistentCloudKitContainer = {
         let container = NSPersistentCloudKitContainer(name: "LoopFollow")
-        container.loadPersistentStores(completionHandler: { _, error in
+        container.loadPersistentStores { _, error in
             if let error = error as NSError? {
                 fatalError("Unresolved error \(error), \(error.userInfo)")
             }
-        })
+        }
         return container
     }()
 
-    // MARK: - Core Data Saving support
     func saveContext() {
         let context = persistentContainer.viewContext
         if context.hasChanges {
@@ -168,7 +165,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
-    func userNotificationCenter(_: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
         if response.actionIdentifier == "OPEN_APP_ACTION" {
             if let window = window {
                 window.rootViewController?.dismiss(animated: true, completion: nil)
@@ -183,23 +184,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         completionHandler()
     }
 
-    func application(_: UIApplication, supportedInterfaceOrientationsFor _: UIWindow?) -> UIInterfaceOrientationMask {
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         let forcePortrait = Storage.shared.forcePortraitMode.value
         return forcePortrait ? .portrait : .all
     }
 
     // =========================================================
-    // ✅ NEW: Long-press gesture + presenter
+    // Long-press gesture: show BundleID + APNs token + set Nightscout URL/token
     // =========================================================
 
     private func installDebugLongPressGesture() {
-        // If the window isn’t ready yet, try to find the key window.
         let targetWindow = window ?? UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }
             .first(where: { $0.isKeyWindow })
 
-        guard let w = targetWindow else { return }
+        guard let w = targetWindow else {
+            LogManager.shared.log(category: .general, message: "Debug long-press: no key window yet")
+            return
+        }
 
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleDebugLongPress(_:)))
         longPress.minimumPressDuration = 0.8
@@ -211,22 +214,98 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     @objc private func handleDebugLongPress(_ recognizer: UILongPressGestureRecognizer) {
         guard recognizer.state == .began else { return }
+        guard let presenter = topViewController() else { return }
 
         let bundleID = Bundle.main.bundleIdentifier ?? "unknown"
-        let token = lastAPNSTokenString ?? Observable.shared.loopFollowDeviceToken.value ?? "Token not yet available"
+        let token = lastAPNSTokenString ?? Observable.shared.loopFollowDeviceToken.value ?? "(token not yet available)"
 
-        // Log (easy to copy from Logs screen)
+        let nsURL = NightscoutSettings.getBaseURL() ?? "(not set)"
+        let hasToken = (NightscoutSettings.getToken() != nil)
+
+        // Log for copy/paste from Logs screen
         LogManager.shared.log(category: .general, message: "DEBUG — Bundle ID: \(bundleID)")
         LogManager.shared.log(category: .general, message: "DEBUG — APNs Token: \(token)")
+        LogManager.shared.log(category: .general, message: "DEBUG — Nightscout URL: \(nsURL)")
+        LogManager.shared.log(category: .general, message: "DEBUG — Nightscout token set: \(hasToken)")
 
-        // Also show an on-screen alert for quick viewing
-        let message = "Bundle ID:\n\(bundleID)\n\nAPNs Token:\n\(token)"
-        let alert = UIAlertController(title: "APNs Debug Info", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        let menu = UIAlertController(
+            title: "LoopFollow Debug",
+            message: "Bundle:\n\(bundleID)\n\nAPNs Token:\n\(token)\n\nNightscout:\n\(nsURL)\nToken set: \(hasToken ? "YES" : "NO")",
+            preferredStyle: .actionSheet
+        )
 
-        // Present from the top-most view controller
-        if let presenter = topViewController() {
-            presenter.present(alert, animated: true, completion: nil)
+        menu.addAction(UIAlertAction(title: "Set Nightscout URL", style: .default) { _ in
+            self.promptForText(
+                on: presenter,
+                title: "Nightscout URL",
+                message: "Example: https://glyc.philh4.com",
+                placeholder: "https://…"
+            ) { text in
+                let ok = NightscoutSettings.setBaseURL(text)
+                self.toast(on: presenter, ok ? "Saved URL" : "Invalid URL")
+            }
+        })
+
+        menu.addAction(UIAlertAction(title: "Set Readable Token", style: .default) { _ in
+            self.promptForText(
+                on: presenter,
+                title: "Readable Token",
+                message: "Paste your new Nightscout readable token",
+                placeholder: "token…"
+            ) { text in
+                let ok = NightscoutSettings.setToken(text)
+                self.toast(on: presenter, ok ? "Saved token" : "Invalid token")
+            }
+        })
+
+        menu.addAction(UIAlertAction(title: "Test Fetch Now", style: .default) { _ in
+            Task {
+                do {
+                    try await NightscoutUpdater.shared.refreshAndUpdateLiveActivity()
+                    self.toast(on: presenter, "Fetched + updated Live Activity ✅")
+                } catch {
+                    self.toast(on: presenter, "Fetch failed: \(error.localizedDescription)")
+                }
+            }
+        })
+
+        menu.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+        // iPad safety
+        if let pop = menu.popoverPresentationController {
+            pop.sourceView = presenter.view
+            pop.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
+            pop.permittedArrowDirections = []
+        }
+
+        presenter.present(menu, animated: true)
+    }
+
+    private func promptForText(
+        on vc: UIViewController,
+        title: String,
+        message: String,
+        placeholder: String,
+        completion: @escaping (String) -> Void
+    ) {
+        let a = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        a.addTextField { tf in
+            tf.placeholder = placeholder
+            tf.autocapitalizationType = .none
+            tf.autocorrectionType = .no
+        }
+        a.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        a.addAction(UIAlertAction(title: "Save", style: .default) { _ in
+            completion(a.textFields?.first?.text ?? "")
+        })
+        vc.present(a, animated: true)
+    }
+
+    private func toast(on vc: UIViewController, _ msg: String) {
+        let a = UIAlertController(title: nil, message: msg, preferredStyle: .alert)
+        vc.present(a, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
+            a.dismiss(animated: true)
         }
     }
 
@@ -254,15 +333,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
-    func userNotificationCenter(_: UNUserNotificationCenter,
-                                willPresent notification: UNNotification,
-                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void)
-    {
-        // Log the notification
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
         let userInfo = notification.request.content.userInfo
         LogManager.shared.log(category: .general, message: "Will present notification: \(userInfo)")
-
-        // Show the notification even when app is in foreground
         completionHandler([.banner, .sound, .badge])
     }
 }

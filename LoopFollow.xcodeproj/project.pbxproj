@@ -7,12 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		378455BB2F3FDC4E008A5DC1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37505B282F3FDAE20027AC8B /* KeychainStore.swift */; };
 		37DD1B382F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */; };
 		37DD1B392F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */; };
 		37DD1B3E2F3EE24E007B215B /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */; };
 		37F0120E2F3EDE5600B344E0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F011F12F3ED74000B344E0 /* WidgetKit.framework */; };
 		37F0120F2F3EDE5600B344E0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F011F32F3ED74000B344E0 /* SwiftUI.framework */; };
 		37F0121E2F3EDE5700B344E0 /* LoopFollowLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 37F0120D2F3EDE5600B344E0 /* LoopFollowLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		37F817E12F3FDEA100AD4731 /* NightscoutClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */; };
+		37F817E32F3FDEBB00AD4731 /* NightscoutUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */; };
+		37F817E52F3FE1B200AD4731 /* NightscoutSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */; };
 		3F1335F351590E573D8E6962 /* Pods_LoopFollow.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7D55B42A22051DAD69E89D0 /* Pods_LoopFollow.framework */; };
 		654132E72E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654132E62E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift */; };
 		654132EA2E19F24800BDBE08 /* TOTPGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654132E92E19F24800BDBE08 /* TOTPGenerator.swift */; };
@@ -437,11 +441,15 @@
 
 /* Begin PBXFileReference section */
 		059B0FA59AABFE72FE13DDDA /* Pods-LoopFollow.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LoopFollow.release.xcconfig"; path = "Target Support Files/Pods-LoopFollow/Pods-LoopFollow.release.xcconfig"; sourceTree = "<group>"; };
+		37505B282F3FDAE20027AC8B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutClient.swift; sourceTree = "<group>"; };
 		37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseLiveActivityAttributes.swift; sourceTree = "<group>"; };
 		37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		37F011F12F3ED74000B344E0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		37F011F32F3ED74000B344E0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		37F0120D2F3EDE5600B344E0 /* LoopFollowLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LoopFollowLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutUpdater.swift; sourceTree = "<group>"; };
+		37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutSettings.swift; sourceTree = "<group>"; };
 		654132E62E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleQRCodeScannerView.swift; sourceTree = "<group>"; };
 		654132E92E19F24800BDBE08 /* TOTPGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPGenerator.swift; sourceTree = "<group>"; };
 		654134172E1DC09700BDBE08 /* OverridePresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverridePresetsView.swift; sourceTree = "<group>"; };
@@ -1527,6 +1535,10 @@
 		FC8DEEE32485D1680075863F /* LoopFollow */ = {
 			isa = PBXGroup;
 			children = (
+				37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */,
+				37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */,
+				378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */,
+				37505B282F3FDAE20027AC8B /* KeychainStore.swift */,
 				37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */,
 				37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */,
 				6589CC612E9E7D1600BB18FE /* Settings */,
@@ -2018,6 +2030,7 @@
 				DD48781E2C7DAF2F0048F05C /* PushNotificationManager.swift in Sources */,
 				DD0B9D582DE1F3B20090C337 /* AlarmType+canAcknowledge.swift in Sources */,
 				DD7F4BC52DD3CE0700D449E9 /* AlarmBGLimitSection.swift in Sources */,
+				37F817E12F3FDEA100AD4731 /* NightscoutClient.swift in Sources */,
 				DD7F4B9F2DD1F92700D449E9 /* AlarmActiveSection.swift in Sources */,
 				DD4AFB672DB68C5500BB593F /* UUID+Identifiable.swift in Sources */,
 				DD9ED0CA2D355257000D2A63 /* LogView.swift in Sources */,
@@ -2153,6 +2166,7 @@
 				6589CC662E9E7D1600BB18FE /* AdvancedSettingsView.swift in Sources */,
 				6589CC672E9E7D1600BB18FE /* ImportExportSettingsViewModel.swift in Sources */,
 				6589CC682E9E7D1600BB18FE /* ExportableSettings.swift in Sources */,
+				378455BB2F3FDC4E008A5DC1 /* KeychainStore.swift in Sources */,
 				6589CC692E9E7D1600BB18FE /* ContactSettingsViewModel.swift in Sources */,
 				6589CC6A2E9E7D1600BB18FE /* DexcomSettingsView.swift in Sources */,
 				6589CC6B2E9E7D1600BB18FE /* TabCustomizationModal.swift in Sources */,
@@ -2169,6 +2183,7 @@
 				DDF9676E2AD08C6E00C5EB95 /* SiteChange.swift in Sources */,
 				DDCC3A542DDC5D62006F1C10 /* BatteryDropAlarmEditor.swift in Sources */,
 				DD13BC772C3FD64E0062313B /* InfoData.swift in Sources */,
+				37F817E32F3FDEBB00AD4731 /* NightscoutUpdater.swift in Sources */,
 				DD13BC752C3FD6210062313B /* InfoType.swift in Sources */,
 				DDCC3A4D2DDBB77C006F1C10 /* PhoneBatteryAlarmEditor.swift in Sources */,
 				DDCC3A5B2DDE2000006F1C10 /* PumpBatteryAlarmEditor.swift in Sources */,
@@ -2199,6 +2214,7 @@
 				DDFF3D852D14279B00BF9D9E /* BackgroundRefreshSettingsView.swift in Sources */,
 				DDCF9A882D85FD33004DF4DD /* AlarmData.swift in Sources */,
 				DD608A0C2C27415C00F91132 /* BackgroundAlertManager.swift in Sources */,
+				37F817E52F3FE1B200AD4731 /* NightscoutSettings.swift in Sources */,
 				DD4878082C7B30BF0048F05C /* RemoteSettingsView.swift in Sources */,
 				DDE75D2B2DE5E613007C1FC1 /* NavigationRow.swift in Sources */,
 				DD4AFB3B2DB55CB600BB593F /* TimeOfDay.swift in Sources */,
