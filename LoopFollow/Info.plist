@@ -61,6 +61,8 @@
 	<string>This app requires Face ID for secure authentication.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

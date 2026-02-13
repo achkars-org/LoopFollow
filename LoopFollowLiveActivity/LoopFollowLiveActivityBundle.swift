@@ -15,5 +15,6 @@ struct LoopFollowLiveActivityBundle: WidgetBundle {
         LoopFollowLiveActivity()
         LoopFollowLiveActivityControl()
         LoopFollowLiveActivityLiveActivity()
+        GlucoseLiveActivityWidget()
     }
 }
