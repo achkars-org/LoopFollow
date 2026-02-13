@@ -44,6 +44,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Ensure VolumeButtonHandler is initialized so it can receive alarm notifications
         _ = VolumeButtonHandler.shared
 
+        // 🔥 START LIVE ACTIVITY HERE
+        LiveActivityManager.shared.startIfNeeded()
+        
         // ✅ NEW: Add a long-press gesture to the app window to show token + bundle id
         DispatchQueue.main.async { [weak self] in
             self?.installDebugLongPressGesture()
