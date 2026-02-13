@@ -84,11 +84,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     // Called when a remote notification is received
-    func application(_: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+    func application(
+        _: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
         LogManager.shared.log(category: .general, message: "Received remote notification: \(userInfo)")
 
-        // Check if this is a notification from Trio with status update
         if let aps = userInfo["aps"] as? [String: Any] {
+
             // Handle visible notification (alert, sound, badge)
             if let alert = aps["alert"] as? [String: Any] {
                 let title = alert["title"] as? String ?? ""
@@ -98,19 +102,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
             // Handle silent notification (content-available)
             if let contentAvailable = aps["content-available"] as? Int, contentAvailable == 1 {
-                // This is a silent push, nothing implemented but logging for now
+
+                LogManager.shared.log(
+                    category: .general,
+                    message: "✅ SILENT PUSH WAKE at \(Date()) aps=\(aps)"
+                )
+
+                // Super-obvious lock screen proof
+                LiveActivityManager.shared.update(glucoseText: "WAKE", trendText: "✅")
 
                 if let commandStatus = userInfo["command_status"] as? String {
                     LogManager.shared.log(category: .general, message: "Command status: \(commandStatus)")
                 }
-
                 if let commandType = userInfo["command_type"] as? String {
                     LogManager.shared.log(category: .general, message: "Command type: \(commandType)")
                 }
+
+                completionHandler(.newData)
+                return
             }
         }
 
-        // Call completion handler
         completionHandler(.newData)
     }
 
