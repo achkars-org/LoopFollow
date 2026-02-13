@@ -161,6 +161,7 @@ platform :ios do
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
       app_identifier: [
         "com.#{TEAMID}.LoopFollow",
+        "com.#{TEAMID}.LoopFollow.LoopFollowLiveActivity",
       ]
     )
   end
