@@ -72,10 +72,3 @@ extension LoopFollowLiveActivityAttributes.ContentState {
          LoopFollowLiveActivityAttributes.ContentState(emoji: "🤩")
      }
 }
-
-#Preview("Notification", as: .content, using: LoopFollowLiveActivityAttributes.preview) {
-   LoopFollowLiveActivityLiveActivity()
-} contentStates: {
-    LoopFollowLiveActivityAttributes.ContentState.smiley
-    LoopFollowLiveActivityAttributes.ContentState.starEyes
-}

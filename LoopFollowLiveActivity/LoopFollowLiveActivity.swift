@@ -77,9 +77,3 @@ struct LoopFollowLiveActivity: Widget {
     }
 }
 
-#Preview(as: .systemSmall) {
-    LoopFollowLiveActivity()
-} timeline: {
-    SimpleEntry(date: .now, emoji: "😀")
-    SimpleEntry(date: .now, emoji: "🤩")
-}

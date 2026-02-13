@@ -13,7 +13,6 @@ import SwiftUI
 struct LoopFollowLiveActivityBundle: WidgetBundle {
     var body: some Widget {
         LoopFollowLiveActivity()
-        LoopFollowLiveActivityControl()
         LoopFollowLiveActivityLiveActivity()
         GlucoseLiveActivityWidget()
     }

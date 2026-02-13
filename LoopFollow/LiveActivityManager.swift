@@ -31,8 +31,9 @@ final class LiveActivityManager {
         )
 
         do {
+            let content = ActivityContent(state: initial, staleDate: Date().addingTimeInterval(15 * 60))
             current = try Activity.request(attributes: attributes,
-                                           contentState: initial,
+                                           content: content,
                                            pushType: nil)
         } catch {
             print("LiveActivity start error:", error)
@@ -49,3 +50,4 @@ final class LiveActivityManager {
         Task { await a.update(using: state) }
     }
 }
+

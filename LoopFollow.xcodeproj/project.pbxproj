@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -840,7 +840,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		37F0121F2F3EDE5700B344E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		37F0121F2F3EDE5700B344E0 /* Exceptions for "LoopFollowLiveActivity" folder in "LoopFollowLiveActivityExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -850,8 +850,29 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		37F012102F3EDE5600B344E0 /* LoopFollowLiveActivity */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (37F0121F2F3EDE5700B344E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LoopFollowLiveActivity; sourceTree = "<group>"; };
-		DDCC3AD72DDE1790006F1C10 /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
+		37F012102F3EDE5600B344E0 /* LoopFollowLiveActivity */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				37F0121F2F3EDE5700B344E0 /* Exceptions for "LoopFollowLiveActivity" folder in "LoopFollowLiveActivityExtension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = LoopFollowLiveActivity;
+			sourceTree = "<group>";
+		};
+		DDCC3AD72DDE1790006F1C10 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1665,8 +1686,6 @@
 				37F012102F3EDE5600B344E0 /* LoopFollowLiveActivity */,
 			);
 			name = LoopFollowLiveActivityExtension;
-			packageProductDependencies = (
-			);
 			productName = LoopFollowLiveActivityExtension;
 			productReference = 37F0120D2F3EDE5600B344E0 /* LoopFollowLiveActivityExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -1688,8 +1707,6 @@
 				DDCC3AD72DDE1790006F1C10 /* Tests */,
 			);
 			name = Tests;
-			packageProductDependencies = (
-			);
 			productName = Tests;
 			productReference = DDCC3AD62DDE1790006F1C10 /* Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -1698,8 +1715,8 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = FC97882D2485969C00A7906C /* Build configuration list for PBXNativeTarget "LoopFollow" */;
 			buildPhases = (
-				DD7F4BEA2DD48B9600D449E9 /* Swiftformat */,
 				B038D39450A1F9A97D2B8BA4 /* [CP] Check Pods Manifest.lock */,
+				DD7F4BEA2DD48B9600D449E9 /* Swiftformat */,
 				FC9788102485969B00A7906C /* Sources */,
 				FC9788112485969B00A7906C /* Frameworks */,
 				FC9788122485969B00A7906C /* Resources */,
@@ -1924,13 +1941,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LoopFollow/Pods-LoopFollow-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LoopFollow/Pods-LoopFollow-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -2337,7 +2350,7 @@
 				INFOPLIST_FILE = LoopFollowLiveActivity/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LoopFollowLiveActivity;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Jon Fawcett. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -2380,7 +2393,7 @@
 				INFOPLIST_FILE = LoopFollowLiveActivity/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LoopFollowLiveActivity;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Jon Fawcett. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -2418,7 +2431,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.--unique-id-.LoopFollowTests--app-suffix-.Tests";
@@ -2449,7 +2462,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.--unique-id-.LoopFollowTests--app-suffix-.Tests";
@@ -2518,7 +2531,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -2575,7 +2588,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_MODULE_NAME = LoopFollow;
