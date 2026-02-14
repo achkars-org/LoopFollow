@@ -91,34 +91,59 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) {
         LogManager.shared.log(category: .general, message: "Received remote notification: \(userInfo)")
 
-        if let aps = userInfo["aps"] as? [String: Any] {
-
-            // Visible notification
-            if let alert = aps["alert"] as? [String: Any] {
-                let title = alert["title"] as? String ?? ""
-                let body = alert["body"] as? String ?? ""
-                LogManager.shared.log(category: .general, message: "Notification - Title: \(title), Body: \(body)")
-            }
-
-            // Silent push wake
-            if let contentAvailable = aps["content-available"] as? Int, contentAvailable == 1 {
-                LogManager.shared.log(category: .general, message: "✅ SILENT PUSH WAKE at \(Date()) aps=\(aps)")
-
-                Task {
-                    do {
-                        try await NightscoutUpdater.shared.refreshAndUpdateLiveActivity()
-                        LogManager.shared.log(category: .general, message: "✅ Nightscout → Live Activity updated")
-                        completionHandler(.newData)
-                    } catch {
-                        LogManager.shared.log(category: .general, message: "❌ Nightscout update failed: \(error)")
-                        completionHandler(.failed)
-                    }
-                }
-                return
-            }
+        guard let aps = userInfo["aps"] as? [String: Any] else {
+            completionHandler(.noData)
+            return
         }
 
-        completionHandler(.newData)
+        // Visible notification (if any)
+        if let alert = aps["alert"] as? [String: Any] {
+            let title = alert["title"] as? String ?? ""
+            let body = alert["body"] as? String ?? ""
+            LogManager.shared.log(category: .general, message: "Notification - Title: \(title), Body: \(body)")
+        }
+
+        // Silent push wake
+        if let contentAvailable = aps["content-available"] as? Int, contentAvailable == 1 {
+
+            let state: String
+            switch application.applicationState {
+            case .active: state = "ACTIVE"
+            case .inactive: state = "INACTIVE"
+            case .background: state = "BACKGROUND"
+            @unknown default: state = "UNKNOWN"
+            }
+
+            LogManager.shared.log(category: .general,
+                                  message: "✅ SILENT PUSH WAKE state=\(state) at \(Date()) aps=\(aps)")
+
+            let bgTask = application.beginBackgroundTask(withName: "SilentPushRefresh") {
+                LogManager.shared.log(category: .general, message: "⏱️ SILENT PUSH background time expired")
+            }
+
+            Task {
+                defer { application.endBackgroundTask(bgTask) }
+
+                do {
+                    LogManager.shared.log(category: .general,
+                                          message: "➡️ SILENT PUSH calling NightscoutUpdater.refreshAndUpdateLiveActivity()")
+
+                    try await NightscoutUpdater.shared.refreshAndUpdateLiveActivity()
+
+                    LogManager.shared.log(category: .general,
+                                          message: "✅ SILENT PUSH Nightscout → Live Activity updated")
+                    completionHandler(.newData)
+                } catch {
+                    LogManager.shared.log(category: .general,
+                                          message: "❌ SILENT PUSH Nightscout update failed: \(error)")
+                    completionHandler(.failed)
+                }
+            }
+
+            return
+        }
+
+        completionHandler(.noData)
     }
 
     // MARK: UISceneSession Lifecycle
@@ -217,7 +242,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         guard let presenter = topViewController() else { return }
 
         let bundleID = Bundle.main.bundleIdentifier ?? "unknown"
-        let token = lastAPNSTokenString ?? Observable.shared.loopFollowDeviceToken.value ?? "(token not yet available)"
+        let token = lastAPNSTokenString ?? Observable.shared.loopFollowDeviceToken.value
 
         let nsURL = NightscoutSettings.getBaseURL() ?? "(not set)"
         let hasToken = (NightscoutSettings.getToken() != nil)

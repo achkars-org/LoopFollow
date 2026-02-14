@@ -2,9 +2,6 @@
 //  LiveActivityManager.swift
 //  LoopFollow
 //
-//  Created by Philippe Achkar on 2026-02-12.
-//  Copyright © 2026 Jon Fawcett. All rights reserved.
-//
 
 import Foundation
 import ActivityKit
@@ -31,23 +28,41 @@ final class LiveActivityManager {
         )
 
         do {
-            let content = ActivityContent(state: initial, staleDate: Date().addingTimeInterval(15 * 60))
-            current = try Activity.request(attributes: attributes,
-                                           content: content,
-                                           pushType: nil)
+            let content = ActivityContent(
+                state: initial,
+                staleDate: Date().addingTimeInterval(15 * 60)
+            )
+
+            current = try Activity.request(
+                attributes: attributes,
+                content: content,
+                pushType: nil
+            )
         } catch {
-            print("LiveActivity start error:", error)
+            LogManager.shared.log(category: .general,
+                                  message: "LiveActivity start error: \(error)")
         }
     }
 
     func update(glucoseText: String, trendText: String) {
-        guard let a = current else { return }
+
+        // 🔴 Critical for background silent push
+        startIfNeeded()
+
+        guard let activity = current else {
+            LogManager.shared.log(category: .general,
+                                  message: "⚠️ LiveActivityManager.update called but no current activity")
+            return
+        }
+
         let state = GlucoseLiveActivityAttributes.ContentState(
             glucoseText: glucoseText,
             trendText: trendText,
             updatedAt: Date()
         )
-        Task { await a.update(using: state) }
+
+        Task {
+            await activity.update(using: state)   // ✅ correct for your SDK
+        }
     }
 }
-
