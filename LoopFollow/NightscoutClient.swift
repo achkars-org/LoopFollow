@@ -27,8 +27,9 @@ final class NightscoutClient {
         return KeychainStore.set(trimmed, for: urlKey)
     }
 
+    
     func getBaseURL() -> String? {
-        KeychainStore.get(urlKey)
+     NightscoutSettings.getBaseURL()
     }
 
     func setReadableToken(_ token: String) -> Bool {
@@ -37,14 +38,15 @@ final class NightscoutClient {
         return KeychainStore.set(trimmed, for: tokenKey)
     }
 
+    
     func getReadableToken() -> String? {
-        KeychainStore.get(tokenKey)
+        NightscoutSettings.getToken()
     }
 
     // MARK: - API
 
     func fetchLatest() async throws -> LatestReading {
-        guard let base = getBaseURL() else {
+        guard let base = NightscoutSettings.getBaseURL() else {
             throw NSError(domain: "NightscoutClient", code: 10,
                           userInfo: [NSLocalizedDescriptionKey: "Nightscout URL not set"])
         }
@@ -55,7 +57,7 @@ final class NightscoutClient {
         ]
 
         // Token as query param (widely supported)
-        if let token = getReadableToken() {
+        if let token = NightscoutSettings.getToken() {
             comps?.queryItems?.append(URLQueryItem(name: "token", value: token))
         } else {
             throw NSError(domain: "NightscoutClient", code: 11,

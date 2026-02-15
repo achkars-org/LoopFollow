@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -17,6 +17,8 @@
 		37F817E12F3FDEA100AD4731 /* NightscoutClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */; };
 		37F817E32F3FDEBB00AD4731 /* NightscoutUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */; };
 		37F817E52F3FE1B200AD4731 /* NightscoutSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */; };
+		37F817FB2F42681500AD4731 /* NightscoutConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */; };
+		37F817FE2F4269CE00AD4731 /* KeychainStore 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817FD2F4269CE00AD4731 /* KeychainStore 2.swift */; };
 		3F1335F351590E573D8E6962 /* Pods_LoopFollow.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7D55B42A22051DAD69E89D0 /* Pods_LoopFollow.framework */; };
 		654132E72E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654132E62E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift */; };
 		654132EA2E19F24800BDBE08 /* TOTPGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654132E92E19F24800BDBE08 /* TOTPGenerator.swift */; };
@@ -437,6 +439,16 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		37F818112F42706E00AD4731 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -450,6 +462,9 @@
 		37F0120D2F3EDE5600B344E0 /* LoopFollowLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LoopFollowLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutUpdater.swift; sourceTree = "<group>"; };
 		37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutSettings.swift; sourceTree = "<group>"; };
+		37F817F92F4267D300AD4731 /* LoopFollowLiveActivityExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LoopFollowLiveActivityExtension.entitlements; sourceTree = "<group>"; };
+		37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutConfigStore.swift; sourceTree = "<group>"; };
+		37F817FD2F4269CE00AD4731 /* KeychainStore 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KeychainStore 2.swift"; sourceTree = "<group>"; };
 		654132E62E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleQRCodeScannerView.swift; sourceTree = "<group>"; };
 		654132E92E19F24800BDBE08 /* TOTPGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPGenerator.swift; sourceTree = "<group>"; };
 		654134172E1DC09700BDBE08 /* OverridePresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverridePresetsView.swift; sourceTree = "<group>"; };
@@ -859,6 +874,7 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		37F012102F3EDE5600B344E0 /* LoopFollowLiveActivity */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (37F0121F2F3EDE5700B344E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LoopFollowLiveActivity; sourceTree = "<group>"; };
+		37F818042F42706D00AD4731 /* LoopFollowWatch Watch App */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "LoopFollowWatch Watch App"; sourceTree = "<group>"; };
 		DDCC3AD72DDE1790006F1C10 /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -1535,6 +1551,7 @@
 		FC8DEEE32485D1680075863F /* LoopFollow */ = {
 			isa = PBXGroup;
 			children = (
+				37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */,
 				37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */,
 				37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */,
 				378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */,
@@ -1562,6 +1579,7 @@
 				DDC7E5CD2DC6637800EB1127 /* Storage */,
 				DDEF503D2D32753A00999A5D /* Task */,
 				FCC68871248A736700A0279D /* ViewControllers */,
+				37F817FD2F4269CE00AD4731 /* KeychainStore 2.swift */,
 			);
 			path = LoopFollow;
 			sourceTree = "<group>";
@@ -1569,6 +1587,7 @@
 		FC97880B2485969B00A7906C = {
 			isa = PBXGroup;
 			children = (
+				37F817F92F4267D300AD4731 /* LoopFollowLiveActivityExtension.entitlements */,
 				DDF2C0132BEFD468007A20E6 /* blacklisted-versions.json */,
 				DDB0AF542BB1B24A00AFA48B /* BuildDetails.plist */,
 				DDB0AF4F2BB1A81F00AFA48B /* Scripts */,
@@ -1578,6 +1597,7 @@
 				FC8DEEE32485D1680075863F /* LoopFollow */,
 				DDCC3AD72DDE1790006F1C10 /* Tests */,
 				37F012102F3EDE5600B344E0 /* LoopFollowLiveActivity */,
+				37F818042F42706D00AD4731 /* LoopFollowWatch Watch App */,
 				FC9788152485969B00A7906C /* Products */,
 				8E32230C453C93FDCE59C2B9 /* Pods */,
 				6A5880E0B811AF443B05AB02 /* Frameworks */,
@@ -1714,6 +1734,7 @@
 				04DA71CCA0280FA5FA2DF7A6 /* [CP] Embed Pods Frameworks */,
 				DDB0AF532BB1AA0900AFA48B /* Capture Build Details */,
 				37F012042F3ED74200B344E0 /* Embed Foundation Extensions */,
+				37F818112F42706E00AD4731 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
@@ -2231,6 +2252,7 @@
 				DD5DA27C2DC930D6003D44FC /* GlucoseValue.swift in Sources */,
 				DD9ACA062D32AF7900415D8A /* TreatmentsTask.swift in Sources */,
 				DD98F54424BCEFEE0007425A /* ShareClientExtension.swift in Sources */,
+				37F817FB2F42681500AD4731 /* NightscoutConfigStore.swift in Sources */,
 				DD9ED0CE2D35587A000D2A63 /* LogEntry.swift in Sources */,
 				DD0C0C602C415B9D00DBADDF /* ProfileManager.swift in Sources */,
 				DD83164C2DE4DB3A004467AA /* BinaryFloatingPoint+localized.swift in Sources */,
@@ -2292,6 +2314,7 @@
 				DDEF50402D479B8A00884336 /* LoopAPNSService.swift in Sources */,
 				DD485F142E454B2600CE8CBF /* SecureMessenger.swift in Sources */,
 				DDEF50422D479BAA00884336 /* LoopAPNSCarbsView.swift in Sources */,
+				37F817FE2F4269CE00AD4731 /* KeychainStore 2.swift in Sources */,
 				DDEF50432D479BBA00884336 /* LoopAPNSBolusView.swift in Sources */,
 				DDEF50452D479BDA00884336 /* LoopAPNSRemoteView.swift in Sources */,
 			);
@@ -2340,6 +2363,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_ENTITLEMENTS = LoopFollowLiveActivityExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(CURRENT_PROJECT_VERSION)";
 				DEVELOPMENT_TEAM = 2HEY366Q6J;
@@ -2383,6 +2407,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_ENTITLEMENTS = LoopFollowLiveActivityExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(CURRENT_PROJECT_VERSION)";
 				DEVELOPMENT_TEAM = 2HEY366Q6J;

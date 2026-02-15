@@ -117,6 +117,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             LogManager.shared.log(category: .general,
                                   message: "✅ SILENT PUSH WAKE state=\(state) at \(Date()) aps=\(aps)")
 
+            // 🔎 P1 Fix verification: confirm App Group URL is available in background
+            let nsURL = NightscoutSettings.getBaseURL()
+            let nsTokenSet = (NightscoutSettings.getToken()?.isEmpty == false)
+
+            LogManager.shared.log(
+                category: .general,
+                message: "🔎 SILENT PUSH Nightscout config — url=\(nsURL ?? "nil") tokenSet=\(nsTokenSet)"
+            )
+            
+            guard nsURL != nil else {
+                LogManager.shared.log(category: .general, message: "❌ SILENT PUSH aborted: Nightscout base URL is nil")
+                completionHandler(.failed)
+                return
+            }
+            
             let bgTask = application.beginBackgroundTask(withName: "SilentPushRefresh") {
                 LogManager.shared.log(category: .general, message: "⏱️ SILENT PUSH background time expired")
             }

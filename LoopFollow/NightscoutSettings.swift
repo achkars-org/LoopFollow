@@ -8,19 +8,16 @@
 
 
 import Foundation
+import Security
 
 enum NightscoutSettings {
-    private static let urlKey = "nightscout_base_url"
     private static let tokenKey = "nightscout_readable_token"
 
     static func setBaseURL(_ url: String) -> Bool {
-        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "/$", with: "", options: .regularExpression)
-        guard let u = URL(string: trimmed), u.scheme?.hasPrefix("http") == true else { return false }
-        return KeychainStore.set(trimmed, for: urlKey)
+        NightscoutConfigStore.setBaseURL(url)
     }
 
-    static func getBaseURL() -> String? { KeychainStore.get(urlKey) }
+    static func getBaseURL() -> String? { NightscoutConfigStore.getBaseURL() }
 
     static func setToken(_ token: String) -> Bool {
         let t = token.trimmingCharacters(in: .whitespacesAndNewlines)
