@@ -18,7 +18,6 @@
 		37F817E32F3FDEBB00AD4731 /* NightscoutUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */; };
 		37F817E52F3FE1B200AD4731 /* NightscoutSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */; };
 		37F817FB2F42681500AD4731 /* NightscoutConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */; };
-		37F817FE2F4269CE00AD4731 /* KeychainStore 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817FD2F4269CE00AD4731 /* KeychainStore 2.swift */; };
 		3F1335F351590E573D8E6962 /* Pods_LoopFollow.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7D55B42A22051DAD69E89D0 /* Pods_LoopFollow.framework */; };
 		654132E72E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654132E62E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift */; };
 		654132EA2E19F24800BDBE08 /* TOTPGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654132E92E19F24800BDBE08 /* TOTPGenerator.swift */; };
@@ -464,7 +463,6 @@
 		37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutSettings.swift; sourceTree = "<group>"; };
 		37F817F92F4267D300AD4731 /* LoopFollowLiveActivityExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LoopFollowLiveActivityExtension.entitlements; sourceTree = "<group>"; };
 		37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutConfigStore.swift; sourceTree = "<group>"; };
-		37F817FD2F4269CE00AD4731 /* KeychainStore 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KeychainStore 2.swift"; sourceTree = "<group>"; };
 		654132E62E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleQRCodeScannerView.swift; sourceTree = "<group>"; };
 		654132E92E19F24800BDBE08 /* TOTPGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPGenerator.swift; sourceTree = "<group>"; };
 		654134172E1DC09700BDBE08 /* OverridePresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverridePresetsView.swift; sourceTree = "<group>"; };
@@ -1579,7 +1577,6 @@
 				DDC7E5CD2DC6637800EB1127 /* Storage */,
 				DDEF503D2D32753A00999A5D /* Task */,
 				FCC68871248A736700A0279D /* ViewControllers */,
-				37F817FD2F4269CE00AD4731 /* KeychainStore 2.swift */,
 			);
 			path = LoopFollow;
 			sourceTree = "<group>";
@@ -2314,7 +2311,6 @@
 				DDEF50402D479B8A00884336 /* LoopAPNSService.swift in Sources */,
 				DD485F142E454B2600CE8CBF /* SecureMessenger.swift in Sources */,
 				DDEF50422D479BAA00884336 /* LoopAPNSCarbsView.swift in Sources */,
-				37F817FE2F4269CE00AD4731 /* KeychainStore 2.swift in Sources */,
 				DDEF50432D479BBA00884336 /* LoopAPNSBolusView.swift in Sources */,
 				DDEF50452D479BDA00884336 /* LoopAPNSRemoteView.swift in Sources */,
 			);

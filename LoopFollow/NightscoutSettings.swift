@@ -3,17 +3,16 @@
 //  LoopFollow
 //
 //  Created by Philippe Achkar on 2026-02-13.
-//  Copyright © 2026 Jon Fawcett. All rights reserved.
 //
 
 import Foundation
 import Security
-import UIKit
 
 enum NightscoutSettings {
+
     private static let tokenKey = "nightscout_readable_token"
 
-    // MARK: - Keychain logging helpers
+    // MARK: - Keychain status helper
 
     private static func keychainStatusDescription(_ status: OSStatus) -> String {
         if let message = SecCopyErrorMessageString(status, nil) as String? {
@@ -23,39 +22,36 @@ enum NightscoutSettings {
     }
 
     private static func log(_ message: String) {
-        // If LogManager isn't available in this target, replace with print(...)
-        LogManager.shared.log(category: .general, message: message)
+        print("NightscoutSettings:", message)
+        // If LogManager exists in this target and you want it:
+        // LogManager.shared.log(category: .general, message: message)
     }
 
-    // MARK: - Existing Base URL (App Group)
+    // MARK: - Base URL
 
     static func setBaseURL(_ url: String) -> Bool {
         let ok = NightscoutConfigStore.setBaseURL(url)
-        log("🌐 Nightscout baseURL set ok=\(ok) value='\(getBaseURL() ?? "nil")'")
+        log("BaseURL set ok=\(ok)")
         return ok
     }
 
     static func getBaseURL() -> String? {
         let url = NightscoutConfigStore.getBaseURL()
-        log("🌐 Nightscout baseURL get value='\(url ?? "nil")'")
+        log("BaseURL get value=\(url ?? "nil")")
         return url
     }
 
     // MARK: - Token (Keychain)
 
     static func setToken(_ token: String) -> Bool {
-        let t = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else {
-            log("🔐 Nightscout token set rejected (empty/whitespace)")
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            log("Token set rejected (empty)")
             return false
         }
 
-        let ok = KeychainStore.set(t, for: tokenKey)
-
-        // Immediately read back to verify persistence + visibility
-        let readBack = KeychainStore.get(tokenKey)
-
-        log("🔐 Nightscout token set ok=\(ok) readBack=\(readBack == nil ? "nil" : "present") isProtectedDataAvailable=\(UIApplication.shared.isProtectedDataAvailable)")
+        let ok = KeychainStore.set(trimmed, for: tokenKey)
+        log("Token set ok=\(ok)")
 
         return ok
     }
@@ -63,9 +59,8 @@ enum NightscoutSettings {
     static func getToken() -> String? {
         let token = KeychainStore.get(tokenKey)
 
-        // If nil, log context that often explains background failures
         if token == nil {
-            // Attempt a raw SecItemCopyMatching for OSStatus (so we can see WHY)
+            // Perform raw SecItemCopyMatching to get OSStatus
             let query: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrAccount as String: tokenKey,
@@ -75,11 +70,10 @@ enum NightscoutSettings {
 
             var item: CFTypeRef?
             let status = SecItemCopyMatching(query as CFDictionary, &item)
-            let statusDesc = keychainStatusDescription(status)
 
-            log("🔐 Nightscout token get -> nil. SecItemCopyMatching status=\(statusDesc) isProtectedDataAvailable=\(UIApplication.shared.isProtectedDataAvailable)")
+            log("Token get FAILED. SecItemCopyMatching status = \(keychainStatusDescription(status))")
         } else {
-            log("🔐 Nightscout token get -> present isProtectedDataAvailable=\(UIApplication.shared.isProtectedDataAvailable)")
+            log("Token get SUCCESS")
         }
 
         return token
