@@ -170,9 +170,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
                 do {
                     LogManager.shared.log(category: .general,
-                                          message: "➡️ SILENT PUSH calling NightscoutUpdater.refreshAndUpdateLiveActivity()")
+                                          message: "➡️ SILENT PUSH calling NightscoutUpdater.refreshData()")
 
-                    try await NightscoutUpdater.shared.refreshAndUpdateLiveActivity()
+                    try await NightscoutUpdater.shared.refreshData()
 
                     LogManager.shared.log(category: .general,
                                           message: "✅ SILENT PUSH Nightscout → Live Activity updated")
@@ -330,7 +330,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         menu.addAction(UIAlertAction(title: "Test Fetch Now", style: .default) { _ in
             Task {
                 do {
-                    try await NightscoutUpdater.shared.refreshAndUpdateLiveActivity()
+                    try await NightscoutUpdater.shared.refreshData()
                     self.toast(on: presenter, "Fetched + updated Live Activity ✅")
                 } catch {
                     self.toast(on: presenter, "Fetch failed: \(error.localizedDescription)")

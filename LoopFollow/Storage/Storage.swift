@@ -174,6 +174,22 @@ class Storage {
     var bolusIncrement = SecureStorageValue<HKQuantity>(key: "bolusIncrement", defaultValue: HKQuantity(unit: .internationalUnit(), doubleValue: 0.05))
     var bolusIncrementDetected = StorageValue<Bool>(key: "bolusIncrementDetected", defaultValue: false)
 
+    // MARK: - Live Activity State -------------------------------------------------
+
+    // Glucose (mmol)
+    var currentGlucoseMmol = StorageValue<Double?>(key: "la.currentGlucoseMmol", defaultValue: nil)
+    var previousGlucoseMmol = StorageValue<Double?>(key: "la.previousGlucoseMmol", defaultValue: nil)
+
+    // Trend arrow
+    var trendArrow = StorageValue<String?>(key: "la.trendArrow", defaultValue: nil)
+
+    // Treatments
+    var latestIOB = StorageValue<Double?>(key: "la.latestIOB", defaultValue: nil)
+    var latestCOB = StorageValue<Double?>(key: "la.latestCOB", defaultValue: nil)
+
+    // Projected glucose (mmol)
+    var projectedMmol = StorageValue<Double?>(key: "la.projectedMmol", defaultValue: nil)
+    
     static let shared = Storage()
     private init() {}
 }

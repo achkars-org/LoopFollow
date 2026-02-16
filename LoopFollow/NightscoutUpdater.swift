@@ -5,7 +5,8 @@ final class NightscoutUpdater {
     static let shared = NightscoutUpdater()
     private init() {}
 
-    func refreshAndUpdateLiveActivity() async throws {
+    func refreshData() async throws {
+
         let t0 = Date()
         LogManager.shared.log(category: .general, message: "🔄 [UPDATER] start")
 
@@ -27,20 +28,22 @@ final class NightscoutUpdater {
 
         let latest = try await NightscoutClient.shared.fetchLatest()
 
-        // ✅ Only log fields we know exist
-        LogManager.shared.log(category: .general,
-                              message: "📥 [UPDATER] fetched mgdl=\(latest.mgdl) direction=\(latest.direction ?? "nil")")
+        LogManager.shared.log(
+            category: .general,
+            message: "📥 [UPDATER] fetched mgdl=\(latest.mgdl) direction=\(latest.direction ?? "nil")"
+        )
 
-        let mmol = NightscoutClient.shared.mmolString(from: latest.mgdl)
-        let arrow = NightscoutClient.shared.arrow(for: latest.direction)
+        // Convert mg/dL → mmol
+        let mmol = Double(latest.mgdl) / 18.0182
 
-        LogManager.shared.log(category: .general,
-                              message: "🟩 [UPDATER] updating Live Activity mmol=\(mmol) arrow=\(arrow)")
+        // Store previous before overwriting
+        Storage.shared.previousGlucoseMmol.value = Storage.shared.currentGlucoseMmol.value
+        Storage.shared.currentGlucoseMmol.value = mmol
 
-        LiveActivityManager.shared.update(glucoseText: mmol, trendText: arrow)
+        // Store trend arrow
+        Storage.shared.trendArrow.value = NightscoutClient.shared.arrow(for: latest.direction)
 
         let ms = Int(Date().timeIntervalSince(t0) * 1000)
-        LogManager.shared.log(category: .general,
-                              message: "✅ [UPDATER] done in \(ms)ms")
+        LogManager.shared.log(category: .general, message: "✅ [UPDATER] stored glucose in \(ms)ms")
     }
 }

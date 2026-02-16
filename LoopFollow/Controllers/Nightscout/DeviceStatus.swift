@@ -239,6 +239,8 @@ extension MainViewController {
         // Mark device status as loaded for initial loading state
         markDataLoaded("deviceStatus")
 
+        LiveActivityManager.shared.refreshFromCurrentState()
+        
         LogManager.shared.log(category: .deviceStatus, message: "Update Device Status done", isDebug: true)
     }
 }

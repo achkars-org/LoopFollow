@@ -1,16 +1,14 @@
-//
-//  LiveActivityManager.swift
-//  LoopFollow
-//
-
 import Foundation
 import ActivityKit
 
 final class LiveActivityManager {
+
     static let shared = LiveActivityManager()
     private init() {}
 
     private(set) var current: Activity<GlucoseLiveActivityAttributes>?
+
+    // MARK: - Start
 
     func startIfNeeded() {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
@@ -21,9 +19,14 @@ final class LiveActivityManager {
         }
 
         let attributes = GlucoseLiveActivityAttributes(title: "LoopFollow")
+
         let initial = GlucoseLiveActivityAttributes.ContentState(
-            glucoseText: "--",
-            trendText: "",
+            glucoseMmol: nil,
+            previousGlucoseMmol: nil,
+            trend: nil,
+            iob: nil,
+            cob: nil,
+            projectedMmol: nil,
             updatedAt: Date()
         )
 
@@ -38,31 +41,42 @@ final class LiveActivityManager {
                 content: content,
                 pushType: nil
             )
+
         } catch {
-            LogManager.shared.log(category: .general,
-                                  message: "LiveActivity start error: \(error)")
+            LogManager.shared.log(
+                category: .general,
+                message: "LiveActivity start error: \(error)"
+            )
         }
     }
 
-    func update(glucoseText: String, trendText: String) {
+    // MARK: - Atomic Refresh
 
-        // 🔴 Critical for background silent push
+    func refreshFromCurrentState() {
+
         startIfNeeded()
 
         guard let activity = current else {
-            LogManager.shared.log(category: .general,
-                                  message: "⚠️ LiveActivityManager.update called but no current activity")
+            LogManager.shared.log(
+                category: .general,
+                message: "⚠️ refreshFromCurrentState called but no activity"
+            )
             return
         }
 
+        // Pull everything from shared state (we will wire these next)
         let state = GlucoseLiveActivityAttributes.ContentState(
-            glucoseText: glucoseText,
-            trendText: trendText,
+            glucoseMmol: Storage.shared.currentGlucoseMmol.value,
+            previousGlucoseMmol: Storage.shared.previousGlucoseMmol.value,
+            trend: Storage.shared.trendArrow.value,
+            iob: Storage.shared.latestIOB.value,
+            cob: Storage.shared.latestCOB.value,
+            projectedMmol: Storage.shared.projectedMmol.value,
             updatedAt: Date()
         )
 
         Task {
-            await activity.update(using: state)   // ✅ correct for your SDK
+            await activity.update(using: state)
         }
     }
 }
