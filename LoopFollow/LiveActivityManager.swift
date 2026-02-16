@@ -64,6 +64,16 @@ final class LiveActivityManager {
             return
         }
 
+        LogManager.shared.log(
+            category: .general,
+            message: "📌 [LA] snapshot storage glucose=\(Storage.shared.currentGlucoseMmol.value.map { String(format: "%.1f", $0) } ?? "nil") " +
+                     "prev=\(Storage.shared.previousGlucoseMmol.value.map { String(format: "%.1f", $0) } ?? "nil") " +
+                     "trend=\(Storage.shared.trendArrow.value ?? "nil") " +
+                     "iob=\(Storage.shared.latestIOB.value.map { String(format: "%.2f", $0) } ?? "nil") " +
+                     "cob=\(Storage.shared.latestCOB.value.map { String(format: "%.0f", $0) } ?? "nil") " +
+                     "proj=\(Storage.shared.projectedMmol.value.map { String(format: "%.1f", $0) } ?? "nil")"
+        )
+        
         // Pull everything from shared state (we will wire these next)
         let state = GlucoseLiveActivityAttributes.ContentState(
             glucoseMmol: Storage.shared.currentGlucoseMmol.value,

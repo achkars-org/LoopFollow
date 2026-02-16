@@ -260,6 +260,22 @@ extension MainViewController {
                 Observable.shared.deltaText.value = "+" + Localizer.toDisplayUnits(String(deltaBG))
             }
 
+            // ================================
+            // Live Activity: write state to Storage (mmol-based)
+            // ================================
+            let latestMmol = Double(latestBG) / 18.0182
+            let priorMmol  = Double(priorBG)  / 18.0182
+
+            Storage.shared.currentGlucoseMmol.value = latestMmol
+            Storage.shared.previousGlucoseMmol.value = priorMmol
+
+            // We already computed the arrow string into Observable.shared.directionText
+            let arrow = Observable.shared.directionText.value
+            Storage.shared.trendArrow.value = arrow.isEmpty ? nil : arrow
+
+            // (Optional) If you want LA to update when BG updates (not only deviceStatus):
+            LiveActivityManager.shared.refreshFromCurrentState()
+            
             // Mark BG data as loaded for initial loading state
             self.markDataLoaded("bg")
 
