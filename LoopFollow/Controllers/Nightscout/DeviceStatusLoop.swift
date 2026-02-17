@@ -52,16 +52,29 @@ extension MainViewController {
             if let insulinMetric = InsulinMetric(from: lastLoopRecord["iob"], key: "iob") {
                 infoManager.updateInfoData(type: .iob, value: insulinMetric)
                 latestIOB = insulinMetric
+                
+                Storage.shared.latestIOB.value = insulinMetric.value
             }
 
             // COB
             if let cobMetric = CarbMetric(from: lastLoopRecord["cob"], key: "cob") {
                 infoManager.updateInfoData(type: .cob, value: cobMetric)
                 latestCOB = cobMetric
+                
+                Storage.shared.latestCOB.value = cobMetric.value
+
             }
 
             if let predictdata = lastLoopRecord["predicted"] as? [String: AnyObject] {
                 let prediction = predictdata["values"] as! [Double]
+
+                // ✅ Live Activity projected value in mmol, unit-aware
+                if let last = prediction.last {
+                    let units = lastLoopRecord["units"] as? String ?? "mg/dl"
+                    let mgdlValue = (units == "mmol") ? (last * GlucoseConversion.mmolToMgDl) : last
+                    Storage.shared.projectedMmol.value = mgdlValue / 18.0
+                }
+                
                 PredictionLabel.text = Localizer.toDisplayUnits(String(Int(prediction.last!)))
                 PredictionLabel.textColor = UIColor.systemPurple
                 if Storage.shared.downloadPrediction.value, previousLastLoopTime < lastLoopTime {
