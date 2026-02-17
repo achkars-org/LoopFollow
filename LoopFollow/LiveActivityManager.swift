@@ -107,6 +107,18 @@ final class LiveActivityManager {
                 """
         )
 
+        
+        // Load last known values
+        let cachedIOB = LAStateCache.loadIOB()
+        let cachedCOB = LAStateCache.loadCOB()
+
+        // Merge logic: only overwrite if new values exist
+        let mergedIOB = iob ?? cachedIOB
+        let mergedCOB = cob ?? cachedCOB
+
+        // Save only if fresh values exist
+        LAStateCache.save(iob: iob, cob: cob)
+        
         let state = GlucoseLiveActivityAttributes.ContentState(
             glucoseMmol: glucose,
             previousGlucoseMmol: previous,
