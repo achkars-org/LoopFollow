@@ -70,7 +70,7 @@ final class LiveActivityManager {
 
     // MARK: - Atomic Refresh
 
-    func refreshFromCurrentState() {
+    func refreshFromCurrentState() async {
 
         startIfNeeded()
 
@@ -122,20 +122,18 @@ final class LiveActivityManager {
             staleDate: Date().addingTimeInterval(15 * 60)
         )
 
-        Task {
-            // NOTE: update(_:) is async but (in your SDK) does NOT throw.
-            await activity.update(content)
+        // NOTE: update(_:) is async but does NOT throw.
+        await activity.update(content)
 
-            LogManager.shared.log(
-                category: .general,
-                message: "✅ LiveActivity updated id=\(activity.id)"
-            )
-        }
+        LogManager.shared.log(
+            category: .general,
+            message: "✅ LiveActivity updated id=\(activity.id)"
+        )
     }
 
     // MARK: - Debug: Force a visible update
 
-    func debugForceUpdate() {
+    func debugForceUpdate() async {
         startIfNeeded()
 
         guard let activity = Activity<GlucoseLiveActivityAttributes>.activities.first else {
@@ -163,14 +161,12 @@ final class LiveActivityManager {
             staleDate: Date().addingTimeInterval(15 * 60)
         )
 
-        Task {
-            await activity.update(content)
+        await activity.update(content)
 
-            LogManager.shared.log(
-                category: .general,
-                message: "✅ debugForceUpdate updated id=\(activity.id)"
-            )
-        }
+        LogManager.shared.log(
+            category: .general,
+            message: "✅ debugForceUpdate updated id=\(activity.id)"
+        )
     }
 
     // MARK: - End Activity (optional but useful for debugging)

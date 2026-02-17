@@ -3,7 +3,6 @@
 //  LoopFollow
 //
 //  Created by Philippe Achkar on 2026-02-12.
-//  Copyright © 2026 Jon Fawcett.
 //
 
 import WidgetKit
@@ -16,19 +15,25 @@ struct GlucoseLiveActivityWidget: Widget {
         ActivityConfiguration(for: GlucoseLiveActivityAttributes.self) { context in
 
             // MARK: Lock Screen UI
+
             let glucoseText = formatGlucose(context.state.glucoseMmol)
             let trendText = formatTrend(context.state.trend)
-
             let iobText = formatIOB(context.state.iob)
             let cobText = formatCOB(context.state.cob)
-
             let projectedText = formatGlucose(context.state.projectedMmol)
             let updatedText = formatUpdatedTime(context.state.updatedAt)
 
             VStack(alignment: .leading, spacing: 8) {
+
                 Text(context.attributes.title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                // ✅ DEBUG — proves widget receives updated state
+                Text("epoch \(Int(context.state.updatedAt.timeIntervalSince1970))")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
 
                 HStack(alignment: .center, spacing: 12) {
 
@@ -70,7 +75,6 @@ struct GlucoseLiveActivityWidget: Widget {
 
             let glucoseText = formatGlucose(context.state.glucoseMmol)
             let trendText = formatTrend(context.state.trend)
-
             let iobText = formatIOB(context.state.iob)
             let cobText = formatCOB(context.state.cob)
             let projectedText = formatGlucose(context.state.projectedMmol)
@@ -80,53 +84,63 @@ struct GlucoseLiveActivityWidget: Widget {
 
                 // MARK: Expanded
                 DynamicIslandExpandedRegion(.center) {
-                    HStack(alignment: .center, spacing: 10) {
+                    VStack(spacing: 4) {
 
-                        // BG + Trend
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(glucoseText)
-                                .font(.title2)
-                                .bold()
-                                .monospacedDigit()
-                            Text(trendText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        HStack(alignment: .center, spacing: 10) {
+
+                            // BG + Trend
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(glucoseText)
+                                    .font(.title2)
+                                    .bold()
+                                    .monospacedDigit()
+
+                                Text(trendText)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Divider()
+
+                            // IOB / COB
+                            VStack(alignment: .leading, spacing: 4) {
+                                MetricRow(label: "IOB", value: iobText, compact: true)
+                                MetricRow(label: "COB", value: cobText, compact: true)
+                            }
+
+                            Divider()
+
+                            // Proj / Upd
+                            VStack(alignment: .leading, spacing: 4) {
+                                MetricRow(label: "Proj", value: projectedText, compact: true)
+                                MetricRow(label: "Upd", value: updatedText, compact: true)
+                            }
                         }
 
-                        Divider()
-
-                        // IOB / COB
-                        VStack(alignment: .leading, spacing: 4) {
-                            MetricRow(label: "IOB", value: iobText, compact: true)
-                            MetricRow(label: "COB", value: cobText, compact: true)
-                        }
-
-                        Divider()
-
-                        // Proj / Upd
-                        VStack(alignment: .leading, spacing: 4) {
-                            MetricRow(label: "Proj", value: projectedText, compact: true)
-                            MetricRow(label: "Upd", value: updatedText, compact: true)
-                        }
+                        // ✅ DEBUG epoch (Dynamic Island Expanded)
+                        Text("epoch \(Int(context.state.updatedAt.timeIntervalSince1970))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
                     }
                     .padding(.vertical, 2)
                 }
 
             } compactLeading: {
-                // MARK: Compact Leading (BG)
+
                 Text(formatGlucoseShort(context.state.glucoseMmol))
                     .font(.caption)
                     .bold()
                     .monospacedDigit()
 
             } compactTrailing: {
-                // MARK: Compact Trailing (trend)
+
                 Text(trendText)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
             } minimal: {
-                // MARK: Minimal (BG)
+
                 Text(formatGlucoseMinimal(context.state.glucoseMmol))
                     .font(.caption2)
                     .bold()
@@ -158,7 +172,7 @@ private struct MetricRow: View {
     }
 }
 
-// MARK: - Formatting helpers (Widget-side)
+// MARK: - Formatting helpers
 
 private func formatGlucose(_ mmol: Double?) -> String {
     guard let mmol else { return "--" }

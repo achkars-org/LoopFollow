@@ -274,7 +274,7 @@ extension MainViewController {
             Storage.shared.trendArrow.value = arrow.isEmpty ? nil : arrow
 
             // (Optional) If you want LA to update when BG updates (not only deviceStatus):
-            LiveActivityManager.shared.refreshFromCurrentState()
+            Task { await LiveActivityManager.shared.refreshFromCurrentState() }
             
             // Mark BG data as loaded for initial loading state
             self.markDataLoaded("bg")

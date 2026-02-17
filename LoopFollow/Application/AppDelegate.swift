@@ -115,14 +115,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(
         _ application: UIApplication,
-        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
-        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
-    ) {
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any]
+    ) async -> UIBackgroundFetchResult {
+
         LogManager.shared.log(category: .general, message: "Received remote notification: \(userInfo)")
 
         guard let aps = userInfo["aps"] as? [String: Any] else {
-            completionHandler(.noData)
-            return
+            return .noData
         }
 
         // Visible notification (if any)
@@ -143,8 +142,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             @unknown default: state = "UNKNOWN"
             }
 
-            LogManager.shared.log(category: .general,
-                                  message: "✅ SILENT PUSH WAKE state=\(state) at \(Date()) aps=\(aps)")
+            LogManager.shared.log(
+                category: .general,
+                message: "✅ SILENT PUSH WAKE state=\(state) at \(Date()) aps=\(aps)"
+            )
 
             // 🔎 P1 Fix verification: confirm App Group URL is available in background
             let nsURL = NightscoutSettings.getBaseURL()
@@ -157,37 +158,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
             guard nsURL != nil else {
                 LogManager.shared.log(category: .general, message: "❌ SILENT PUSH aborted: Nightscout base URL is nil")
-                completionHandler(.failed)
-                return
+                return .failed
             }
 
             let bgTask = application.beginBackgroundTask(withName: "SilentPushRefresh") {
                 LogManager.shared.log(category: .general, message: "⏱️ SILENT PUSH background time expired")
             }
+            defer { application.endBackgroundTask(bgTask) }
 
-            Task {
-                defer { application.endBackgroundTask(bgTask) }
+            do {
+                LogManager.shared.log(category: .general, message: "➡️ SILENT PUSH calling NightscoutUpdater.refreshData()")
+                try await NightscoutUpdater.shared.refreshData()
 
-                do {
-                    LogManager.shared.log(category: .general,
-                                          message: "➡️ SILENT PUSH calling NightscoutUpdater.refreshData()")
+                LogManager.shared.log(category: .general, message: "➡️ SILENT PUSH refreshing Live Activity")
+                await LiveActivityManager.shared.refreshFromCurrentState()
 
-                    try await NightscoutUpdater.shared.refreshData()
+                LogManager.shared.log(category: .general, message: "✅ SILENT PUSH Live Activity updated")
+                return .newData
 
-                    LogManager.shared.log(category: .general,
-                                          message: "✅ SILENT PUSH Nightscout → Live Activity updated")
-                    completionHandler(.newData)
-                } catch {
-                    LogManager.shared.log(category: .general,
-                                          message: "❌ SILENT PUSH Nightscout update failed: \(error)")
-                    completionHandler(.failed)
-                }
+            } catch {
+                LogManager.shared.log(category: .general, message: "❌ SILENT PUSH update failed: \(error)")
+                return .failed
             }
-
-            return
         }
 
-        completionHandler(.noData)
+        return .noData
     }
 
     // MARK: UISceneSession Lifecycle
