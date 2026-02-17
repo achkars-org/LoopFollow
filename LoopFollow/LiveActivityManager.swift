@@ -11,10 +11,21 @@ final class LiveActivityManager {
     // MARK: - Start
 
     func startIfNeeded() {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            LogManager.shared.log(
+                category: .general,
+                message: "LiveActivity not authorized"
+            )
+            return
+        }
 
+        // Reuse existing if present
         if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
             current = existing
+            LogManager.shared.log(
+                category: .general,
+                message: "LiveActivity reuse id=\(existing.id)"
+            )
             return
         }
 
@@ -36,10 +47,17 @@ final class LiveActivityManager {
                 staleDate: Date().addingTimeInterval(15 * 60)
             )
 
-            current = try Activity.request(
+            let activity = try Activity.request(
                 attributes: attributes,
                 content: content,
                 pushType: nil
+            )
+
+            current = activity
+
+            LogManager.shared.log(
+                category: .general,
+                message: "LiveActivity started id=\(activity.id)"
             )
 
         } catch {
@@ -56,26 +74,119 @@ final class LiveActivityManager {
 
         startIfNeeded()
 
-        guard let activity = current else {
+        // Always grab the currently displayed activity
+        guard let activity = Activity<GlucoseLiveActivityAttributes>.activities.first else {
             LogManager.shared.log(
                 category: .general,
-                message: "⚠️ refreshFromCurrentState called but no activity"
+                message: "⚠️ refreshFromCurrentState: no active activity"
             )
             return
         }
 
+        current = activity
+
+        // Snapshot storage
+        let glucose = Storage.shared.currentGlucoseMmol.value
+        let previous = Storage.shared.previousGlucoseMmol.value
+        let trend = Storage.shared.trendArrow.value
+        let iob = Storage.shared.latestIOB.value
+        let cob = Storage.shared.latestCOB.value
+        let projected = Storage.shared.projectedMmol.value
+
         LogManager.shared.log(
             category: .general,
-            message: "📌 [LA] snapshot storage glucose=\(Storage.shared.currentGlucoseMmol.value.map { String(format: "%.1f", $0) } ?? "nil") " +
-                     "prev=\(Storage.shared.previousGlucoseMmol.value.map { String(format: "%.1f", $0) } ?? "nil") " +
-                     "trend=\(Storage.shared.trendArrow.value ?? "nil") " +
-                     "iob=\(Storage.shared.latestIOB.value.map { String(format: "%.2f", $0) } ?? "nil") " +
-                     "cob=\(Storage.shared.latestCOB.value.map { String(format: "%.0f", $0) } ?? "nil") " +
-                     "proj=\(Storage.shared.projectedMmol.value.map { String(format: "%.1f", $0) } ?? "nil")"
+            message:
+                """
+                📌 [LA] id=\(activity.id)
+                glucose=\(glucose.map { String(format: "%.1f", $0) } ?? "nil")
+                prev=\(previous.map { String(format: "%.1f", $0) } ?? "nil")
+                trend=\(trend ?? "nil")
+                iob=\(iob.map { String(format: "%.2f", $0) } ?? "nil")
+                cob=\(cob.map { String(format: "%.0f", $0) } ?? "nil")
+                proj=\(projected.map { String(format: "%.1f", $0) } ?? "nil")
+                """
         )
-        
-        // Pull everything from shared state (we will wire these next)
+
         let state = GlucoseLiveActivityAttributes.ContentState(
+            glucoseMmol: glucose,
+            previousGlucoseMmol: previous,
+            trend: trend,
+            iob: iob,
+            cob: cob,
+            projectedMmol: projected,
+            updatedAt: Date()
+        )
+
+        let content = ActivityContent(
+            state: state,
+            staleDate: Date().addingTimeInterval(15 * 60)
+        )
+
+        Task {
+            // NOTE: update(_:) is async but (in your SDK) does NOT throw.
+            await activity.update(content)
+
+            LogManager.shared.log(
+                category: .general,
+                message: "✅ LiveActivity updated id=\(activity.id)"
+            )
+        }
+    }
+
+    // MARK: - Debug: Force a visible update
+
+    func debugForceUpdate() {
+        startIfNeeded()
+
+        guard let activity = Activity<GlucoseLiveActivityAttributes>.activities.first else {
+            LogManager.shared.log(
+                category: .general,
+                message: "⚠️ debugForceUpdate: no active activity"
+            )
+            return
+        }
+
+        current = activity
+
+        let state = GlucoseLiveActivityAttributes.ContentState(
+            glucoseMmol: 6.4,
+            previousGlucoseMmol: 6.1,
+            trend: "→",
+            iob: 1.23,
+            cob: 18,
+            projectedMmol: 6.8,
+            updatedAt: Date()
+        )
+
+        let content = ActivityContent(
+            state: state,
+            staleDate: Date().addingTimeInterval(15 * 60)
+        )
+
+        Task {
+            await activity.update(content)
+
+            LogManager.shared.log(
+                category: .general,
+                message: "✅ debugForceUpdate updated id=\(activity.id)"
+            )
+        }
+    }
+
+    // MARK: - End Activity (optional but useful for debugging)
+
+    // MARK: - End Activity
+
+    // MARK: - End Activity
+
+    func end() {
+        guard let activity = Activity<GlucoseLiveActivityAttributes>.activities.first else {
+            return
+        }
+
+        current = activity
+
+        let finalState = GlucoseLiveActivityAttributes.ContentState(
             glucoseMmol: Storage.shared.currentGlucoseMmol.value,
             previousGlucoseMmol: Storage.shared.previousGlucoseMmol.value,
             trend: Storage.shared.trendArrow.value,
@@ -85,8 +196,21 @@ final class LiveActivityManager {
             updatedAt: Date()
         )
 
+        let finalContent = ActivityContent(
+            state: finalState,
+            staleDate: nil
+        )
+
         Task {
-            await activity.update(using: state)
+            await activity.end(
+                finalContent,
+                dismissalPolicy: .immediate
+            )
+
+            LogManager.shared.log(
+                category: .general,
+                message: "LiveActivity ended id=\(activity.id)"
+            )
         }
     }
 }
