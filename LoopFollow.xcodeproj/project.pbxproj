@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		378455BB2F3FDC4E008A5DC1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37505B282F3FDAE20027AC8B /* KeychainStore.swift */; };
 		37AEF3272F4493780039A5BB /* LAStateCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF3262F4493750039A5BB /* LAStateCache.swift */; };
+		37AEF3402F4563440039A5BB /* DeviceStatusParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */; };
 		37DD1B382F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */; };
 		37DD1B392F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */; };
 		37DD1B3E2F3EE24E007B215B /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */; };
@@ -456,6 +457,7 @@
 		37505B282F3FDAE20027AC8B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutClient.swift; sourceTree = "<group>"; };
 		37AEF3262F4493750039A5BB /* LAStateCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LAStateCache.swift; sourceTree = "<group>"; };
+		37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusParser.swift; sourceTree = "<group>"; };
 		37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseLiveActivityAttributes.swift; sourceTree = "<group>"; };
 		37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		37F011F12F3ED74000B344E0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -1551,6 +1553,7 @@
 		FC8DEEE32485D1680075863F /* LoopFollow */ = {
 			isa = PBXGroup;
 			children = (
+				37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */,
 				37AEF3262F4493750039A5BB /* LAStateCache.swift */,
 				37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */,
 				37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */,
@@ -2127,6 +2130,7 @@
 				DDA9ACAA2D6A6B8300E6F1A9 /* ContactIncludeOption.swift in Sources */,
 				DD7F4C1D2DD650D500D449E9 /* COBAlarmEditor.swift in Sources */,
 				DDE75D272DE5E539007C1FC1 /* ActionRow.swift in Sources */,
+				37AEF3402F4563440039A5BB /* DeviceStatusParser.swift in Sources */,
 				DD0C0C622C4175FD00DBADDF /* NSProfile.swift in Sources */,
 				DD58171E2D299FCA0041FB98 /* BluetoothDeviceDelegate.swift in Sources */,
 				DDE69ED22C7256260013EAEC /* RemoteType.swift in Sources */,

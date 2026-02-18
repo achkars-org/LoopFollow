@@ -117,14 +117,19 @@ final class LiveActivityManager {
         let mergedCOB = cob ?? cachedCOB
 
         // Save only if fresh values exist
-        LAStateCache.save(iob: iob, cob: cob)
+        LAStateCache.save(iob: mergedIOB, cob: mergedCOB)
+        
+        LogManager.shared.log(
+            category: .general,
+            message: "📌 [LA] merged iob=\(mergedIOB.map { String(format: "%.2f", $0) } ?? "nil") cob=\(mergedCOB.map { String(format: "%.0f", $0) } ?? "nil")"
+        )
         
         let state = GlucoseLiveActivityAttributes.ContentState(
             glucoseMmol: glucose,
             previousGlucoseMmol: previous,
             trend: trend,
-            iob: iob,
-            cob: cob,
+            iob: mergedIOB,
+            cob: mergedCOB,
             projectedMmol: projected,
             updatedAt: Date()
         )

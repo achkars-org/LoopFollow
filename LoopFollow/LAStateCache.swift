@@ -11,7 +11,7 @@ import Foundation
 enum LAStateCache {
 
     // ⚠️ Same App Group used for P1 Fix
-    static let suite = UserDefaults(suiteName: "group.com.your.bundle")!
+    static let suite = UserDefaults(suiteName: "group.com.2HEY366Q6J.LoopFollow")!
 
     private static let iobKey = "la_last_iob"
     private static let cobKey = "la_last_cob"
