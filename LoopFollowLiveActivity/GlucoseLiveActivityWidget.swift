@@ -30,10 +30,9 @@ struct GlucoseLiveActivityWidget: Widget {
             let projectedText = formatGlucose(context.state.projectedMmol)
             let updatedText = formatUpdatedTime(context.state.updatedAt)
 
-            // ✅ Colour code (red/yellow/clear-green)
+            // ✅ Colour code (red/yellow/green/gray)
             let statusColor = glucoseStatusColor(context.state.glucoseMmol)
             let bgTint = statusColor.opacity(0.15)
-            let border = statusColor.opacity(0.65)
 
             VStack(alignment: .leading, spacing: 8) {
 
@@ -86,14 +85,12 @@ struct GlucoseLiveActivityWidget: Widget {
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(bgTint)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(border, lineWidth: 1)
-            )
+
+            // ✅ REMOVE the manually drawn rectangle:
+            // .background(RoundedRectangle...)
+            // .overlay(RoundedRectangle...)
+
+            // Keep system-tint for Live Activity background if you like:
             .activityBackgroundTint(bgTint)
             .activitySystemActionForegroundColor(.primary)
 
@@ -115,8 +112,8 @@ struct GlucoseLiveActivityWidget: Widget {
 
             // ✅ Colour code
             let statusColor = glucoseStatusColor(context.state.glucoseMmol)
-            let bgTint = statusColor.opacity(0.15)
-            let border = statusColor.opacity(0.65)
+            let bgTint = statusColor.opacity(0.18)          // island background tint
+            let keylineTint = statusColor.opacity(0.45)     // subtle outline tint
 
             return DynamicIsland {
 
@@ -166,14 +163,10 @@ struct GlucoseLiveActivityWidget: Widget {
                     }
                     .padding(.vertical, 6)
                     .padding(.horizontal, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(bgTint)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(border, lineWidth: 1)
-                    )
+
+                    // ✅ REMOVE the manually drawn rectangle in expanded island too:
+                    // .background(RoundedRectangle...)
+                    // .overlay(RoundedRectangle...)
                 }
 
             } compactLeading: {
@@ -196,6 +189,8 @@ struct GlucoseLiveActivityWidget: Widget {
                     .bold()
                     .monospacedDigit()
             }
+            // ✅ Add Dynamic Island tint (this is the “real” island tint)
+            .keylineTint(keylineTint)
         }
     }
 }
