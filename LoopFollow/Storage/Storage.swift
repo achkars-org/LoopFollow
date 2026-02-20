@@ -10,6 +10,7 @@ import UIKit
  */
 
 class Storage {
+    private static let appGroupID = "group.com.2HEY366Q6J.LoopFollow"
     var remoteType = StorageValue<RemoteType>(key: "remoteType", defaultValue: .none)
     var deviceToken = StorageValue<String>(key: "deviceToken", defaultValue: "")
     var expirationDate = StorageValue<Date?>(key: "expirationDate", defaultValue: nil)
@@ -143,13 +144,15 @@ class Storage {
     var lastExpirationNotificationShown = StorageValue<Date?>(key: "lastExpirationNotificationShown", defaultValue: nil)
 
     var hideInfoTable = StorageValue<Bool>(key: "hideInfoTable", defaultValue: false)
-    var token = StorageValue<String>(key: "token", defaultValue: "")
+    var token = AppGroupStorageValue<String>(appGroupID: Storage.appGroupID, key: "token", defaultValue: "")
+
+
     var units = StorageValue<String>(key: "units", defaultValue: "mg/dL")
 
     var infoSort = StorageValue<[Int]>(key: "infoSort", defaultValue: InfoType.allCases.map { $0.sortOrder })
     var infoVisible = StorageValue<[Bool]>(key: "infoVisible", defaultValue: InfoType.allCases.map { $0.defaultVisible })
 
-    var url = StorageValue<String>(key: "url", defaultValue: "")
+    var url   = AppGroupStorageValue<String>(appGroupID: Storage.appGroupID, key: "url", defaultValue: "")
     var device = StorageValue<String>(key: "device", defaultValue: "")
     var nsWriteAuth = StorageValue<Bool>(key: "nsWriteAuth", defaultValue: false)
     var nsAdminAuth = StorageValue<Bool>(key: "nsAdminAuth", defaultValue: false)
@@ -177,18 +180,19 @@ class Storage {
     // MARK: - Live Activity State -------------------------------------------------
 
     // Glucose (mmol)
-    var currentGlucoseMmol = StorageValue<Double?>(key: "la.currentGlucoseMmol", defaultValue: nil)
-    var previousGlucoseMmol = StorageValue<Double?>(key: "la.previousGlucoseMmol", defaultValue: nil)
+    var currentGlucoseMmol = AppGroupStorageValue<Double?>(appGroupID: Storage.appGroupID, key: "la.currentGlucoseMmol", defaultValue: nil)
+
+    var previousGlucoseMmol = AppGroupStorageValue<Double?>(appGroupID: Storage.appGroupID, key: "la.previousGlucoseMmol", defaultValue: nil)
 
     // Trend arrow
-    var trendArrow = StorageValue<String?>(key: "la.trendArrow", defaultValue: nil)
+    var trendArrow = AppGroupStorageValue<String?>(appGroupID: Storage.appGroupID, key: "la.trendArrow", defaultValue: nil)
 
     // Treatments
-    var latestIOB = StorageValue<Double?>(key: "la.latestIOB", defaultValue: nil)
-    var latestCOB = StorageValue<Double?>(key: "la.latestCOB", defaultValue: nil)
+    var latestIOB = AppGroupStorageValue<Double?>(appGroupID: Storage.appGroupID, key: "la.latestIOB", defaultValue: nil)
+    var latestCOB = AppGroupStorageValue<Double?>(appGroupID: Storage.appGroupID, key: "la.latestCOB", defaultValue: nil)
 
     // Projected glucose (mmol)
-    var projectedMmol = StorageValue<Double?>(key: "la.projectedMmol", defaultValue: nil)
+    var projectedMmol = AppGroupStorageValue<Double?>(appGroupID: Storage.appGroupID, key: "la.projectedMmol", defaultValue: nil)
     
     static let shared = Storage()
     private init() {}

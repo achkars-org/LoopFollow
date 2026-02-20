@@ -4,42 +4,19 @@ final class NightscoutClient {
     static let shared = NightscoutClient()
     private init() {}
 
-    // Stored on device (not in GitHub)
-    private let urlKey = "nightscout_base_url"
-    private let tokenKey = "nightscout_readable_token"
-
     struct LatestReading {
         let mgdl: Int
         let direction: String?
         let date: Date
     }
 
-    // MARK: - Settings (Keychain)
+    // MARK: - Settings (Storage via NightscoutSettings)
 
-    func setBaseURL(_ url: String) -> Bool {
-        // Normalize: remove trailing slash
-        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "/$", with: "", options: .regularExpression)
-
-        guard let u = URL(string: trimmed), u.scheme?.hasPrefix("http") == true else {
-            return false
-        }
-        return KeychainStore.set(trimmed, for: urlKey)
-    }
-
-    
     func getBaseURL() -> String? {
-     NightscoutSettings.getBaseURL()
+        NightscoutSettings.getBaseURL()
     }
 
-    func setReadableToken(_ token: String) -> Bool {
-        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        return KeychainStore.set(trimmed, for: tokenKey)
-    }
-
-    
-    func getReadableToken() -> String? {
+    func getToken() -> String? {
         NightscoutSettings.getToken()
     }
 
@@ -47,8 +24,11 @@ final class NightscoutClient {
 
     func fetchLatest() async throws -> LatestReading {
         guard let base = NightscoutSettings.getBaseURL() else {
-            throw NSError(domain: "NightscoutClient", code: 10,
-                          userInfo: [NSLocalizedDescriptionKey: "Nightscout URL not set"])
+            throw NSError(
+                domain: "NightscoutClient",
+                code: 10,
+                userInfo: [NSLocalizedDescriptionKey: "Nightscout URL not set"]
+            )
         }
 
         var comps = URLComponents(string: "\(base)/api/v1/entries.json")
@@ -56,12 +36,10 @@ final class NightscoutClient {
             URLQueryItem(name: "count", value: "1")
         ]
 
-        // Token as query param (widely supported)
-        if let token = NightscoutSettings.getToken() {
+        // Token as query param (supported by many NS setups)
+        // Only attach if present; some NS instances allow read access without token.
+        if let token = NightscoutSettings.getToken(), !token.isEmpty {
             comps?.queryItems?.append(URLQueryItem(name: "token", value: token))
-        } else {
-            throw NSError(domain: "NightscoutClient", code: 11,
-                          userInfo: [NSLocalizedDescriptionKey: "Nightscout token not set"])
         }
 
         guard let url = comps?.url else { throw URLError(.badURL) }
@@ -69,8 +47,11 @@ final class NightscoutClient {
         let (data, response) = try await URLSession.shared.data(from: url)
 
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-            throw NSError(domain: "NightscoutClient", code: http.statusCode,
-                          userInfo: [NSLocalizedDescriptionKey: "Nightscout HTTP \(http.statusCode)"])
+            throw NSError(
+                domain: "NightscoutClient",
+                code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Nightscout HTTP \(http.statusCode)"]
+            )
         }
 
         guard
@@ -78,8 +59,11 @@ final class NightscoutClient {
             let first = arr.first,
             let sgv = first["sgv"] as? Int
         else {
-            throw NSError(domain: "NightscoutClient", code: 12,
-                          userInfo: [NSLocalizedDescriptionKey: "Unexpected Nightscout response"])
+            throw NSError(
+                domain: "NightscoutClient",
+                code: 12,
+                userInfo: [NSLocalizedDescriptionKey: "Unexpected Nightscout response"]
+            )
         }
 
         let dir = first["direction"] as? String

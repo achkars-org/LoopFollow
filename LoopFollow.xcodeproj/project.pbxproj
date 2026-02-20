@@ -10,6 +10,7 @@
 		378455BB2F3FDC4E008A5DC1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37505B282F3FDAE20027AC8B /* KeychainStore.swift */; };
 		37AEF3272F4493780039A5BB /* LAStateCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF3262F4493750039A5BB /* LAStateCache.swift */; };
 		37AEF3402F4563440039A5BB /* DeviceStatusParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */; };
+		37AEF3592F456B9C0039A5BB /* AppGroupStorageValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF3582F456B900039A5BB /* AppGroupStorageValue.swift */; };
 		37DD1B382F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */; };
 		37DD1B392F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */; };
 		37DD1B3E2F3EE24E007B215B /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */; };
@@ -19,7 +20,6 @@
 		37F817E12F3FDEA100AD4731 /* NightscoutClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */; };
 		37F817E32F3FDEBB00AD4731 /* NightscoutUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */; };
 		37F817E52F3FE1B200AD4731 /* NightscoutSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */; };
-		37F817FB2F42681500AD4731 /* NightscoutConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */; };
 		3F1335F351590E573D8E6962 /* Pods_LoopFollow.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7D55B42A22051DAD69E89D0 /* Pods_LoopFollow.framework */; };
 		654132E72E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654132E62E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift */; };
 		654132EA2E19F24800BDBE08 /* TOTPGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654132E92E19F24800BDBE08 /* TOTPGenerator.swift */; };
@@ -458,6 +458,7 @@
 		378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutClient.swift; sourceTree = "<group>"; };
 		37AEF3262F4493750039A5BB /* LAStateCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LAStateCache.swift; sourceTree = "<group>"; };
 		37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusParser.swift; sourceTree = "<group>"; };
+		37AEF3582F456B900039A5BB /* AppGroupStorageValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStorageValue.swift; sourceTree = "<group>"; };
 		37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseLiveActivityAttributes.swift; sourceTree = "<group>"; };
 		37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		37F011F12F3ED74000B344E0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -466,7 +467,6 @@
 		37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutUpdater.swift; sourceTree = "<group>"; };
 		37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutSettings.swift; sourceTree = "<group>"; };
 		37F817F92F4267D300AD4731 /* LoopFollowLiveActivityExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LoopFollowLiveActivityExtension.entitlements; sourceTree = "<group>"; };
-		37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutConfigStore.swift; sourceTree = "<group>"; };
 		654132E62E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleQRCodeScannerView.swift; sourceTree = "<group>"; };
 		654132E92E19F24800BDBE08 /* TOTPGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPGenerator.swift; sourceTree = "<group>"; };
 		654134172E1DC09700BDBE08 /* OverridePresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverridePresetsView.swift; sourceTree = "<group>"; };
@@ -1553,9 +1553,9 @@
 		FC8DEEE32485D1680075863F /* LoopFollow */ = {
 			isa = PBXGroup;
 			children = (
+				37AEF3582F456B900039A5BB /* AppGroupStorageValue.swift */,
 				37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */,
 				37AEF3262F4493750039A5BB /* LAStateCache.swift */,
-				37F817FA2F42680500AD4731 /* NightscoutConfigStore.swift */,
 				37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */,
 				37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */,
 				378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */,
@@ -2177,6 +2177,7 @@
 				DD7E19882ACDA5DA00DBD158 /* Notes.swift in Sources */,
 				FCEF87AC24A141A700AE6FA0 /* Localizer.swift in Sources */,
 				FC1BDD3224A2585C001B652C /* DataStructs.swift in Sources */,
+				37AEF3592F456B9C0039A5BB /* AppGroupStorageValue.swift in Sources */,
 				DDF6999E2C5AAA640058A8D9 /* ErrorMessageView.swift in Sources */,
 				DD1D52BB2E1EB60B00432050 /* MoreMenuViewController.swift in Sources */,
 				654132E72E19EA7E00BDBE08 /* SimpleQRCodeScannerView.swift in Sources */,
@@ -2257,7 +2258,6 @@
 				DD5DA27C2DC930D6003D44FC /* GlucoseValue.swift in Sources */,
 				DD9ACA062D32AF7900415D8A /* TreatmentsTask.swift in Sources */,
 				DD98F54424BCEFEE0007425A /* ShareClientExtension.swift in Sources */,
-				37F817FB2F42681500AD4731 /* NightscoutConfigStore.swift in Sources */,
 				DD9ED0CE2D35587A000D2A63 /* LogEntry.swift in Sources */,
 				DD0C0C602C415B9D00DBADDF /* ProfileManager.swift in Sources */,
 				DD83164C2DE4DB3A004467AA /* BinaryFloatingPoint+localized.swift in Sources */,

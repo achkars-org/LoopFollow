@@ -26,11 +26,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         LogManager.shared.log(category: .general, message: "App started")
         LogManager.shared.cleanupOldLogs()
+        let appGroupID = "group.com.2HEY366Q6J.LoopFollow"
 
+        AppGroupStorageValue<String>.migrateFromStandardIfNeeded(appGroupID: appGroupID, key: "url")
+        AppGroupStorageValue<String>.migrateFromStandardIfNeeded(appGroupID: appGroupID, key: "token")
+
+        NightscoutSettings.migrateLegacyIfNeeded()
         // ✅ Step 2: Re-save the existing Nightscout token with the new Keychain accessibility
         // (Requires KeychainStore.set to use kSecAttrAccessibleAfterFirstUnlock)
         migrateNightscoutTokenAccessibilityIfNeeded()
 
+        LogManager.shared.log(category: .general, message: "NS url set? \(!Storage.shared.url.value.isEmpty)")
+        LogManager.shared.log(category: .general, message: "NS token set? \(!Storage.shared.token.value.isEmpty)")
+        
         let options: UNAuthorizationOptions = [.alert, .sound, .badge]
         notificationCenter.requestAuthorization(options: options) { didAllow, _ in
             if !didAllow {
@@ -140,101 +148,95 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         LogManager.shared.log(category: .general, message: "Failed to register for remote notifications: \(error.localizedDescription)")
     }
 
-    func application(
+    nonisolated func application(
         _ application: UIApplication,
         didReceiveRemoteNotification userInfo: [AnyHashable: Any]
     ) async -> UIBackgroundFetchResult {
 
-        LogManager.shared.log(category: .general, message: "Received remote notification: \(userInfo)")
+        LogManager.shared.log(category: .general, message: "Received remote notification (keys): \(Array(userInfo.keys))")
 
-        guard let aps = userInfo["aps"] as? [String: Any] else {
-            return .noData
-        }
+        let aps = userInfo["aps"] as? [String: Any]
+        let alert = aps?["alert"] as? [String: Any]
+        let title = alert?["title"] as? String ?? ""
+        let body  = alert?["body"] as? String ?? ""
 
-        // Visible notification (if any)
-        if let alert = aps["alert"] as? [String: Any] {
-            let title = alert["title"] as? String ?? ""
-            let body = alert["body"] as? String ?? ""
+        if !title.isEmpty || !body.isEmpty {
             LogManager.shared.log(category: .general, message: "Notification - Title: \(title), Body: \(body)")
         }
 
-        // Silent push wake
-        if let contentAvailable = aps["content-available"] as? Int, contentAvailable == 1 {
+        let contentAvailable = (aps?["content-available"] as? Int) == 1
+        guard contentAvailable else { return .noData }
 
-            let state: String
-            switch application.applicationState {
-            case .active: state = "ACTIVE"
-            case .inactive: state = "INACTIVE"
-            case .background: state = "BACKGROUND"
-            @unknown default: state = "UNKNOWN"
-            }
-
-            LogManager.shared.log(
-                category: .general,
-                message: "✅ SILENT PUSH WAKE state=\(state) at \(Date()) aps=\(aps)"
-            )
-
-            // 🔎 P1 Fix verification: confirm App Group URL is available in background
-            let nsURL = NightscoutSettings.getBaseURL()
-            let nsTokenSet = (NightscoutSettings.getToken()?.isEmpty == false)
-
-            LogManager.shared.log(
-                category: .general,
-                message: "🔎 SILENT PUSH Nightscout config — url=\(nsURL ?? "nil") tokenSet=\(nsTokenSet)"
-            )
-
-            guard nsURL != nil else {
-                LogManager.shared.log(category: .general, message: "❌ SILENT PUSH aborted: Nightscout base URL is nil")
-                return .failed
-            }
-
-            let bgTask = application.beginBackgroundTask(withName: "SilentPushRefresh") {
-                LogManager.shared.log(category: .general, message: "⏱️ SILENT PUSH background time expired")
-            }
-            defer { application.endBackgroundTask(bgTask) }
-
-            do {
-                LogManager.shared.log(category: .general, message: "➡️ SILENT PUSH calling NightscoutUpdater.refreshData()")
-                try await NightscoutUpdater.shared.refreshData()
-
-                // ✅ NEW: Pull Loop IOB/COB directly from /deviceStatus in background (no MainViewController)
-                do {
-                    let snap = try await fetchLatestLoopIOBCOBFromNightscout()
-
-                    if let iob = snap.iob {
-                        Storage.shared.latestIOB.value = iob
-                    }
-                    if let cob = snap.cob {
-                        Storage.shared.latestCOB.value = cob
-                    }
-
-                    // Optional but recommended: cache formatted strings so missing values never wipe the Live Activity
-                    let iobText = snap.iob.map { String(format: "%.2f", $0) }
-                    let cobText = snap.cob.map { String(format: "%.0f", $0) }
-
-
-                    LogManager.shared.log(
-                        category: .general,
-                        message: "✅ SILENT PUSH deviceStatus iob=\(iobText ?? "nil") cob=\(cobText ?? "nil")"
-                    )
-                } catch {
-                    LogManager.shared.log(category: .general, message: "⚠️ SILENT PUSH deviceStatus fetch failed: \(error)")
-                    // Don't fail the whole refresh; BG + LA can still update.
-                }
-
-                LogManager.shared.log(category: .general, message: "➡️ SILENT PUSH refreshing Live Activity")
-                await LiveActivityManager.shared.refreshFromCurrentState()
-
-                LogManager.shared.log(category: .general, message: "✅ SILENT PUSH Live Activity updated")
-                return .newData
-
-            } catch {
-                LogManager.shared.log(category: .general, message: "❌ SILENT PUSH update failed: \(error)")
-                return .failed
+        // ✅ Don’t capture `application` inside MainActor.run
+        let stateString: String = await MainActor.run {
+            switch UIApplication.shared.applicationState {
+            case .active: return "ACTIVE"
+            case .inactive: return "INACTIVE"
+            case .background: return "BACKGROUND"
+            @unknown default: return "UNKNOWN"
             }
         }
 
-        return .noData
+        LogManager.shared.log(
+            category: .general,
+            message: "✅ SILENT PUSH WAKE state=\(stateString) at \(Date())"
+        )
+
+        let nsURL = NightscoutSettings.getBaseURL()
+        let nsTokenSet = (NightscoutSettings.getToken()?.isEmpty == false)
+
+        LogManager.shared.log(
+            category: .general,
+            message: "🔎 SILENT PUSH Nightscout config — url=\(nsURL ?? "nil") tokenSet=\(nsTokenSet)"
+        )
+
+        guard nsURL != nil else {
+            LogManager.shared.log(category: .general, message: "❌ SILENT PUSH aborted: Nightscout base URL is nil")
+            return .failed
+        }
+
+        // ✅ Don’t capture `application` inside MainActor.run
+        let bgTask: UIBackgroundTaskIdentifier = await MainActor.run {
+            UIApplication.shared.beginBackgroundTask(withName: "SilentPushRefresh") {
+                LogManager.shared.log(category: .general, message: "⏱️ SILENT PUSH background time expired")
+            }
+        }
+        defer {
+            Task { @MainActor in
+                UIApplication.shared.endBackgroundTask(bgTask)
+            }
+        }
+
+        do {
+            LogManager.shared.log(category: .general, message: "➡️ SILENT PUSH calling NightscoutUpdater.refreshData()")
+            try await NightscoutUpdater.shared.refreshData()
+
+            do {
+                let snap = try await fetchLatestLoopIOBCOBFromNightscout()
+
+                if let iob = snap.iob { Storage.shared.latestIOB.value = iob }
+                if let cob = snap.cob { Storage.shared.latestCOB.value = cob }
+
+                let iobText = snap.iob.map { String(format: "%.2f", $0) }
+                let cobText = snap.cob.map { String(format: "%.0f", $0) }
+
+                LogManager.shared.log(
+                    category: .general,
+                    message: "✅ SILENT PUSH deviceStatus iob=\(iobText ?? "nil") cob=\(cobText ?? "nil")"
+                )
+            } catch {
+                LogManager.shared.log(category: .general, message: "⚠️ SILENT PUSH deviceStatus fetch failed: \(error)")
+            }
+
+            LogManager.shared.log(category: .general, message: "➡️ SILENT PUSH refreshing Live Activity")
+            await LiveActivityManager.shared.refreshFromCurrentState()
+            LogManager.shared.log(category: .general, message: "✅ SILENT PUSH Live Activity updated")
+
+            return .newData
+        } catch {
+            LogManager.shared.log(category: .general, message: "❌ SILENT PUSH update failed: \(error)")
+            return .failed
+        }
     }
 
     // MARK: UISceneSession Lifecycle
