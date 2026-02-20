@@ -14,12 +14,12 @@ struct GlucoseLiveActivityWidget: Widget {
 
         ActivityConfiguration(for: GlucoseLiveActivityAttributes.self) { context in
 
-            // MARK: Lock Screen UI
+            // MARK: - Lock Screen UI
 
             let glucoseText = formatGlucose(context.state.glucoseMmol)
             let trendText = formatTrend(context.state.trend)
 
-            // ✅ Delta (current - previous)
+            // Delta (current - previous)
             let deltaText = formatDelta(
                 current: context.state.glucoseMmol,
                 previous: context.state.previousGlucoseMmol
@@ -30,7 +30,7 @@ struct GlucoseLiveActivityWidget: Widget {
             let projectedText = formatGlucose(context.state.projectedMmol)
             let updatedText = formatUpdatedTime(context.state.updatedAt)
 
-            // ✅ Colour code (red/yellow/green/gray)
+            // Colour code (red/yellow/green/gray)
             let statusColor = glucoseStatusColor(context.state.glucoseMmol)
             let bgTint = statusColor.opacity(0.15)
 
@@ -40,7 +40,7 @@ struct GlucoseLiveActivityWidget: Widget {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                // ✅ KEEP: the HStack remains
+                // KEEP: the HStack remains
                 HStack(alignment: .center, spacing: 12) {
 
                     // LEFT: BG + Trend + Delta
@@ -86,11 +86,7 @@ struct GlucoseLiveActivityWidget: Widget {
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
 
-            // ✅ REMOVE the manually drawn rectangle:
-            // .background(RoundedRectangle...)
-            // .overlay(RoundedRectangle...)
-
-            // Keep system-tint for Live Activity background if you like:
+            // No manually drawn rectangle/background overlay
             .activityBackgroundTint(bgTint)
             .activitySystemActionForegroundColor(.primary)
 
@@ -99,7 +95,7 @@ struct GlucoseLiveActivityWidget: Widget {
             let glucoseText = formatGlucose(context.state.glucoseMmol)
             let trendText = formatTrend(context.state.trend)
 
-            // ✅ Delta (current - previous)
+            // Delta (current - previous)
             let deltaText = formatDelta(
                 current: context.state.glucoseMmol,
                 previous: context.state.previousGlucoseMmol
@@ -110,17 +106,14 @@ struct GlucoseLiveActivityWidget: Widget {
             let projectedText = formatGlucose(context.state.projectedMmol)
             let updatedText = formatUpdatedTime(context.state.updatedAt)
 
-            // ✅ Colour code
+            // Colour code (Dynamic Island keyline only)
             let statusColor = glucoseStatusColor(context.state.glucoseMmol)
-            let bgTint = statusColor.opacity(0.18)          // island background tint
-            let keylineTint = statusColor.opacity(0.45)     // subtle outline tint
 
             return DynamicIsland {
 
-                // MARK: Expanded
+                // MARK: - Expanded
                 DynamicIslandExpandedRegion(.center) {
                     VStack(spacing: 4) {
-
                         HStack(alignment: .center, spacing: 10) {
 
                             // BG + Trend + Delta
@@ -163,10 +156,7 @@ struct GlucoseLiveActivityWidget: Widget {
                     }
                     .padding(.vertical, 6)
                     .padding(.horizontal, 10)
-
-                    // ✅ REMOVE the manually drawn rectangle in expanded island too:
-                    // .background(RoundedRectangle...)
-                    // .overlay(RoundedRectangle...)
+                    // No manually drawn rectangle/background overlay here either
                 }
 
             } compactLeading: {
@@ -189,8 +179,8 @@ struct GlucoseLiveActivityWidget: Widget {
                     .bold()
                     .monospacedDigit()
             }
-            // ✅ Add Dynamic Island tint (this is the “real” island tint)
-            .keylineTint(keylineTint)
+            // The Dynamic Island contour tint
+            .keylineTint(statusColor)
         }
     }
 }
@@ -256,7 +246,7 @@ private func formatGlucoseMinimal(_ mmol: Double?) -> String {
     return String(format: "%.1f", mmol)
 }
 
-// ✅ Delta formatting: shows +0.3 / −0.2 etc (mmol)
+// Delta formatting: shows +0.3 / −0.2 etc (mmol)
 private func formatDelta(current: Double?, previous: Double?) -> String {
     guard let current, let previous else { return "" }
     let d = current - previous
@@ -264,17 +254,26 @@ private func formatDelta(current: Double?, previous: Double?) -> String {
     return String(format: "%+.1f", d)
 }
 
-// MARK: - Colour code
+// MARK: - Colour code (App Group-backed thresholds)
 
-/// Red = low, Yellow = high, Green = in-range, Gray = unknown.
-/// Defaults: low < 3.9 mmol/L, high > 10.0 mmol/L
 private func glucoseStatusColor(_ mmol: Double?) -> Color {
     guard let mmol else { return .gray }
 
-    let lowThreshold = 3.9
-    let highThreshold = 10.0
+    let appGroupID = "group.com.2HEY366Q6J.LoopFollow"
 
-    if mmol < lowThreshold { return .red }
-    if mmol > highThreshold { return .yellow }
+    guard
+        let defaults = UserDefaults(suiteName: appGroupID)
+    else {
+        return .gray
+    }
+
+    let lowMgdl  = defaults.double(forKey: "la.lowLineMgdl")
+    let highMgdl = defaults.double(forKey: "la.highLineMgdl")
+
+    // Convert mmol → mg/dL
+    let mgdl = mmol * 18.0182
+
+    if mgdl < lowMgdl { return .red }
+    if mgdl > highMgdl { return .yellow }
     return .green
 }

@@ -104,18 +104,27 @@ struct GraphSettingsView: View {
                         .onChange(of: minBGScale.value) { _ in markDirty() }
                     }
                 }
-
                 // ── Target lines ─────────────────────────────────────────────
                 Section("Target Lines") {
                     BGPicker(title: "Low BG Line",
                              range: 40 ... 120,
                              value: $lowLine.value)
-                        .onChange(of: lowLine.value) { _ in markDirty() }
+                        .onChange(of: lowLine.value) { newValue in
+                            markDirty()
+
+                            // Sync to Live Activity (App Group)
+                            Storage.shared.laLowLineMgdl.value = newValue
+                        }
 
                     BGPicker(title: "High BG Line",
                              range: 120 ... 400,
                              value: $highLine.value)
-                        .onChange(of: highLine.value) { _ in markDirty() }
+                        .onChange(of: highLine.value) { newValue in
+                            markDirty()
+
+                            // Sync to Live Activity (App Group)
+                            Storage.shared.laHighLineMgdl.value = newValue
+                        }
                 }
 
                 // ── History window ───────────────────────────────────────────

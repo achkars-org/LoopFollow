@@ -193,6 +193,11 @@ class Storage {
 
     // Projected glucose (mmol)
     var projectedMmol = AppGroupStorageValue<Double?>(appGroupID: Storage.appGroupID, key: "la.projectedMmol", defaultValue: nil)
+
+    // MARK: - Live Activity Thresholds (App Group shared)
+
+    var laLowLineMgdl  = AppGroupStorageValue<Double>(appGroupID: Storage.appGroupID, key: "la.lowLineMgdl", defaultValue: 70.0)
+    var laHighLineMgdl = AppGroupStorageValue<Double>(appGroupID: Storage.appGroupID, key: "la.highLineMgdl", defaultValue: 180.0)
     
     static let shared = Storage()
     private init() {}

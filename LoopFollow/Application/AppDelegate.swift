@@ -34,6 +34,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Re-save the existing Nightscout token so it picks up Keychain accessibility (AfterFirstUnlock)
         migrateNightscoutTokenAccessibilityIfNeeded()
 
+        // Sync user BG thresholds to App Group for Live Activity / Widget
+        Storage.shared.laLowLineMgdl.value  = Storage.shared.lowLine.value
+        Storage.shared.laHighLineMgdl.value = Storage.shared.highLine.value
+        
         // One-time sanity check: safe fingerprint (no token leak)
         let url = Storage.shared.url.value.trimmingCharacters(in: .whitespacesAndNewlines)
         let token = Storage.shared.token.value.trimmingCharacters(in: .whitespacesAndNewlines)
