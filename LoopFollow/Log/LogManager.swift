@@ -21,6 +21,7 @@ class LogManager {
         case nightscout = "Nightscout"
         case apns = "APNS"
         case general = "General"
+        case liveactivities = "Live Activities"
         case contact = "Contact"
         case taskScheduler = "Task Scheduler"
         case dexcom = "Dexcom"

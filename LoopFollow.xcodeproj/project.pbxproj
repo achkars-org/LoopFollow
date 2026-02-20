@@ -3,17 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		378455BB2F3FDC4E008A5DC1 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37505B282F3FDAE20027AC8B /* KeychainStore.swift */; };
-		37AEF3272F4493780039A5BB /* LAStateCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF3262F4493750039A5BB /* LAStateCache.swift */; };
-		37AEF3402F4563440039A5BB /* DeviceStatusParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */; };
 		37AEF3592F456B9C0039A5BB /* AppGroupStorageValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF3582F456B900039A5BB /* AppGroupStorageValue.swift */; };
-		37DD1B382F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */; };
-		37DD1B392F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */; };
-		37DD1B3E2F3EE24E007B215B /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */; };
+		37EE82A92F489D56008192E0 /* AppGroupStorageValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37AEF3582F456B900039A5BB /* AppGroupStorageValue.swift */; };
 		37F0120E2F3EDE5600B344E0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F011F12F3ED74000B344E0 /* WidgetKit.framework */; };
 		37F0120F2F3EDE5600B344E0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F011F32F3ED74000B344E0 /* SwiftUI.framework */; };
 		37F0121E2F3EDE5700B344E0 /* LoopFollowLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 37F0120D2F3EDE5600B344E0 /* LoopFollowLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -456,11 +452,7 @@
 		059B0FA59AABFE72FE13DDDA /* Pods-LoopFollow.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LoopFollow.release.xcconfig"; path = "Target Support Files/Pods-LoopFollow/Pods-LoopFollow.release.xcconfig"; sourceTree = "<group>"; };
 		37505B282F3FDAE20027AC8B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutClient.swift; sourceTree = "<group>"; };
-		37AEF3262F4493750039A5BB /* LAStateCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LAStateCache.swift; sourceTree = "<group>"; };
-		37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusParser.swift; sourceTree = "<group>"; };
 		37AEF3582F456B900039A5BB /* AppGroupStorageValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStorageValue.swift; sourceTree = "<group>"; };
-		37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseLiveActivityAttributes.swift; sourceTree = "<group>"; };
-		37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		37F011F12F3ED74000B344E0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		37F011F32F3ED74000B344E0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		37F0120D2F3EDE5600B344E0 /* LoopFollowLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LoopFollowLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -865,6 +857,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		37EE82AC2F48ACD0008192E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				GlucoseLiveActivityAttributes.swift,
+			);
+			target = FC9788132485969B00A7906C /* LoopFollow */;
+		};
 		37F0121F2F3EDE5700B344E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -875,7 +874,8 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		37F012102F3EDE5600B344E0 /* LoopFollowLiveActivity */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (37F0121F2F3EDE5700B344E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LoopFollowLiveActivity; sourceTree = "<group>"; };
+		37EE82AA2F48A619008192E0 /* LiveActivity */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = LiveActivity; sourceTree = "<group>"; };
+		37F012102F3EDE5600B344E0 /* LoopFollowLiveActivity */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (37EE82AC2F48ACD0008192E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 37F0121F2F3EDE5700B344E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LoopFollowLiveActivity; sourceTree = "<group>"; };
 		37F818042F42706D00AD4731 /* LoopFollowWatch Watch App */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "LoopFollowWatch Watch App"; sourceTree = "<group>"; };
 		DDCC3AD72DDE1790006F1C10 /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -1035,6 +1035,9 @@
 			children = (
 				DD2C2E502D3B8B0B006413A5 /* NightscoutSettingsViewModel.swift */,
 				DD2C2E4E2D3B8AEC006413A5 /* NightscoutSettingsView.swift */,
+				37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */,
+				37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */,
+				378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */,
 			);
 			path = Nightscout;
 			sourceTree = "<group>";
@@ -1257,6 +1260,7 @@
 				DDD10F062C529DE800D76A8E /* Observable.swift */,
 				DD4878042C7B2C970048F05C /* Storage.swift */,
 				DD8316472DE49EE5004467AA /* Storage+Migrate.swift */,
+				37505B282F3FDAE20027AC8B /* KeychainStore.swift */,
 			);
 			path = Storage;
 			sourceTree = "<group>";
@@ -1553,15 +1557,7 @@
 		FC8DEEE32485D1680075863F /* LoopFollow */ = {
 			isa = PBXGroup;
 			children = (
-				37AEF3582F456B900039A5BB /* AppGroupStorageValue.swift */,
-				37AEF33F2F45633F0039A5BB /* DeviceStatusParser.swift */,
-				37AEF3262F4493750039A5BB /* LAStateCache.swift */,
-				37F817E42F3FE1B200AD4731 /* NightscoutSettings.swift */,
-				37F817E22F3FDEB300AD4731 /* NightscoutUpdater.swift */,
-				378455BC2F3FDC6F008A5DC1 /* NightscoutClient.swift */,
-				37505B282F3FDAE20027AC8B /* KeychainStore.swift */,
-				37DD1B3C2F3EE249007B215B /* LiveActivityManager.swift */,
-				37DD1B372F3EE14A007B215B /* GlucoseLiveActivityAttributes.swift */,
+				37EE82AA2F48A619008192E0 /* LiveActivity */,
 				6589CC612E9E7D1600BB18FE /* Settings */,
 				DDCF9A7E2D85FCE6004DF4DD /* Alarm */,
 				FC16A97624995FEE003D6245 /* Application */,
@@ -1626,6 +1622,7 @@
 				DDD10F042C529DA200D76A8E /* ObservableValue.swift */,
 				DD4878022C7B297E0048F05C /* StorageValue.swift */,
 				DD16AF0C2C98485400FB655A /* SecureStorageValue.swift */,
+				37AEF3582F456B900039A5BB /* AppGroupStorageValue.swift */,
 			);
 			path = Framework;
 			sourceTree = "<group>";
@@ -1743,6 +1740,9 @@
 			);
 			dependencies = (
 				37F0121D2F3EDE5700B344E0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				37EE82AA2F48A619008192E0 /* LiveActivity */,
 			);
 			name = LoopFollow;
 			packageProductDependencies = (
@@ -2035,7 +2035,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				37DD1B392F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */,
+				37EE82A92F489D56008192E0 /* AppGroupStorageValue.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2095,7 +2095,6 @@
 				656F8C142E49F3D20008DC1D /* RemoteCommandSettings.swift in Sources */,
 				DD12D4872E1705E6004E0112 /* AlarmsContainerView.swift in Sources */,
 				DD83164A2DE4C504004467AA /* SettingsStepperRow.swift in Sources */,
-				37DD1B382F3EE192007B215B /* GlucoseLiveActivityAttributes.swift in Sources */,
 				DD0650ED2DCE9371004D3B41 /* HighBgAlarmEditor.swift in Sources */,
 				DD7F4C172DD63FA700D449E9 /* RecBolusCondition.swift in Sources */,
 				FCC6886F2489A53800A0279D /* AppConstants.swift in Sources */,
@@ -2130,7 +2129,6 @@
 				DDA9ACAA2D6A6B8300E6F1A9 /* ContactIncludeOption.swift in Sources */,
 				DD7F4C1D2DD650D500D449E9 /* COBAlarmEditor.swift in Sources */,
 				DDE75D272DE5E539007C1FC1 /* ActionRow.swift in Sources */,
-				37AEF3402F4563440039A5BB /* DeviceStatusParser.swift in Sources */,
 				DD0C0C622C4175FD00DBADDF /* NSProfile.swift in Sources */,
 				DD58171E2D299FCA0041FB98 /* BluetoothDeviceDelegate.swift in Sources */,
 				DDE69ED22C7256260013EAEC /* RemoteType.swift in Sources */,
@@ -2170,7 +2168,6 @@
 				DDC7E5432DBD8A1600EB1127 /* SoundFile.swift in Sources */,
 				DDC7E5442DBD8A1600EB1127 /* BuildExpireAlarmEditor.swift in Sources */,
 				DDC7E5462DBD8A1600EB1127 /* LowBgAlarmEditor.swift in Sources */,
-				37AEF3272F4493780039A5BB /* LAStateCache.swift in Sources */,
 				DDC7E5472DBD8A1600EB1127 /* AlarmEditor.swift in Sources */,
 				DDA9ACA82D6A66E200E6F1A9 /* ContactColorOption.swift in Sources */,
 				DDC7E5382DBD887400EB1127 /* isOnPhoneCall.swift in Sources */,
@@ -2293,7 +2290,6 @@
 				DDC6CA412DD8CCCE0060EE25 /* SensorAgeAlarmEditor.swift in Sources */,
 				DD493AE52ACF2383009A6922 /* Treatments.swift in Sources */,
 				DD7F4C112DD51ED900D449E9 /* TempTargetStartAlarmEditor.swift in Sources */,
-				37DD1B3E2F3EE24E007B215B /* LiveActivityManager.swift in Sources */,
 				DD1D52B92E1EB5DC00432050 /* TabPosition.swift in Sources */,
 				DD1D52C02E4C100000000001 /* AppearanceMode.swift in Sources */,
 				DD50C7552D0862770057AE6F /* ContactImageUpdater.swift in Sources */,

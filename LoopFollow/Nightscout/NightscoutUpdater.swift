@@ -1,5 +1,4 @@
 import Foundation
-import UIKit
 
 final class NightscoutUpdater {
     static let shared = NightscoutUpdater()
@@ -9,9 +8,8 @@ final class NightscoutUpdater {
     private let mgdlPerMmol: Double = 18.0182
 
     func refreshData() async throws {
-
         let t0 = Date()
-        LogManager.shared.log(category: .general, message: "🔄 [UPDATER] start")
+        LogManager.shared.log(category: .liveactivities, message: "[UPDATER] refresh start")
 
         guard let baseURL = NightscoutSettings.getBaseURL() else {
             throw NSError(domain: "NightscoutUpdater", code: 1, userInfo: [
@@ -23,67 +21,46 @@ final class NightscoutUpdater {
         let tokenSet = (token?.isEmpty == false)
 
         LogManager.shared.log(
-            category: .general,
-            message: "🔎 [UPDATER] Nightscout config — url=\(baseURL) tokenSet=\(tokenSet)"
+            category: .liveactivities,
+            message: "[UPDATER] config urlSet=true tokenSet=\(tokenSet)"
         )
 
-        // -----------------------------
-        // A) Glucose (existing behavior)
-        // -----------------------------
-        LogManager.shared.log(category: .general, message: "🌐 [UPDATER] calling NightscoutClient.fetchLatest()")
-
+        // A) Glucose
         let latest = try await NightscoutClient.shared.fetchLatest()
-
         LogManager.shared.log(
-            category: .general,
-            message: "📥 [UPDATER] fetched mgdl=\(latest.mgdl) direction=\(latest.direction ?? "nil")"
+            category: .liveactivities,
+            message: "[UPDATER] latest mgdl=\(latest.mgdl) direction=\(latest.direction ?? "nil")"
         )
 
-        // Convert mg/dL → mmol
+        // Convert mg/dL → mmol and store previous before overwriting current
         let mmol = Double(latest.mgdl) / mgdlPerMmol
-
-        // Store previous before overwriting
         Storage.shared.previousGlucoseMmol.value = Storage.shared.currentGlucoseMmol.value
         Storage.shared.currentGlucoseMmol.value = mmol
 
-        // Store trend arrow
+        // Store trend arrow (string)
         Storage.shared.trendArrow.value = NightscoutClient.shared.arrow(for: latest.direction)
 
-        LogManager.shared.log(category: .general, message: "✅ [UPDATER] stored glucose")
-
-        // -----------------------------------------
-        // B) Phase B: IOB / COB / Projected (device status)
-        // -----------------------------------------
+        // B) IOB / COB / Projected (deviceStatus)
         do {
-            LogManager.shared.log(category: .general, message: "🌐 [UPDATER] calling devicestatus (IOB/COB/Proj)")
-
             if let ds = try await fetchLatestDeviceStatus(baseURL: baseURL, token: token) {
-
-                // Update Storage values for Live Activity
                 Storage.shared.latestIOB.value = ds.iob
                 Storage.shared.latestCOB.value = ds.cob
                 Storage.shared.projectedMmol.value = ds.projectedMmol
 
                 LogManager.shared.log(
-                    category: .general,
-                    message: """
-                    ✅ [UPDATER] stored deviceStatus:
-                    iob=\(ds.iob.map { String(format: "%.2f", $0) } ?? "nil")
-                    cob=\(ds.cob.map { String(format: "%.0f", $0) } ?? "nil")
-                    proj_mmol=\(ds.projectedMmol.map { String(format: "%.1f", $0) } ?? "nil")
-                    units=\(ds.units)
-                    """
+                    category: .liveactivities,
+                    message: "[UPDATER] deviceStatus iob=\(ds.iob.map { String(format: "%.2f", $0) } ?? "nil") cob=\(ds.cob.map { String(format: "%.0f", $0) } ?? "nil") proj=\(ds.projectedMmol.map { String(format: "%.1f", $0) } ?? "nil") units=\(ds.units)"
                 )
             } else {
-                LogManager.shared.log(category: .general, message: "⚠️ [UPDATER] devicestatus empty (no updates for iob/cob/proj)")
+                LogManager.shared.log(category: .liveactivities, message: "[UPDATER] deviceStatus empty")
             }
         } catch {
-            // Don’t fail the entire refresh if Phase B fails — glucose is still valuable.
-            LogManager.shared.log(category: .general, message: "⚠️ [UPDATER] devicestatus fetch/parse failed: \(error)")
+            // Don’t fail the entire refresh if deviceStatus fails — glucose is still valuable.
+            LogManager.shared.log(category: .liveactivities, message: "[UPDATER] deviceStatus failed: \(error)")
         }
 
         let ms = Int(Date().timeIntervalSince(t0) * 1000)
-        LogManager.shared.log(category: .general, message: "✅ [UPDATER] done in \(ms)ms")
+        LogManager.shared.log(category: .liveactivities, message: "[UPDATER] refresh done ms=\(ms)")
     }
 
     // MARK: - Device Status Fetch + Parse
@@ -92,13 +69,10 @@ final class NightscoutUpdater {
         let iob: Double?
         let cob: Double?
         let projectedMmol: Double?
-        let units: String  // "mg/dl" or "mmol"
+        let units: String // "mg/dl" or "mmol"
     }
 
     private func fetchLatestDeviceStatus(baseURL: String, token: String?) async throws -> DeviceStatusSnapshot? {
-
-        // Typical Nightscout endpoint
-        // NOTE: Some setups use /api/v1/devicestatus (without .json). Both usually work.
         let urlString = "\(baseURL)/api/v1/devicestatus.json?count=1"
         guard var components = URLComponents(string: urlString) else {
             throw NSError(domain: "NightscoutUpdater", code: 2, userInfo: [
@@ -106,7 +80,7 @@ final class NightscoutUpdater {
             ])
         }
 
-        // Support token-style auth (Nightscout "token" param) when token is not a classic api-secret
+        // Support token-style auth when token is not a classic api-secret
         if let token, !token.isEmpty, !looksLikeApiSecret(token) {
             var q = components.queryItems ?? []
             q.append(URLQueryItem(name: "token", value: token))
@@ -130,65 +104,47 @@ final class NightscoutUpdater {
         }
 
         let (data, response) = try await URLSession.shared.data(for: req)
-
         if let http = response as? HTTPURLResponse {
-            LogManager.shared.log(category: .general, message: "📡 [UPDATER] devicestatus HTTP \(http.statusCode)")
+            LogManager.shared.log(category: .liveactivities, message: "[UPDATER] devicestatus HTTP \(http.statusCode)")
         }
 
-        // Parse JSON
         let obj = try JSONSerialization.jsonObject(with: data, options: [])
         guard let arr = obj as? [[String: Any]], let first = arr.first else {
             return nil
         }
 
         // Units (default mg/dl)
-        // Some payloads may not include this; mg/dl is the safest default.
         let units = (first["units"] as? String)?.lowercased() ?? "mg/dl"
 
-        // IOB / COB commonly appear at the top-level in some Loop-style payloads,
-        // or nested (openaps/loop). We’ll try multiple likely paths.
+        // IOB / COB can appear in multiple shapes depending on uploader/client
         let iob = extractDouble(first, keys: [
-            ["iob"],                         // top-level
-            ["loop", "iob"],                 // nested
-            ["openaps", "iob", "iob"]         // openaps-style
+            ["iob"],
+            ["loop", "iob"],
+            ["openaps", "iob", "iob"]
         ])
 
         let cob = extractDouble(first, keys: [
-            ["cob"],                         // top-level
-            ["loop", "cob"],                 // nested
-            ["openaps", "cob"]               // openaps-style
+            ["cob"],
+            ["loop", "cob"],
+            ["openaps", "cob"]
         ])
 
-        // Predicted: we’re aiming for "predicted.values" array (as you showed in DeviceStatusLoop)
+        // Projected: take the last value from likely prediction arrays
         let predictedLast = extractPredictedLast(first)
 
-        // Convert predictedLast to mmol for Live Activity storage
         let projectedMmol: Double?
         if let predictedLast {
-            if units == "mmol" {
-                // Already mmol (per payload)
-                projectedMmol = predictedLast
-            } else {
-                // mg/dl -> mmol
-                projectedMmol = predictedLast / mgdlPerMmol
-            }
+            projectedMmol = (units == "mmol") ? predictedLast : (predictedLast / mgdlPerMmol)
         } else {
             projectedMmol = nil
         }
 
-        return DeviceStatusSnapshot(
-            iob: iob,
-            cob: cob,
-            projectedMmol: projectedMmol,
-            units: units
-        )
+        return DeviceStatusSnapshot(iob: iob, cob: cob, projectedMmol: projectedMmol, units: units)
     }
 
     // MARK: - Helpers
 
     private func looksLikeApiSecret(_ token: String) -> Bool {
-        // Many Nightscout api-secrets are 40 hex chars (SHA1).
-        // If it looks like that, treat it as api-secret header.
         let t = token.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard t.count == 40 else { return false }
         return t.allSatisfy { ("0"..."9").contains($0) || ("a"..."f").contains($0) }
@@ -206,10 +162,6 @@ final class NightscoutUpdater {
     }
 
     private func extractPredictedLast(_ root: [String: Any]) -> Double? {
-        // Try multiple likely shapes:
-        // 1) predicted: { values: [Double] }
-        // 2) loop: { predicted: { values: [...] } }
-        // 3) openaps: { suggested: { predBGs: { IOB: [...], ZT: [...], COB: [...] } } } (we’ll pick the last of any array we find)
         if let predicted = extractAny(root, path: ["predicted"]) as? [String: Any],
            let values = predicted["values"] as? [Double],
            let last = values.last {
@@ -222,7 +174,6 @@ final class NightscoutUpdater {
             return last
         }
 
-        // openaps-style: openaps.suggested.predBGs.<series> : [Double]
         if let predBGs = extractAny(root, path: ["openaps", "suggested", "predBGs"]) as? [String: Any] {
             for (_, v) in predBGs {
                 if let arr = v as? [Double], let last = arr.last {
