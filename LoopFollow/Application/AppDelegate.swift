@@ -38,7 +38,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         LogManager.shared.log(category: .general, message: "NS url set? \(!Storage.shared.url.value.isEmpty)")
         LogManager.shared.log(category: .general, message: "NS token set? \(!Storage.shared.token.value.isEmpty)")
-        
+
+        // ✅ Option 3: one-time “sanity check” log (safe fingerprint, no token leak)
+        let url = Storage.shared.url.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = Storage.shared.token.value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let urlDisplay = url.isEmpty ? "empty" : url
+        let tokenTail = token.isEmpty ? "empty" : String(token.suffix(6))
+
+        LogManager.shared.log(
+            category: .general,
+            message: "🔁 Post-migration Nightscout Storage url=\(urlDisplay) tokenLen=\(token.count) tokenTail=\(tokenTail)"
+        )
         let options: UNAuthorizationOptions = [.alert, .sound, .badge]
         notificationCenter.requestAuthorization(options: options) { didAllow, _ in
             if !didAllow {

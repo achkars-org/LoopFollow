@@ -18,10 +18,22 @@ struct GlucoseLiveActivityWidget: Widget {
 
             let glucoseText = formatGlucose(context.state.glucoseMmol)
             let trendText = formatTrend(context.state.trend)
+
+            // ✅ Delta (current - previous)
+            let deltaText = formatDelta(
+                current: context.state.glucoseMmol,
+                previous: context.state.previousGlucoseMmol
+            )
+
             let iobText = formatIOB(context.state.iob)
             let cobText = formatCOB(context.state.cob)
             let projectedText = formatGlucose(context.state.projectedMmol)
             let updatedText = formatUpdatedTime(context.state.updatedAt)
+
+            // ✅ Colour code (red/yellow/clear-green)
+            let statusColor = glucoseStatusColor(context.state.glucoseMmol)
+            let bgTint = statusColor.opacity(0.15)
+            let border = statusColor.opacity(0.65)
 
             VStack(alignment: .leading, spacing: 8) {
 
@@ -29,23 +41,27 @@ struct GlucoseLiveActivityWidget: Widget {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                // ✅ DEBUG — proves widget receives updated state
-                Text("epoch \(Int(context.state.updatedAt.timeIntervalSince1970))")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .monospacedDigit()
-
+                // ✅ KEEP: the HStack remains
                 HStack(alignment: .center, spacing: 12) {
 
-                    // LEFT: BG + Trend
+                    // LEFT: BG + Trend + Delta
                     VStack(alignment: .leading, spacing: 2) {
                         Text(glucoseText)
                             .font(.system(size: 36, weight: .bold, design: .monospaced))
                             .monospacedDigit()
 
-                        Text(trendText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 6) {
+                            Text(trendText)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+
+                            if !deltaText.isEmpty {
+                                Text(deltaText)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                        }
                     }
                     .frame(minWidth: 90, alignment: .leading)
 
@@ -70,15 +86,37 @@ struct GlucoseLiveActivityWidget: Widget {
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(bgTint)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(border, lineWidth: 1)
+            )
+            .activityBackgroundTint(bgTint)
+            .activitySystemActionForegroundColor(.primary)
 
         } dynamicIsland: { context in
 
             let glucoseText = formatGlucose(context.state.glucoseMmol)
             let trendText = formatTrend(context.state.trend)
+
+            // ✅ Delta (current - previous)
+            let deltaText = formatDelta(
+                current: context.state.glucoseMmol,
+                previous: context.state.previousGlucoseMmol
+            )
+
             let iobText = formatIOB(context.state.iob)
             let cobText = formatCOB(context.state.cob)
             let projectedText = formatGlucose(context.state.projectedMmol)
             let updatedText = formatUpdatedTime(context.state.updatedAt)
+
+            // ✅ Colour code
+            let statusColor = glucoseStatusColor(context.state.glucoseMmol)
+            let bgTint = statusColor.opacity(0.15)
+            let border = statusColor.opacity(0.65)
 
             return DynamicIsland {
 
@@ -88,16 +126,25 @@ struct GlucoseLiveActivityWidget: Widget {
 
                         HStack(alignment: .center, spacing: 10) {
 
-                            // BG + Trend
+                            // BG + Trend + Delta
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(glucoseText)
                                     .font(.title2)
                                     .bold()
                                     .monospacedDigit()
 
-                                Text(trendText)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 6) {
+                                    Text(trendText)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+
+                                    if !deltaText.isEmpty {
+                                        Text(deltaText)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .monospacedDigit()
+                                    }
+                                }
                             }
 
                             Divider()
@@ -116,14 +163,17 @@ struct GlucoseLiveActivityWidget: Widget {
                                 MetricRow(label: "Upd", value: updatedText, compact: true)
                             }
                         }
-
-                        // ✅ DEBUG epoch (Dynamic Island Expanded)
-                        Text("epoch \(Int(context.state.updatedAt.timeIntervalSince1970))")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .monospacedDigit()
                     }
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(bgTint)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(border, lineWidth: 1)
+                    )
                 }
 
             } compactLeading: {
@@ -209,4 +259,27 @@ private func formatGlucoseShort(_ mmol: Double?) -> String {
 private func formatGlucoseMinimal(_ mmol: Double?) -> String {
     guard let mmol else { return "--" }
     return String(format: "%.1f", mmol)
+}
+
+// ✅ Delta formatting: shows +0.3 / −0.2 etc (mmol)
+private func formatDelta(current: Double?, previous: Double?) -> String {
+    guard let current, let previous else { return "" }
+    let d = current - previous
+    if abs(d) < 0.05 { return "0.0" } // tiny noise
+    return String(format: "%+.1f", d)
+}
+
+// MARK: - Colour code
+
+/// Red = low, Yellow = high, Green = in-range, Gray = unknown.
+/// Defaults: low < 3.9 mmol/L, high > 10.0 mmol/L
+private func glucoseStatusColor(_ mmol: Double?) -> Color {
+    guard let mmol else { return .gray }
+
+    let lowThreshold = 3.9
+    let highThreshold = 10.0
+
+    if mmol < lowThreshold { return .red }
+    if mmol > highThreshold { return .yellow }
+    return .green
 }
