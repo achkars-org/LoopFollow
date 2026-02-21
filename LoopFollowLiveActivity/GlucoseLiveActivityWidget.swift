@@ -30,34 +30,38 @@ struct GlucoseLiveActivityWidget: Widget {
             let projectedText = formatGlucose(context.state.projectedMmol)
             let updatedText = formatUpdatedTime(context.state.updatedAt)
 
-            // Colour code (red/yellow/green/gray)
+            // ✅ Colour code (severity-based background tint)
             let statusColor = glucoseStatusColor(context.state.glucoseMmol)
-            let bgTint = statusColor.opacity(0.15)
+            let bgTint = statusColor.opacity(glucoseSeverityOpacity(context.state.glucoseMmol))
+
+            // ✅ Accent used ONLY for BG + arrow
+            let accent = statusColor.opacity(0.95)
 
             VStack(alignment: .leading, spacing: 8) {
 
-                Text(context.attributes.title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                // ✅ Removed "LoopFollow" title line (was context.attributes.title)
 
-                // KEEP: the HStack remains
                 HStack(alignment: .center, spacing: 12) {
 
                     // LEFT: BG + Trend + Delta
                     VStack(alignment: .leading, spacing: 2) {
+
+                        // ✅ BG number coloured
                         Text(glucoseText)
                             .font(.system(size: 36, weight: .bold, design: .monospaced))
                             .monospacedDigit()
 
                         HStack(spacing: 6) {
+
+                            // ✅ Arrow coloured
                             Text(trendText)
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
 
+
+                            // ✅ Delta stays default colour (secondary)
                             if !deltaText.isEmpty {
                                 Text(deltaText)
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
                                     .monospacedDigit()
                             }
                         }
@@ -66,7 +70,7 @@ struct GlucoseLiveActivityWidget: Widget {
 
                     Divider()
 
-                    // MIDDLE: IOB / COB
+                    // MIDDLE: IOB / COB (default colours)
                     VStack(alignment: .leading, spacing: 6) {
                         MetricRow(label: "IOB", value: iobText)
                         MetricRow(label: "COB", value: cobText)
@@ -75,7 +79,7 @@ struct GlucoseLiveActivityWidget: Widget {
 
                     Divider()
 
-                    // RIGHT: Projected / Updated
+                    // RIGHT: Projected / Updated (default colours)
                     VStack(alignment: .leading, spacing: 6) {
                         MetricRow(label: "Proj", value: projectedText)
                         MetricRow(label: "Upd", value: updatedText)
@@ -86,16 +90,16 @@ struct GlucoseLiveActivityWidget: Widget {
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
 
-            // No manually drawn rectangle/background overlay
+            // ✅ Keep severity-based background tint
             .activityBackgroundTint(bgTint)
-            .activitySystemActionForegroundColor(.primary)
 
+            // ✅ Keep system action colour neutral
+            .activitySystemActionForegroundColor(.primary)
         } dynamicIsland: { context in
 
             let glucoseText = formatGlucose(context.state.glucoseMmol)
             let trendText = formatTrend(context.state.trend)
 
-            // Delta (current - previous)
             let deltaText = formatDelta(
                 current: context.state.glucoseMmol,
                 previous: context.state.previousGlucoseMmol
@@ -106,8 +110,10 @@ struct GlucoseLiveActivityWidget: Widget {
             let projectedText = formatGlucose(context.state.projectedMmol)
             let updatedText = formatUpdatedTime(context.state.updatedAt)
 
-            // Colour code (Dynamic Island keyline only)
+            // Colour code (we’ll tint text + keep a keyline attempt)
             let statusColor = glucoseStatusColor(context.state.glucoseMmol)
+            let accent = statusColor.opacity(0.95)
+            let keylineTint = statusColor.opacity(0.95)
 
             return DynamicIsland {
 
@@ -116,22 +122,23 @@ struct GlucoseLiveActivityWidget: Widget {
                     VStack(spacing: 4) {
                         HStack(alignment: .center, spacing: 10) {
 
-                            // BG + Trend + Delta
+                            // BG + Trend + Delta (tinted)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(glucoseText)
                                     .font(.title2)
                                     .bold()
                                     .monospacedDigit()
+                                    .foregroundStyle(accent)
 
                                 HStack(spacing: 6) {
                                     Text(trendText)
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(accent)
 
                                     if !deltaText.isEmpty {
                                         Text(deltaText)
                                             .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(accent)
                                             .monospacedDigit()
                                     }
                                 }
@@ -141,22 +148,21 @@ struct GlucoseLiveActivityWidget: Widget {
 
                             // IOB / COB
                             VStack(alignment: .leading, spacing: 4) {
-                                MetricRow(label: "IOB", value: iobText, compact: true)
-                                MetricRow(label: "COB", value: cobText, compact: true)
+                                MetricRow(label: "IOB", value: iobText, compact: true, valueColor: .primary)
+                                MetricRow(label: "COB", value: cobText, compact: true, valueColor: .primary)
                             }
 
                             Divider()
 
                             // Proj / Upd
                             VStack(alignment: .leading, spacing: 4) {
-                                MetricRow(label: "Proj", value: projectedText, compact: true)
-                                MetricRow(label: "Upd", value: updatedText, compact: true)
+                                MetricRow(label: "Proj", value: projectedText, compact: true, valueColor: .primary)
+                                MetricRow(label: "Upd", value: updatedText, compact: true, valueColor: .primary)
                             }
                         }
                     }
                     .padding(.vertical, 6)
                     .padding(.horizontal, 10)
-                    // No manually drawn rectangle/background overlay here either
                 }
 
             } compactLeading: {
@@ -165,12 +171,13 @@ struct GlucoseLiveActivityWidget: Widget {
                     .font(.caption)
                     .bold()
                     .monospacedDigit()
+                    .foregroundStyle(accent)
 
             } compactTrailing: {
 
                 Text(trendText)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(accent)
 
             } minimal: {
 
@@ -178,9 +185,9 @@ struct GlucoseLiveActivityWidget: Widget {
                     .font(.caption2)
                     .bold()
                     .monospacedDigit()
+                    .foregroundStyle(accent)
             }
-            // The Dynamic Island contour tint
-            .keylineTint(statusColor)
+            .keylineTint(keylineTint)
         }
     }
 }
@@ -191,6 +198,7 @@ private struct MetricRow: View {
     let label: String
     let value: String
     var compact: Bool = false
+    var valueColor: Color = .primary
 
     var body: some View {
         HStack(spacing: 6) {
@@ -203,6 +211,7 @@ private struct MetricRow: View {
                 .font(compact ? .caption : .subheadline)
                 .monospacedDigit()
                 .lineLimit(1)
+                .foregroundStyle(valueColor)
         }
     }
 }
@@ -246,34 +255,60 @@ private func formatGlucoseMinimal(_ mmol: Double?) -> String {
     return String(format: "%.1f", mmol)
 }
 
-// Delta formatting: shows +0.3 / −0.2 etc (mmol)
 private func formatDelta(current: Double?, previous: Double?) -> String {
     guard let current, let previous else { return "" }
     let d = current - previous
-    if abs(d) < 0.05 { return "0.0" } // tiny noise
+    if abs(d) < 0.05 { return "0.0" }
     return String(format: "%+.1f", d)
 }
 
 // MARK: - Colour code (App Group-backed thresholds)
 
-private func glucoseStatusColor(_ mmol: Double?) -> Color {
-    guard let mmol else { return .gray }
+private let mgdlPerMmol: Double = 18.0182
 
+private func readThresholdsMgdl() -> (low: Double, high: Double) {
     let appGroupID = "group.com.2HEY366Q6J.LoopFollow"
-
-    guard
-        let defaults = UserDefaults(suiteName: appGroupID)
-    else {
-        return .gray
+    guard let defaults = UserDefaults(suiteName: appGroupID) else {
+        return (70.0, 180.0)
     }
 
-    let lowMgdl  = defaults.double(forKey: "la.lowLineMgdl")
-    let highMgdl = defaults.double(forKey: "la.highLineMgdl")
+    let low: Double = defaults.object(forKey: "la.lowLineMgdl") != nil
+        ? defaults.double(forKey: "la.lowLineMgdl")
+        : 70.0
 
-    // Convert mmol → mg/dL
-    let mgdl = mmol * 18.0182
+    let high: Double = defaults.object(forKey: "la.highLineMgdl") != nil
+        ? defaults.double(forKey: "la.highLineMgdl")
+        : 180.0
 
+    if high <= low { return (70.0, 180.0) }
+    return (low, high)
+}
+
+private func glucoseStatusColor(_ mmol: Double?) -> Color {
+    guard let mmol else { return .gray }
+    let (lowMgdl, highMgdl) = readThresholdsMgdl()
+
+    let mgdl = mmol * mgdlPerMmol
     if mgdl < lowMgdl { return .red }
-    if mgdl > highMgdl { return .yellow }
+    if mgdl > highMgdl { return .orange }
     return .green
+}
+
+private func glucoseSeverityOpacity(_ mmol: Double?) -> Double {
+    guard let mmol else { return 0.18 }
+    let (lowMgdl, highMgdl) = readThresholdsMgdl()
+
+    let mgdl = mmol * mgdlPerMmol
+
+    if mgdl >= lowMgdl && mgdl <= highMgdl {
+        return 0.25
+    }
+
+    if mgdl < lowMgdl {
+        let distance = min((lowMgdl - mgdl) / 40.0, 1.0)
+        return 0.35 + (distance * 0.35) // up to ~0.70
+    }
+
+    let distance = min((mgdl - highMgdl) / 80.0, 1.0)
+    return 0.30 + (distance * 0.30) // up to ~0.60
 }
