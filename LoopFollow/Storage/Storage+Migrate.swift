@@ -359,7 +359,7 @@ extension Storage {
              into: Storage.shared.lastExpirationNotificationShown)
 
         move(UserDefaultsValue<Bool>(key: "hideInfoTable", default: false), into: Storage.shared.hideInfoTable)
-        move(UserDefaultsValue<String>(key: "token", default: ""), into: Storage.shared.token)
+
         move(UserDefaultsValue<String>(key: "units", default: "mg/dL"), into: Storage.shared.units)
 
         move(UserDefaultsValue<[Int]>(key: "infoSort",

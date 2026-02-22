@@ -65,12 +65,14 @@ extension MainViewController {
             if let iobMetric = InsulinMetric(from: lastLoopRecord["iob"], key: "iob") {
                 infoManager.updateInfoData(type: .iob, value: iobMetric)
                 latestIOB = iobMetric
+                Storage.shared.latestIOB.value = iobMetric.value
             }
 
             // COB
             if let cobMetric = CarbMetric(from: enactedOrSuggested, key: "COB") {
                 infoManager.updateInfoData(type: .cob, value: cobMetric)
                 latestCOB = cobMetric
+                Storage.shared.latestCOB.value = cobMetric.value
             } else if let reasonString = enactedOrSuggested["reason"] as? String {
                 // Fallback: Extract COB from reason string
                 let cobPattern = "COB: (\\d+(?:\\.\\d+)?)"
@@ -112,6 +114,9 @@ extension MainViewController {
             if let eventualBGValue = enactedOrSuggested["eventualBG"] as? Double {
                 let eventualBGQuantity = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: eventualBGValue)
                 PredictionLabel.text = Localizer.formatQuantity(eventualBGQuantity)
+                
+                let projectedMmol = eventualBGQuantity.doubleValue(for: .millimolesPerLiter)
+                Storage.shared.projectedMmol.value = projectedMmol
             }
 
             // Target

@@ -22,7 +22,10 @@ extension Alarm {
 // MARK: - AlarmData helpers
 
 extension AlarmData {
-    static func withBattery(_ level: Double?) -> Self {
+    static func withBattery(
+        cgmBattery: Double?,
+        pumpBattery: Double?
+    ) -> Self {
         AlarmData(
             bgReadings: [],
             predictionData: [],
@@ -39,7 +42,8 @@ extension AlarmData {
             latestPumpVolume: nil,
             IOB: nil,
             recentBoluses: [],
-            latestBattery: level,
+            latestBattery: cgmBattery,
+            latestPumpBattery: pumpBattery,
             batteryHistory: [],
             recentCarbs: []
         )

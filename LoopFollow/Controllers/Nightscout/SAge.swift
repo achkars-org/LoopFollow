@@ -43,7 +43,14 @@ extension MainViewController {
                                    .withTime,
                                    .withDashSeparatorInDate,
                                    .withColonSeparatorInTime]
-        Storage.shared.sageInsertTime.value = formatter.date(from: lastSageString)?.timeIntervalSince1970 as! TimeInterval
+        if let date = formatter.date(from: lastSageString) {
+            Storage.shared.sageInsertTime.value = date.timeIntervalSince1970
+        } else {
+            LogManager.shared.log(
+                category: .general,
+                message: "[SAGE] failed to parse date string: \(lastSageString)"
+            )
+        }
 
         // -- Auto-snooze CGM start ────────────────────────────────────────────────
         let now = Date()
