@@ -19,6 +19,11 @@ struct GlucoseLiveActivityAttributes: ActivityAttributes {
 
         // Timestamp
         var updatedAt: Date
+
+        // Debug / health
+        var seq: Int
+        var debug: String
+        var updatedAtEpoch: Int
     }
 
     var title: String

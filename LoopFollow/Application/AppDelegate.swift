@@ -191,7 +191,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 try await NightscoutUpdater.shared.refreshData()
 
                 LogManager.shared.log(category: .liveactivities, message: "Silent push -> update Live Activity")
-                await LiveActivityManager.shared.refreshFromCurrentState()
+                await LiveActivityManager.shared.refreshFromCurrentState(source: "silent_push")
 
                 LogManager.shared.log(category: .liveactivities, message: "Silent push completed")
                 completionHandler(.newData)

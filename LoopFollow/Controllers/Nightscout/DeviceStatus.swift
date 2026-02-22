@@ -239,7 +239,7 @@ extension MainViewController {
         // Mark device status as loaded for initial loading state
         markDataLoaded("deviceStatus")
 
-        Task { await LiveActivityManager.shared.refreshFromCurrentState() }
+        Task { await LiveActivityManager.shared.refreshFromCurrentState(source: "Device Status") }
         
         LogManager.shared.log(category: .deviceStatus, message: "Update Device Status done", isDebug: true)
     }

@@ -86,6 +86,13 @@ struct GlucoseLiveActivityWidget: Widget {
                     }
                     .frame(minWidth: 80, alignment: .leading)
                 }
+                
+                // DEBUG (temporary): shows whether updates are landing
+                Text("seq \(context.state.seq) • \(context.state.debug) • \(context.state.updatedAtEpoch)")
+                    .font(.caption2)
+                    .monospacedDigit()
+                    .opacity(0.55)
+                    .lineLimit(1)
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
@@ -95,6 +102,9 @@ struct GlucoseLiveActivityWidget: Widget {
 
             // ✅ Keep system action colour neutral
             .activitySystemActionForegroundColor(.primary)
+            
+
+            
         } dynamicIsland: { context in
 
             let glucoseText = formatGlucose(context.state.glucoseMmol)
@@ -160,6 +170,12 @@ struct GlucoseLiveActivityWidget: Widget {
                                 MetricRow(label: "Upd", value: updatedText, compact: true, valueColor: .primary)
                             }
                         }
+                        
+                        Text("seq \(context.state.seq) • \(context.state.debug)")
+                            .font(.caption2)
+                            .monospacedDigit()
+                            .opacity(0.55)
+                            .lineLimit(1)
                     }
                     .padding(.vertical, 6)
                     .padding(.horizontal, 10)
