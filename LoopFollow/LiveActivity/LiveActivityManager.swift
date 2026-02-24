@@ -50,34 +50,64 @@ final class LiveActivityManager {
         case state      = "STATE"
     }
 
-    // MARK: - Start / Reuse
+    // MARK: - Start / Reuse (Singleton enforcement)
 
+    /// Ensures there is exactly one ACTIVE Live Activity.
+    /// - If multiple ACTIVE activities exist, it ends the extras (keeps the first).
+    /// - If exactly one ACTIVE exists, it binds to it.
+    /// - If none exist, it starts a new one.
     func startIfNeeded() {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             log(.zombie, source: "startIfNeeded", msg: "not authorized")
             return
         }
 
-        // Reuse only an ACTIVE activity (never reuse ended/dismissed)
-        if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first(where: { $0.activityState == .active }) {
-        
+        // Prefer ACTIVE only; do not reuse ended/dismissed
+        let active = Activity<GlucoseLiveActivityAttributes>.activities
+            .filter { $0.activityState == .active }
+
+        // If we already have more than one ACTIVE, aggressively clean up extras.
+        if active.count > 1 {
+            let states = active.map { "\($0.id.suffix(6)):\($0.activityState)" }.joined(separator: ",")
+            log(.zombie, source: "startIfNeeded", msg: "multiple ACTIVE (\(active.count)) -> cleanup extras; active=\(states)")
+
+            // Keep the first one (deterministic), end the rest.
+            for dup in active.dropFirst() {
+                Task {
+                    await dup.end(dismissalPolicy: .immediate)
+                    log(.zombie, source: "startIfNeeded", msg: "ended duplicate ACTIVE id=\(dup.id)")
+                }
+            }
+        }
+
+        // Recompute after cleanup attempt (activities list is dynamic).
+        if let existing = Activity<GlucoseLiveActivityAttributes>.activities
+            .first(where: { $0.activityState == .active }) {
+
             if current?.id != existing.id {
                 current = existing
                 attachStateObserver(to: existing)
                 log(.bind, source: "startIfNeeded", msg: "reuse ACTIVE id=\(existing.id)")
             }
-        
+
             startWatchdogIfNeeded()
             return
         }
-        
-        // If we have activities but none are active, log it (super useful)
+
+        // If we have activities but none are active, log it (useful diagnostics)
         let all = Activity<GlucoseLiveActivityAttributes>.activities
         if !all.isEmpty {
             let states = all.map { "\($0.id.suffix(6)):\($0.activityState)" }.joined(separator: ",")
             log(.zombie, source: "startIfNeeded", msg: "no ACTIVE to reuse; existing=\(states)")
         }
 
+        // No ACTIVE exists -> start a fresh one
+        startNewActivity()
+    }
+
+    /// Starts a brand new Live Activity with an initial placeholder state.
+    /// Carries forward any pending heal tag into debug so it is visible on the START row.
+    private func startNewActivity() {
         let attributes = GlucoseLiveActivityAttributes(title: "LoopFollow")
 
         let now = Date()
@@ -120,9 +150,9 @@ final class LiveActivityManager {
             attachStateObserver(to: activity)
             startWatchdogIfNeeded()
 
-            log(.start, source: "startIfNeeded", msg: "started id=\(activity.id) tag=\(startTag)")
+            log(.start, source: "startNewActivity", msg: "started id=\(activity.id) tag=\(startTag)")
         } catch {
-            log(.zombie, source: "startIfNeeded", msg: "start error: \(error)")
+            log(.zombie, source: "startNewActivity", msg: "start error: \(error)")
         }
     }
 
@@ -164,7 +194,7 @@ final class LiveActivityManager {
             let all = Activity<GlucoseLiveActivityAttributes>.activities
             let suffixes = all.map { String($0.id.suffix(6)) }.joined(separator: ",")
             let boundSuffix = String(activity.id.suffix(6))
-            
+
             self.log(
                 .bind,
                 source: source,
@@ -217,7 +247,7 @@ final class LiveActivityManager {
 
             let idSuffix = String(activity.id.suffix(6))
             let debug = "\(LAStage.updAttempt.rawValue) src=\(source) #\(self.seq) id=\(idSuffix)"
-            
+
             let state = GlucoseLiveActivityAttributes.ContentState(
                 glucoseMmol: glucose,
                 previousGlucoseMmol: previous,
@@ -255,6 +285,7 @@ final class LiveActivityManager {
             self.log(.updOk, source: source, msg: "id=\(activity.id) seq=\(self.seq)")
         }
     }
+
     /// Backward-compatible convenience for existing callers.
     /// Prefer calling `refreshFromCurrentState(source:)` explicitly.
     func refreshFromCurrentState() async {
@@ -403,15 +434,18 @@ final class LiveActivityManager {
     // MARK: - Helpers
 
     private func boundActivityOrRebind() -> Activity<GlucoseLiveActivityAttributes>? {
+        // If current is still present and ACTIVE, keep it.
         if let cur = current,
-           Activity<GlucoseLiveActivityAttributes>.activities.contains(where: { $0.id == cur.id }) {
-            return cur
+           let live = Activity<GlucoseLiveActivityAttributes>.activities.first(where: { $0.id == cur.id }),
+           live.activityState == .active {
+            return live
         }
 
-        if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
-            current = existing
-            attachStateObserver(to: existing)
-            return existing
+        // Prefer an ACTIVE activity
+        if let existingActive = Activity<GlucoseLiveActivityAttributes>.activities.first(where: { $0.activityState == .active }) {
+            current = existingActive
+            attachStateObserver(to: existingActive)
+            return existingActive
         }
 
         current = nil
