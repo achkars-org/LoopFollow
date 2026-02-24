@@ -6,7 +6,9 @@ import UIKit
 
 extension MainViewController {
     // Dex Share Web Call
-    func webLoadDexShare() {
+    func webLoadDexShare(
+    completion: ((Bool) -> Void)? = nil
+) {
         // Dexcom Share only returns 24 hrs of data as of now
         // Requesting more just for consistency with NS
         let graphHours = 24 * Storage.shared.downloadDays.value
@@ -43,7 +45,11 @@ extension MainViewController {
     }
 
     // NS BG Data Web call
-    func webLoadNSBGData(dexData: [ShareGlucoseData] = []) {
+    func webLoadNSBGData(
+    dexData: [ShareGlucoseData] = [],
+    completion: ((Bool) -> Void)? = nil
+)
+ {
         // This kicks it out in the instance where dexcom fails but they aren't using NS &&
         if !IsNightscoutEnabled() {
             Storage.shared.lastBGChecked.value = Date()
