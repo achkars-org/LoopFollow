@@ -348,6 +348,10 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        
+        LASilentPushGate.markSilentPushReceived()
+        LogManager.shared.log(category: .liveactivities, message: "[LA] silent push received (gate marked)")
+
         // Avoid logging the entire userInfo dictionary; keys are enough for debugging
         let keys = Array(notification.request.content.userInfo.keys)
         LogManager.shared.log(category: .liveactivities, message: "Will present notification (keys): \(keys)")
