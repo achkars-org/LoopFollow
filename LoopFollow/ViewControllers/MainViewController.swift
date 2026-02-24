@@ -661,60 +661,68 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
     
     // MARK: - Silent Push -> LoopFollow Refresh Bridge
 
-    private func installLoopFollowRefreshObserverIfNeeded() {
-        guard loopFollowRefreshObserver == nil else { return }
-    
-        loopFollowRefreshObserver = NotificationCenter.default.addObserver(
-            forName: .loopFollowRefreshRequested,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            guard let self else {
-                NotificationCenter.default.post(
-                    name: .loopFollowRefreshDidFinish,
-                    object: nil,
-                    userInfo: ["ok": false]
-                )
-                return
-            }
-    
-            self.performLoopFollowRefreshForSilentPush()
+private func installLoopFollowRefreshObserverIfNeeded() {
+    guard loopFollowRefreshObserver == nil else { return }
+
+    loopFollowRefreshObserver = NotificationCenter.default.addObserver(
+        forName: .loopFollowRefreshRequested,
+        object: nil,
+        queue: .main
+    ) { [weak self] _ in
+        guard let self else {
+            NotificationCenter.default.post(
+                name: .loopFollowRefreshDidFinish,
+                object: nil,
+                userInfo: ["ok": false]
+            )
+            return
         }
+
+        self.performLoopFollowRefreshForSilentPush()
     }
-    
-    private func runLoopFollowRefreshOnce() async -> Bool {
-        await LoopFollowRefreshCoordinator.shared.requestRefresh {
-            await MainActor.run {
-                await withCheckedContinuation { [weak self] cont in
-                    guard let self else {
-                        cont.resume(returning: false)
-                        return
-                    }
-    
-                    let hasDex = !Storage.shared.shareUserName.value.isEmpty &&
-                                 !Storage.shared.sharePassword.value.isEmpty
-    
-                    if hasDex {
-                        self.webLoadDexShare { ok in cont.resume(returning: ok) }
-                    } else {
-                        self.webLoadNSBGData { ok in cont.resume(returning: ok) }
-                    }
+}
+
+private func runLoopFollowRefreshOnce() async -> Bool {
+    await LoopFollowRefreshCoordinator.shared.requestRefresh {
+        await withCheckedContinuation { cont in
+            // Resume-once guard (protect against accidental double-callback paths)
+            var finished = false
+            let resumeOnce: (Bool) -> Void = { ok in
+                guard !finished else { return }
+                finished = true
+                cont.resume(returning: ok)
+            }
+
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    resumeOnce(false)
+                    return
+                }
+
+                let hasDex = !Storage.shared.shareUserName.value.isEmpty &&
+                             !Storage.shared.sharePassword.value.isEmpty
+
+                if hasDex {
+                    self.webLoadDexShare { ok in resumeOnce(ok) }
+                } else {
+                    self.webLoadNSBGData { ok in resumeOnce(ok) }
                 }
             }
         }
     }
-    
-    private func performLoopFollowRefreshForSilentPush() {
-        Task {
-            let ok = await runLoopFollowRefreshOnce()
-    
-            NotificationCenter.default.post(
-                name: .loopFollowRefreshDidFinish,
-                object: nil,
-                userInfo: ["ok": ok]
-            )
-        }
+}
+
+private func performLoopFollowRefreshForSilentPush() {
+    Task {
+        let ok = await runLoopFollowRefreshOnce()
+
+        NotificationCenter.default.post(
+            name: .loopFollowRefreshDidFinish,
+            object: nil,
+            userInfo: ["ok": ok]
+        )
     }
+}
         
     deinit {
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name("refresh"), object: nil)
