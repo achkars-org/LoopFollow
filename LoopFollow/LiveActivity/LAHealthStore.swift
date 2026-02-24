@@ -43,4 +43,33 @@ enum LAHealthStore {
     static func lastHealTag() -> String? {
         suite?.string(forKey: K.lastHealTag)
     }
+    
+    private static var suiteName: String {
+        // Cleaner option B: dynamic group id
+        "group.\(Bundle.main.bundleIdentifier ?? "LoopFollow")"
+    }
+
+    private static var defaults: UserDefaults {
+        UserDefaults(suiteName: suiteName) ?? .standard
+    }
+
+    // MARK: - Keys
+
+    private static let kCurrentActivityId = "la.currentActivityId"
+
+    // MARK: - Current Activity ID
+
+    static func setCurrentActivityId(_ id: String) {
+        defaults.set(id, forKey: kCurrentActivityId)
+    }
+
+    static func currentActivityId() -> String? {
+        let id = defaults.string(forKey: kCurrentActivityId)
+        return (id?.isEmpty == false) ? id : nil
+    }
+
+    static func clearCurrentActivityId() {
+        defaults.removeObject(forKey: kCurrentActivityId)
+    }
+
 }
