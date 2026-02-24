@@ -682,29 +682,40 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
         }
     }
     
-    private func performLoopFollowRefreshForSilentPush() {
-        let hasDex = !Storage.shared.shareUserName.value.isEmpty &&
-                     !Storage.shared.sharePassword.value.isEmpty
+    private func runLoopFollowRefreshOnce() async -> Bool {
+        await LoopFollowRefreshCoordinator.shared.requestRefresh {
+            await MainActor.run {
+                await withCheckedContinuation { [weak self] cont in
+                    guard let self else {
+                        cont.resume(returning: false)
+                        return
+                    }
     
-        if hasDex {
-            webLoadDexShare { ok in
-                NotificationCenter.default.post(
-                    name: .loopFollowRefreshDidFinish,
-                    object: nil,
-                    userInfo: ["ok": ok]
-                )
-            }
-        } else {
-            webLoadNSBGData { ok in
-                NotificationCenter.default.post(
-                    name: .loopFollowRefreshDidFinish,
-                    object: nil,
-                    userInfo: ["ok": ok]
-                )
+                    let hasDex = !Storage.shared.shareUserName.value.isEmpty &&
+                                 !Storage.shared.sharePassword.value.isEmpty
+    
+                    if hasDex {
+                        self.webLoadDexShare { ok in cont.resume(returning: ok) }
+                    } else {
+                        self.webLoadNSBGData { ok in cont.resume(returning: ok) }
+                    }
+                }
             }
         }
     }
     
+    private func performLoopFollowRefreshForSilentPush() {
+        Task {
+            let ok = await runLoopFollowRefreshOnce()
+    
+            NotificationCenter.default.post(
+                name: .loopFollowRefreshDidFinish,
+                object: nil,
+                userInfo: ["ok": ok]
+            )
+        }
+    }
+        
     deinit {
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name("refresh"), object: nil)
     
