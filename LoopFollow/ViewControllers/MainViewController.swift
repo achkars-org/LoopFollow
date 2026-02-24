@@ -20,6 +20,11 @@ private enum SecondTab {
     case alarms
 }
 
+extension Notification.Name {
+    static let loopFollowRefreshRequested = Notification.Name("loopfollow.refresh.requested")
+    static let loopFollowRefreshDidFinish = Notification.Name("loopfollow.refresh.didFinish")
+}
+
 class MainViewController: UIViewController, UITableViewDataSource, ChartViewDelegate, UNUserNotificationCenterDelegate, UIScrollViewDelegate {
     @IBOutlet var BGText: UILabel!
     @IBOutlet var DeltaText: UILabel!
@@ -132,8 +137,12 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
     ]
     private var loadingTimeoutTimer: Timer?
 
+    private var loopFollowRefreshObserver: NSObjectProtocol?
+
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        installLoopFollowRefreshObserverIfNeeded()
 
         loadDebugData()
 
@@ -649,9 +658,60 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
                                                  userInfo: nil)
         UIApplication.shared.shortcutItems = [shortcut]
     }
+    
+    // MARK: - Silent Push -> LoopFollow Refresh Bridge
 
+    private func installLoopFollowRefreshObserverIfNeeded() {
+        guard loopFollowRefreshObserver == nil else { return }
+    
+        loopFollowRefreshObserver = NotificationCenter.default.addObserver(
+            forName: .loopFollowRefreshRequested,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else {
+                NotificationCenter.default.post(
+                    name: .loopFollowRefreshDidFinish,
+                    object: nil,
+                    userInfo: ["ok": false]
+                )
+                return
+            }
+    
+            self.performLoopFollowRefreshForSilentPush()
+        }
+    }
+    
+    private func performLoopFollowRefreshForSilentPush() {
+        let hasDex = !Storage.shared.shareUserName.value.isEmpty &&
+                     !Storage.shared.sharePassword.value.isEmpty
+    
+        if hasDex {
+            webLoadDexShare { ok in
+                NotificationCenter.default.post(
+                    name: .loopFollowRefreshDidFinish,
+                    object: nil,
+                    userInfo: ["ok": ok]
+                )
+            }
+        } else {
+            webLoadNSBGData { ok in
+                NotificationCenter.default.post(
+                    name: .loopFollowRefreshDidFinish,
+                    object: nil,
+                    userInfo: ["ok": ok]
+                )
+            }
+        }
+    }
+    
     deinit {
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name("refresh"), object: nil)
+    
+        if let token = loopFollowRefreshObserver {
+            NotificationCenter.default.removeObserver(token)
+            loopFollowRefreshObserver = nil
+        }
     }
 
     // Clean all timers and start new ones when refreshing
