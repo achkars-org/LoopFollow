@@ -50,37 +50,56 @@ final class LiveActivityManager {
         case state      = "STATE"
     }
 
-    // MARK: - Start / Reuse
+    import ActivityKit
 
+    // MARK: - Start / Reuse
     func startIfNeeded() {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             log(.zombie, source: "startIfNeeded", msg: "not authorized")
             return
         }
-
-        if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
-            if current?.id != existing.id {
-                current = existing
-                attachStateObserver(to: existing)
-                log(.bind, source: "startIfNeeded", msg: "reuse id=\(existing.id)")
-            }
+    
+        let activities = Activity<GlucoseLiveActivityAttributes>.activities
+    
+        // 1) Prefer current if it still exists
+        if let cur = current,
+           activities.contains(where: { $0.id == cur.id }) {
             startWatchdogIfNeeded()
             return
         }
-
+    
+        // 2) Prefer last-saved ID (if you have a getter; add one if not)
+        if let savedId = LAHealthStore.currentActivityId(),
+           let match = activities.first(where: { $0.id == savedId }) {
+            current = match
+            attachStateObserver(to: match)
+            log(.bind, source: "startIfNeeded", msg: "rebind saved id=\(match.id)")
+            startWatchdogIfNeeded()
+            return
+        }
+    
+        // 3) If any exist, choose deterministically (use last)
+        if let chosen = activities.last {
+            current = chosen
+            attachStateObserver(to: chosen)
+            LAHealthStore.setCurrentActivityId(chosen.id)
+            log(.bind, source: "startIfNeeded", msg: "reuse last id=\(chosen.id) count=\(activities.count)")
+            startWatchdogIfNeeded()
+            return
+        }
+    
+        // 4) Otherwise create new
         let attributes = GlucoseLiveActivityAttributes(title: "LoopFollow")
-
+    
         let now = Date()
         let epoch = Int(now.timeIntervalSince1970)
-
-        // Pull persisted heal tag if present (survives app restarts)
+    
         let storedHeal = LAHealthStore.lastHealTag()
         let startTag = pendingStartDebugTag ?? storedHeal ?? LAStage.start.rawValue
-
-        // Clear after consuming so it doesn't repeat forever
+    
         pendingStartDebugTag = nil
         LAHealthStore.setLastHealTag("")
-
+    
         let initial = GlucoseLiveActivityAttributes.ContentState(
             glucoseMmol: nil,
             previousGlucoseMmol: nil,
@@ -93,23 +112,24 @@ final class LiveActivityManager {
             debug: startTag,
             updatedAtEpoch: epoch
         )
-
+    
         do {
             let content = ActivityContent(
                 state: initial,
                 staleDate: now.addingTimeInterval(15 * 60)
             )
-
+    
             let activity = try Activity.request(
                 attributes: attributes,
                 content: content,
                 pushType: nil
             )
-
+    
             current = activity
             attachStateObserver(to: activity)
+            LAHealthStore.setCurrentActivityId(activity.id)
             startWatchdogIfNeeded()
-
+    
             log(.start, source: "startIfNeeded", msg: "started id=\(activity.id) tag=\(startTag)")
         } catch {
             log(.zombie, source: "startIfNeeded", msg: "start error: \(error)")
