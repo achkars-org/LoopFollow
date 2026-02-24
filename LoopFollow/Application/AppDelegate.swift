@@ -6,8 +6,19 @@ import EventKit
 import UIKit
 import UserNotifications
 
+// MARK: - LoopFollow refresh bridge notifications
+
+extension Notification.Name {
+    /// Posted by AppDelegate on silent push to request a single refresh using LoopFollow’s normal pipeline.
+    static let loopFollowRefreshRequested = Notification.Name("loopfollow.refresh.requested")
+
+    /// Must be posted by the refresh owner (e.g., MainViewController / data pipeline) when it completes.
+    /// userInfo may include: ["ok": Bool]
+    static let loopFollowRefreshDidFinish = Notification.Name("loopfollow.refresh.didFinish")
+}
+
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     var window: UIWindow?
     private let notificationCenter = UNUserNotificationCenter.current()
@@ -141,28 +152,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let alert = aps?["alert"] as? [String: Any]
         let title = alert?["title"] as? String ?? ""
         let body  = alert?["body"] as? String ?? ""
-    
+
         let contentAvailable: Bool = {
             if let i = aps?["content-available"] as? Int { return i == 1 }
             if let b = aps?["content-available"] as? Bool { return b == true }
             return false
         }()
-    
+
         // Only log user-visible alert content when present (avoid dumping userInfo)
         if !title.isEmpty || !body.isEmpty {
             LogManager.shared.log(category: .liveactivities, message: "Remote notif alert title=\(title) body=\(body)")
         }
-    
+
         // We only treat content-available pushes as "silent push" signals
         guard contentAvailable else {
             completionHandler(.noData)
             return
         }
-    
+
         // IMPORTANT: mark receipt immediately so polling can be suppressed for the next 300s.
         LASilentPushGate.markSilentPushReceived()
         LogManager.shared.log(category: .liveactivities, message: "[LA] silent push received (gate marked)")
-    
+
         let stateString: String
         switch application.applicationState {
         case .active: stateString = "ACTIVE"
@@ -171,30 +182,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         @unknown default: stateString = "UNKNOWN"
         }
         LogManager.shared.log(category: .liveactivities, message: "Silent push wake state=\(stateString)")
-    
+
         // Background time for the refresh + LA update
         let bgTask = application.beginBackgroundTask(withName: "SilentPushRefresh") {
             LogManager.shared.log(category: .liveactivities, message: "Silent push background time expired")
         }
-    
+
         Task {
             defer {
                 DispatchQueue.main.async {
-                    application.endBackgroundTask(bgTask)
+                    if bgTask != .invalid {
+                        application.endBackgroundTask(bgTask)
+                    }
                 }
             }
-    
+
             do {
-                // ✅ Use LoopFollow’s existing refresh workflow (single source of truth).
-                // We signal MainViewController (or the existing data pipeline owner) to refresh once.
-                //
-                // Requirement: MainViewController should observe .loopFollowRefreshRequested,
-                // run its normal refresh (DexShare or Nightscout), then post .loopFollowRefreshDidFinish.
+                // Trigger LoopFollow's normal refresh path (DexShare or NS) once
                 try await awaitLoopFollowRefresh(timeoutSeconds: 25)
-    
-                // After LoopFollow state is updated, render Live Activity from current state
+
+                // Then paint Live Activity from updated shared state
                 await LiveActivityManager.shared.refreshFromCurrentState(source: "silent_push")
-    
+
                 LogManager.shared.log(category: .liveactivities, message: "Silent push completed")
                 completionHandler(.newData)
             } catch {
@@ -203,70 +212,50 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
     }
-    
+
     // MARK: - LoopFollow refresh bridge (Notification-based)
-    
+
+    private enum SilentPushRefreshError: Error {
+        case timeout
+    }
+
+    /// Posts a refresh request to LoopFollow's existing pipeline and waits for completion.
+    /// - Important: The refresh owner MUST post `.loopFollowRefreshDidFinish` once per request.
     private func awaitLoopFollowRefresh(timeoutSeconds: TimeInterval) async throws {
-        // Post request first (don’t depend on any UI references here).
-        NotificationCenter.default.post(name: .loopFollowRefreshRequested, object: nil)
-    
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            // 1) Wait for completion notification
-            group.addTask {
-                try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-                    var token: NSObjectProtocol?
-                    token = NotificationCenter.default.addObserver(
-                        forName: .loopFollowRefreshDidFinish,
-                        object: nil,
-                        queue: nil
-                    ) { note in
-                        if let token { NotificationCenter.default.removeObserver(token) }
-    
-                        // Optional: allow sender to indicate failure
-                        let ok = (note.userInfo?["ok"] as? Bool) ?? true
-                        if ok {
-                            cont.resume()
-                        } else {
-                            cont.resume(throwing: NSError(
-                                domain: "LoopFollowRefresh",
-                                code: 2,
-                                userInfo: [NSLocalizedDescriptionKey: "LoopFollow refresh reported failure"]
-                            ))
-                        }
-                    }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            var finished = false
+
+            let token = NotificationCenter.default.addObserver(
+                forName: .loopFollowRefreshDidFinish,
+                object: nil,
+                queue: nil
+            ) { note in
+                guard !finished else { return }
+                finished = true
+                NotificationCenter.default.removeObserver(token)
+
+                let ok = (note.userInfo?["ok"] as? Bool) ?? false
+                if ok {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: NSError(
+                        domain: "LoopFollowRefresh",
+                        code: 2,
+                        userInfo: [NSLocalizedDescriptionKey: "LoopFollow refresh reported ok=false"]
+                    ))
                 }
             }
-    
-            // 2) Timeout so we always call completionHandler
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
-                throw NSError(
-                    domain: "LoopFollowRefresh",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "LoopFollow refresh timed out after \(Int(timeoutSeconds))s"]
-                )
-            }
-    
-            // First to finish wins; cancel the other.
-            do {
-                try await group.next()
-                group.cancelAll()
-            } catch {
-                group.cancelAll()
-                throw error
+
+            // Post AFTER subscribing so we can't miss a fast completion.
+            NotificationCenter.default.post(name: .loopFollowRefreshRequested, object: nil)
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds) {
+                guard !finished else { return }
+                finished = true
+                NotificationCenter.default.removeObserver(token)
+                continuation.resume(throwing: SilentPushRefreshError.timeout)
             }
         }
-    }
-    
-    // MARK: - Notifications
-    
-    private extension Notification.Name {
-        /// Posted by AppDelegate on silent push to request a single refresh using LoopFollow’s normal pipeline.
-        static let loopFollowRefreshRequested = Notification.Name("loopfollow.refresh.requested")
-    
-        /// Must be posted by the refresh owner (e.g., MainViewController/data service) when it completes.
-        /// userInfo may include: ["ok": Bool]
-        static let loopFollowRefreshDidFinish = Notification.Name("loopfollow.refresh.didFinish")
     }
 
     // MARK: - UISceneSession Lifecycle
@@ -320,23 +309,66 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        if response.actionIdentifier == "OPEN_APP_ACTION" {
-            if let window = window {
-                window.rootViewController?.dismiss(animated: true, completion: nil)
-                window.rootViewController?.present(MainViewController(), animated: true, completion: nil)
+        switch response.actionIdentifier {
+        case "OPEN_APP_ACTION":
+            // Don’t instantiate MainViewController() directly (outlets/storyboard won’t be wired).
+            // Instead, bring the existing UI to the front and navigate to the Home tab/root.
+            DispatchQueue.main.async { [weak self] in
+                self?.navigateToHome()
             }
-        }
 
-        if response.actionIdentifier == "snooze" {
+        case "snooze":
             AlarmManager.shared.performSnooze()
+
+        default:
+            break
         }
 
         completionHandler()
     }
 
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        // Foreground presentation only (not the silent push signal).
+        // Keep logging minimal: keys are enough for debugging.
+        let keys = Array(notification.request.content.userInfo.keys)
+        LogManager.shared.log(category: .liveactivities, message: "Will present notification (keys): \(keys)")
+        completionHandler([.banner, .sound, .badge])
+    }
+
     func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         let forcePortrait = Storage.shared.forcePortraitMode.value
         return forcePortrait ? .portrait : .all
+    }
+
+    private func navigateToHome() {
+        guard let root = (window?.rootViewController ?? keyWindowRootViewController()) else { return }
+
+        // Dismiss anything presented
+        root.dismiss(animated: false)
+
+        if let tab = root as? UITabBarController {
+            tab.selectedIndex = 0
+            if let nav = tab.selectedViewController as? UINavigationController {
+                nav.popToRootViewController(animated: false)
+            }
+            return
+        }
+
+        if let nav = root as? UINavigationController {
+            nav.popToRootViewController(animated: false)
+        }
+    }
+
+    private func keyWindowRootViewController() -> UIViewController? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first(where: { $0.isKeyWindow })?
+            .rootViewController
     }
 
     // MARK: - Long-press Debug Menu (Bundle ID + APNs token only)
@@ -387,11 +419,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     private func topViewController() -> UIViewController? {
-        let root = (window?.rootViewController) ?? UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first(where: { $0.isKeyWindow })?
-            .rootViewController
+        let root = (window?.rootViewController) ?? keyWindowRootViewController()
 
         var top = root
         while true {
@@ -406,19 +434,5 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
         return top
-    }
-}
-
-extension AppDelegate: UNUserNotificationCenterDelegate {
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        // Foreground presentation only (not the silent push signal).
-        // Keep logging minimal: keys are enough for debugging.
-        let keys = Array(notification.request.content.userInfo.keys)
-        LogManager.shared.log(category: .liveactivities, message: "Will present notification (keys): \(keys)")
-        completionHandler([.banner, .sound, .badge])
     }
 }
