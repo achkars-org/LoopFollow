@@ -20,11 +20,6 @@ private enum SecondTab {
     case alarms
 }
 
-extension Notification.Name {
-    static let loopFollowRefreshRequested = Notification.Name("loopfollow.refresh.requested")
-    static let loopFollowRefreshDidFinish = Notification.Name("loopfollow.refresh.didFinish")
-}
-
 class MainViewController: UIViewController, UITableViewDataSource, ChartViewDelegate, UNUserNotificationCenterDelegate, UIScrollViewDelegate {
     @IBOutlet var BGText: UILabel!
     @IBOutlet var DeltaText: UILabel!
