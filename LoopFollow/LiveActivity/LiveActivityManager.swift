@@ -150,7 +150,16 @@ final class LiveActivityManager {
                 self.log(.zombie, source: source, msg: "no active Activity to update")
                 return
             }
-            self.log(.bind, source: source, msg: "id=\(activity.id)")
+
+            let all = Activity<GlucoseLiveActivityAttributes>.activities
+            let suffixes = all.map { String($0.id.suffix(6)) }.joined(separator: ",")
+            let boundSuffix = String(activity.id.suffix(6))
+            
+            self.log(
+                .bind,
+                source: source,
+                msg: "bound=\(boundSuffix) all=[\(suffixes)] count=\(all.count)"
+            )
 
             if Task.isCancelled {
                 self.consecutiveFailures += 1
