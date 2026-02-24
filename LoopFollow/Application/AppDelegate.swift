@@ -24,6 +24,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         LogManager.shared.cleanupOldLogs()
 
         // App Group migration for Nightscout URL/token (legacy -> App Group)
+        // NOTE: If you have adopted the dynamic "Group ID" concept elsewhere, replace this hardcoded value.
         let appGroupID = "group.com.2HEY366Q6J.LoopFollow"
         AppGroupStorageValue<String>.migrateFromStandardIfNeeded(appGroupID: appGroupID, key: "url")
         AppGroupStorageValue<String>.migrateFromStandardIfNeeded(appGroupID: appGroupID, key: "token")
@@ -37,7 +38,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Sync user BG thresholds to App Group for Live Activity / Widget
         Storage.shared.laLowLineMgdl.value  = Storage.shared.lowLine.value
         Storage.shared.laHighLineMgdl.value = Storage.shared.highLine.value
-        
+
         // One-time sanity check: safe fingerprint (no token leak)
         let url = Storage.shared.url.value.trimmingCharacters(in: .whitespacesAndNewlines)
         let token = Storage.shared.token.value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -140,16 +141,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let alert = aps?["alert"] as? [String: Any]
         let title = alert?["title"] as? String ?? ""
         let body  = alert?["body"] as? String ?? ""
-        let contentAvailable = (aps?["content-available"] as? Int) == 1
 
+        let contentAvailable: Bool = {
+            if let i = aps?["content-available"] as? Int { return i == 1 }
+            if let b = aps?["content-available"] as? Bool { return b == true }
+            return false
+        }()
+
+        // Only log user-visible alert content when present (avoid dumping userInfo)
         if !title.isEmpty || !body.isEmpty {
-            LogManager.shared.log(category: .liveactivities, message: "Notification title=\(title) body=\(body)")
+            LogManager.shared.log(category: .liveactivities, message: "Remote notif alert title=\(title) body=\(body)")
         }
 
+        // We only treat content-available pushes as "silent push" signals
         guard contentAvailable else {
             completionHandler(.noData)
             return
         }
+
+        // IMPORTANT: mark receipt immediately so polling can be suppressed for the next 300s.
+        LASilentPushGate.markSilentPushReceived()
+        LogManager.shared.log(category: .liveactivities, message: "[LA] silent push received (gate marked)")
 
         let stateString: String
         switch application.applicationState {
@@ -159,17 +171,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         @unknown default: stateString = "UNKNOWN"
         }
 
-        LogManager.shared.log(category: .liveactivities, message: "Silent push wake state=\(stateString) at \(Date())")
+        LogManager.shared.log(category: .liveactivities, message: "Silent push wake state=\(stateString)")
 
-        // Optional sanity logging (don’t block on it)
-        let nsURL = NightscoutSettings.getBaseURL()
+        // Optional sanity logging (safe / non-sensitive)
+        let nsURLSet = (NightscoutSettings.getBaseURL() != nil)
         let nsTokenSet = (NightscoutSettings.getToken()?.isEmpty == false)
         LogManager.shared.log(
             category: .liveactivities,
-            message: "Silent push Nightscout config url=\(nsURL ?? "nil") tokenSet=\(nsTokenSet)"
+            message: "Silent push Nightscout config urlSet=\(nsURLSet) tokenSet=\(nsTokenSet)"
         )
 
-        guard nsURL != nil else {
+        guard nsURLSet else {
             LogManager.shared.log(category: .liveactivities, message: "Silent push aborted: Nightscout base URL nil")
             completionHandler(.failed)
             return
@@ -187,10 +199,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
 
             do {
-                LogManager.shared.log(category: .liveactivities, message: "Silent push -> refresh Nightscout")
+                // Your requirement: ALWAYS refresh on silent notifications.
                 try await NightscoutUpdater.shared.refreshData()
-
-                LogManager.shared.log(category: .liveactivities, message: "Silent push -> update Live Activity")
                 await LiveActivityManager.shared.refreshFromCurrentState(source: "silent_push")
 
                 LogManager.shared.log(category: .liveactivities, message: "Silent push completed")
@@ -201,7 +211,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
     }
-    
+
     // MARK: - UISceneSession Lifecycle
 
     func application(
@@ -348,8 +358,8 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        
-        // Avoid logging the entire userInfo dictionary; keys are enough for debugging
+        // Foreground presentation only (not the silent push signal).
+        // Keep logging minimal: keys are enough for debugging.
         let keys = Array(notification.request.content.userInfo.keys)
         LogManager.shared.log(category: .liveactivities, message: "Will present notification (keys): \(keys)")
         completionHandler([.banner, .sound, .badge])
