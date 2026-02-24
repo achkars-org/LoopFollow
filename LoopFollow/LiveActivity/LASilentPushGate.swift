@@ -2,25 +2,34 @@ import Foundation
 
 enum LASilentPushGate {
 
-    private static let key = "la.lastSilentPushReceivedAt"
-    private static let groupDefaults = UserDefaults(suiteName: AppGroupID.current) // your saved “Group ID” concept
+    private static let keyLastSilentPushAt = "la.lastSilentPushReceivedAt"
 
-    /// Call this as soon as a silent push arrives (before/around refresh).
-    static func markSilentPushReceived(now: Date = Date()) {
-        groupDefaults?.set(now.timeIntervalSince1970, forKey: key)
-        groupDefaults?.synchronize()
+    // Uses your dynamic App Group ID (preferred).
+    // If you don't have AppGroupID.current yet, see the fallback below.
+    private static var defaults: UserDefaults? {
+        UserDefaults(suiteName: AppGroupID.current)
     }
 
-    /// Returns seconds since the most recent silent push, or nil if never.
+    /// Call as soon as a silent push arrives.
+    static func markSilentPushReceived(now: Date = Date()) {
+        defaults?.set(now.timeIntervalSince1970, forKey: keyLastSilentPushAt)
+        defaults?.synchronize()
+    }
+
+    /// Returns age in seconds, or nil if we never received a silent push.
     static func secondsSinceLastSilentPush(now: Date = Date()) -> TimeInterval? {
-        guard let ts = groupDefaults?.object(forKey: key) as? Double else { return nil }
+        guard let ts = defaults?.object(forKey: keyLastSilentPushAt) as? Double else { return nil }
         return now.timeIntervalSince1970 - ts
     }
 
-    /// Polling should be suppressed if APNs is active and we got a silent push recently.
-    static func shouldSuppressPolling(apnsActive: Bool, windowSeconds: TimeInterval = 300) -> Bool {
-        guard apnsActive else { return false }
-        guard let age = secondsSinceLastSilentPush() else { return false }
+    /// True when a silent push was received within the suppression window.
+    static func shouldSuppressPolling(windowSeconds: TimeInterval = 300, now: Date = Date()) -> Bool {
+        guard let age = secondsSinceLastSilentPush(now: now) else { return false }
         return age >= 0 && age < windowSeconds
+    }
+
+    /// Optional: debugging / manual reset.
+    static func clear() {
+        defaults?.removeObject(forKey: keyLastSilentPushAt)
     }
 }
