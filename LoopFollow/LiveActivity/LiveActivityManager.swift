@@ -424,6 +424,7 @@ final class LiveActivityManager {
         if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
             current = existing
             attachStateObserver(to: existing)
+            LAHealthStore.setCurrentActivityId(existing.id)
             return existing
         }
 
