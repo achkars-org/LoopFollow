@@ -58,14 +58,24 @@ final class LiveActivityManager {
             return
         }
 
-        if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
+        // Reuse only an ACTIVE activity (never reuse ended/dismissed)
+        if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first(where: { $0.activityState == .active }) {
+        
             if current?.id != existing.id {
                 current = existing
                 attachStateObserver(to: existing)
-                log(.bind, source: "startIfNeeded", msg: "reuse id=\(existing.id)")
+                log(.bind, source: "startIfNeeded", msg: "reuse ACTIVE id=\(existing.id)")
             }
+        
             startWatchdogIfNeeded()
             return
+        }
+        
+        // If we have activities but none are active, log it (super useful)
+        let all = Activity<GlucoseLiveActivityAttributes>.activities
+        if !all.isEmpty {
+            let states = all.map { "\($0.id.suffix(6)):\($0.activityState)" }.joined(separator: ",")
+            log(.zombie, source: "startIfNeeded", msg: "no ACTIVE to reuse; existing=\(states)")
         }
 
         let attributes = GlucoseLiveActivityAttributes(title: "LoopFollow")
