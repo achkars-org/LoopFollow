@@ -6,16 +6,6 @@ import EventKit
 import UIKit
 import UserNotifications
 
-// MARK: - LoopFollow refresh bridge notifications
-
-extension Notification.Name {
-    /// Posted by AppDelegate on silent push to request a single refresh using LoopFollow’s normal pipeline.
-    static let loopFollowRefreshRequested = Notification.Name("loopfollow.refresh.requested")
-
-    /// Must be posted by the refresh owner (e.g., MainViewController / data pipeline) when it completes.
-    /// userInfo may include: ["ok": Bool]
-    static let loopFollowRefreshDidFinish = Notification.Name("loopfollow.refresh.didFinish")
-}
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
