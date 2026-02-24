@@ -12,28 +12,34 @@ extension MainViewController {
         }
     }
 
-    func bgTaskAction() {
-        // If anything goes wrong, try again in 60 seconds.
-        TaskScheduler.shared.rescheduleTask(
-            id: .fetchBG,
-            to: Date().addingTimeInterval(60)
-        )
+  func bgTaskAction() {
+    // If anything goes wrong, try again in 60 seconds.
+    TaskScheduler.shared.rescheduleTask(
+        id: .fetchBG,
+        to: Date().addingTimeInterval(60)
+    )
 
-        // If no Dexcom credentials and no Nightscout, schedule a retry in 60 seconds.
-        if Storage.shared.shareUserName.value == "",
-           Storage.shared.sharePassword.value == "",
-           !IsNightscoutEnabled()
-        {
-            return
-        }
-
-        // If Dexcom credentials exist, fetch from DexShare
-        if Storage.shared.shareUserName.value != "",
-           Storage.shared.sharePassword.value != ""
-        {
-            webLoadDexShare()
-        } else {
-            webLoadNSBGData()
-        }
+    // Suppress polling if a silent push was received recently (APNs effectively active).
+    if LASilentPushGate.shouldSuppressPolling(windowSeconds: 300) {
+        let age = Int(LASilentPushGate.secondsSinceLastSilentPush() ?? -1)
+        LogManager.shared.log(category: .liveactivities, message: "[POLL] suppressed (silentPushAge=\(age)s)")
+        return
     }
+
+    // ... existing logic unchanged ...
+    if Storage.shared.shareUserName.value == "",
+       Storage.shared.sharePassword.value == "",
+       !IsNightscoutEnabled()
+    {
+        return
+    }
+
+    if Storage.shared.shareUserName.value != "",
+       Storage.shared.sharePassword.value != ""
+    {
+        webLoadDexShare()
+    } else {
+        webLoadNSBGData()
+    }
+}
 }
