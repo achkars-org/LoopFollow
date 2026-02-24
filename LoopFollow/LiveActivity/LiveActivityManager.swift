@@ -54,6 +54,9 @@ final class LiveActivityManager {
 
     // MARK: - Start / Reuse
     func startIfNeeded() {
+        
+        log(.state, source: "startIfNeeded", msg: "activities count=\(Activity<GlucoseLiveActivityAttributes>.activities.count)")
+        
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             log(.zombie, source: "startIfNeeded", msg: "not authorized")
             return
