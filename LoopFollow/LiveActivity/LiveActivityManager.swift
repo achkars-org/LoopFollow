@@ -440,6 +440,7 @@ final class LiveActivityManager {
                 if state == .ended || state == .dismissed {
                     if current?.id == activity.id {
                         current = nil
+                        LAHealthStore.clearCurrentActivityId()
                         LogManager.shared.log(category: .liveactivities, message: "[LA] \(LAStage.state.rawValue) cleared current id=\(activity.id)")
                     }
                 }
