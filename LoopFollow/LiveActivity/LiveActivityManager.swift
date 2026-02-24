@@ -196,8 +196,9 @@ final class LiveActivityManager {
             let now = Date()
             let epoch = Int(now.timeIntervalSince1970)
 
-            let debug = "\(LAStage.updAttempt.rawValue) src=\(source) #\(self.seq)"
-
+            let idSuffix = String(activity.id.suffix(6))
+            let debug = "\(LAStage.updAttempt.rawValue) src=\(source) #\(self.seq) id=\(idSuffix)"
+            
             let state = GlucoseLiveActivityAttributes.ContentState(
                 glucoseMmol: glucose,
                 previousGlucoseMmol: previous,
