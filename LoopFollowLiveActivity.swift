@@ -269,14 +269,16 @@ private enum LAFormat {
 
 // MARK: - Threshold-driven colors (Option A)
 
+// MARK: - Threshold-driven colors (Option A, App Group-backed)
+
 private enum LAColors {
 
-    /// Uses Storage.shared.lowLine/highLine (mg/dL) for threshold comparison.
-    /// Snapshot may be mg/dL or mmol; we compare in mg/dL by converting if needed.
     static func backgroundTint(for snapshot: GlucoseSnapshot) -> Color {
         let mgdl = toMgdl(snapshot)
-        let low = Storage.shared.lowLine.value
-        let high = Storage.shared.highLine.value
+
+        let t = LAAppGroupSettings.thresholdsMgdl()
+        let low = t.low
+        let high = t.high
 
         if mgdl < low {
             return Color(uiColor: UIColor.systemRed).opacity(0.55)
@@ -289,8 +291,10 @@ private enum LAColors {
 
     static func keyline(for snapshot: GlucoseSnapshot) -> Color {
         let mgdl = toMgdl(snapshot)
-        let low = Storage.shared.lowLine.value
-        let high = Storage.shared.highLine.value
+
+        let t = LAAppGroupSettings.thresholdsMgdl()
+        let low = t.low
+        let high = t.high
 
         if mgdl < low {
             return Color(uiColor: UIColor.systemRed)
@@ -306,8 +310,8 @@ private enum LAColors {
         case .mgdl:
             return snapshot.glucose
         case .mmol:
-            // Convert mmol/L -> mg/dL for threshold comparison
-            return GlucoseUnitConversion.convertGlucose(snapshot.glucose, from: .mmol, to: .mgdl)
+            // Convert mmol/L → mg/dL for threshold comparison
+            return snapshot.glucose * 18.0
         }
     }
 }
