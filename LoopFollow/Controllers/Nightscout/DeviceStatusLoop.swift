@@ -121,4 +121,31 @@ extension MainViewController {
             }
         }
     }
+    
+    // MARK: - Commit raw Device Status state (authoritative, non-UI)
+
+    // IOB / COB are already parsed into latestIOB / latestCOB in this method.
+    // Persist raw numeric values for cross-platform consumers (Live Activity / Watch / CarPlay).
+    Storage.shared.lastIOB.value = latestIOB?.value
+    Storage.shared.lastCOB.value = latestCOB?.value
+    
+    // Projected BG: persist the *latest* predicted value (mg/dL) if available.
+    if let predictdata = lastLoopRecord["predicted"] as? [String: AnyObject],
+       let values = predictdata["values"] as? [Double],
+       let last = values.last {
+        Storage.shared.projectedBgMgdl.value = last
+    } else {
+        Storage.shared.projectedBgMgdl.value = nil
+    }
+    
+    LogManager.shared.log(
+        category: .deviceStatus,
+        message: "Committed DeviceStatus iob=\(Storage.shared.lastIOB.value?.description ?? "nil") cob=\(Storage.shared.lastCOB.value?.description ?? "nil") proj=\(Storage.shared.projectedBgMgdl.value?.description ?? "nil")",
+        isDebug: true
+    )
+    
+    // Trigger Live Activity refresh from canonical Storage-backed state
+    if #available(iOS 16.1, *) {
+        LiveActivityManager.shared.refreshFromCurrentState(reason: "deviceStatus")
+    }
 }
