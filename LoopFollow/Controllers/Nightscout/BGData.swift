@@ -5,79 +5,59 @@ import Foundation
 import UIKit
 
 extension MainViewController {
-    func webLoadDexShare(
-        completion: ((Bool) -> Void)? = nil
-    ) {
+    // Dex Share Web Call
+    func webLoadDexShare() {
         // Dexcom Share only returns 24 hrs of data as of now
         // Requesting more just for consistency with NS
         let graphHours = 24 * Storage.shared.downloadDays.value
         let count = graphHours * 12
-    
-        // ✅ CRITICAL: if dexShare is nil, we must complete (or fallback) or silent push can hang.
-        guard let dexShare = dexShare else {
-            LogManager.shared.log(category: .dexcom, message: "DexShare client is nil; falling back to Nightscout", limitIdentifier: "DexShare client is nil")
-            self.webLoadNSBGData(completion: completion)
-            return
-        }
-    
-        dexShare.fetchData(count) { err, result in
+        dexShare?.fetchData(count) { err, result in
             if let error = err {
                 LogManager.shared.log(category: .dexcom, message: "Error fetching Dexcom data: \(error.localizedDescription)", limitIdentifier: "Error fetching Dexcom data")
-                // Fall back to NS; forward completion.
-                self.webLoadNSBGData(completion: completion)
+                self.webLoadNSBGData()
                 return
             }
-    
+
             guard let data = result, !data.isEmpty else {
                 LogManager.shared.log(category: .dexcom, message: "Received empty data array from Dexcom", limitIdentifier: "Received empty data array from Dexcom")
-                // Fall back to NS; forward completion.
-                self.webLoadNSBGData(completion: completion)
+                self.webLoadNSBGData()
                 return
             }
-    
+
             // If Dex data is old, load from NS instead
             let latestDate = data[0].date
             let now = dateTimeUtils.getNowTimeIntervalUTC()
             if (latestDate + 330) < now, IsNightscoutEnabled() {
                 LogManager.shared.log(category: .dexcom, message: "Dexcom data is old, loading from NS instead", limitIdentifier: "Dexcom data is old, loading from NS instead")
-                // Fall back to NS; forward completion.
-                self.webLoadNSBGData(completion: completion)
+                self.webLoadNSBGData()
                 return
             }
-    
+
             // Dexcom only returns 24 hrs of data. If we need more, call NS.
             if graphHours > 24, IsNightscoutEnabled() {
-                self.webLoadNSBGData(dexData: data, completion: completion)
+                self.webLoadNSBGData(dexData: data)
             } else {
-                // ✅ Keep threading consistent with NS path
-                DispatchQueue.main.async {
-                    self.ProcessDexBGData(data: data, sourceName: "Dexcom")
-                    completion?(true)
-                }
+                self.ProcessDexBGData(data: data, sourceName: "Dexcom")
             }
         }
     }
-    
-    
+
     // NS BG Data Web call
-    func webLoadNSBGData(
-        dexData: [ShareGlucoseData] = [],
-        completion: ((Bool) -> Void)? = nil
-    ) {
-        // If Nightscout isn't enabled, we can't refresh NS.
+    func webLoadNSBGData(dexData: [ShareGlucoseData] = []) {
+        // This kicks it out in the instance where dexcom fails but they aren't using NS &&
         if !IsNightscoutEnabled() {
             Storage.shared.lastBGChecked.value = Date()
-            // If caller supplied Dex data, we still refreshed BG state (via Dex path).
-            completion?(!dexData.isEmpty)
             return
         }
-    
+
         var parameters: [String: String] = [:]
         let date = Calendar.current.date(byAdding: .day, value: -1 * Storage.shared.downloadDays.value, to: Date())!
         parameters["count"] = "\(Storage.shared.downloadDays.value * 2 * 24 * 60 / 5)"
         parameters["find[date][$gte]"] = "\(Int(date.timeIntervalSince1970 * 1000))"
-        parameters["find[type][$ne]"] = "cal" // Exclude 'cal' entries
-    
+
+        // Exclude 'cal' entries
+        parameters["find[type][$ne]"] = "cal"
+
         NightscoutUtils.executeRequest(eventType: .sgv, parameters: parameters) { (result: Result<[ShareGlucoseData], Error>) in
             switch result {
             case let .success(entriesResponse):
@@ -85,25 +65,24 @@ extension MainViewController {
                 DispatchQueue.main.async {
                     // transform NS data to look like Dex data
                     for i in 0 ..< nsData.count {
+                        // convert the NS timestamp to seconds instead of milliseconds
                         nsData[i].date /= 1000
-                        nsData[i].date.round(.toNearestOrEven)
+                        nsData[i].date.round(FloatingPointRoundingRule.toNearestOrEven)
                     }
-    
+
                     var nsData2: [ShareGlucoseData] = []
                     var lastAddedTime = Double.infinity
                     var lastAddedSGV: Int?
                     let minInterval: Double = 30
-    
+
                     for reading in nsData {
-                        if (lastAddedSGV == nil || lastAddedSGV != reading.sgv) ||
-                            (lastAddedTime - reading.date >= minInterval)
-                        {
+                        if (lastAddedSGV == nil || lastAddedSGV != reading.sgv) || (lastAddedTime - reading.date >= minInterval) {
                             nsData2.append(reading)
                             lastAddedTime = reading.date
                             lastAddedSGV = reading.sgv
                         }
                     }
-    
+
                     // merge NS and Dex data if needed; use recent Dex data and older NS data
                     var sourceName = "Nightscout"
                     if !dexData.isEmpty {
@@ -116,28 +95,24 @@ extension MainViewController {
                         nsData2 = dexData + nsData2
                         sourceName = "Dexcom"
                     }
-    
+                    // trigger the processor for the data after downloading.
                     self.ProcessDexBGData(data: nsData2, sourceName: sourceName)
-                    completion?(true)
                 }
-    
             case let .failure(error):
                 LogManager.shared.log(category: .nightscout, message: "Failed to fetch bg data: \(error)", limitIdentifier: "Failed to fetch bg data")
-    
                 DispatchQueue.main.async {
-                    TaskScheduler.shared.rescheduleTask(id: .fetchBG, to: Date().addingTimeInterval(10))
+                    TaskScheduler.shared.rescheduleTask(
+                        id: .fetchBG,
+                        to: Date().addingTimeInterval(10)
+                    )
                 }
-    
-                // If we have Dex data, use it (still a successful refresh of BG state).
+                // if we have Dex data, use it
                 if !dexData.isEmpty {
-                    DispatchQueue.main.async {
-                        self.ProcessDexBGData(data: dexData, sourceName: "Dexcom")
-                        completion?(true)
-                    }
+                    self.ProcessDexBGData(data: dexData, sourceName: "Dexcom")
                 } else {
                     Storage.shared.lastBGChecked.value = Date()
-                    completion?(false)
                 }
+                return
             }
         }
     }
