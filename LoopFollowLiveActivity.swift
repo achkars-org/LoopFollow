@@ -18,7 +18,7 @@ struct LoopFollowLiveActivityWidget: Widget {
             LockScreenLiveActivityView(state: context.state)
                 .activitySystemActionForegroundColor(.white)
                 .activityBackgroundTint(LAColors.backgroundTint(for: context.state.snapshot))
-        } dynamicIsland: { context in
+                .applyActivityContentMarginsFixIfAvailable()        } dynamicIsland: { context in
             // DYNAMIC ISLAND UI
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -38,6 +38,17 @@ struct LoopFollowLiveActivityWidget: Widget {
                 DynamicIslandMinimalView(snapshot: context.state.snapshot)
             }
             .keylineTint(LAColors.keyline(for: context.state.snapshot))
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyActivityContentMarginsFixIfAvailable() -> some View {
+        if #available(iOS 17.0, *) {
+            self.contentMargins(.all, 0, for: .activity)
+        } else {
+            self
         }
     }
 }
