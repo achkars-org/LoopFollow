@@ -180,6 +180,7 @@ private struct DynamicIslandCompactLeadingView: View {
     var body: some View {
         Text(LAFormat.glucose(snapshot))
             .font(.system(size: 16, weight: .bold, design: .rounded))
+            .monospacedDigit()
             .foregroundStyle(.white)
     }
 }
@@ -200,6 +201,7 @@ private struct DynamicIslandMinimalView: View {
     var body: some View {
         Text(LAFormat.glucose(snapshot))
             .font(.system(size: 14, weight: .bold, design: .rounded))
+            .monospacedDigit()
             .foregroundStyle(.white)
     }
 }
