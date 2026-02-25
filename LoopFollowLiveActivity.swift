@@ -208,29 +208,37 @@ private struct DynamicIslandMinimalView: View {
 
 private enum LAFormat {
 
+    // MARK: Glucose
+
     static func glucose(_ s: GlucoseSnapshot) -> String {
         switch s.unit {
         case .mgdl:
             return String(Int(round(s.glucose)))
         case .mmol:
+            // 1 decimal always (contract: clinical, consistent)
             return String(format: "%.1f", s.glucose)
         }
     }
 
     static func delta(_ s: GlucoseSnapshot) -> String {
-        let d = s.delta
-        // Show sign; if effectively zero, show +0 / 0 with unit-consistent precision.
         switch s.unit {
         case .mgdl:
-            let v = Int(round(d))
-            return v >= 0 ? "+\(v)" : "\(v)"
+            let v = Int(round(s.delta))
+            if v == 0 { return "0" }
+            return v > 0 ? "+\(v)" : "\(v)"
+
         case .mmol:
-            let rounded = (abs(d) < 0.05) ? 0.0 : d
-            return rounded >= 0 ? String(format: "+%.1f", rounded) : String(format: "%.1f", rounded)
+            // Treat tiny fluctuations as 0.0 to avoid “+0.0” noise
+            let d = (abs(s.delta) < 0.05) ? 0.0 : s.delta
+            if d == 0 { return "0.0" }
+            return d > 0 ? String(format: "+%.1f", d) : String(format: "%.1f", d)
         }
     }
 
+    // MARK: Trend
+
     static func trendArrow(_ s: GlucoseSnapshot) -> String {
+        // Map to the common clinical arrows; keep unknown as a neutral dash.
         switch s.trend {
         case .upFast: return "↑↑"
         case .up: return "↑"
@@ -241,14 +249,18 @@ private enum LAFormat {
         }
     }
 
+    // MARK: Secondary
+
     static func iob(_ s: GlucoseSnapshot) -> String {
         guard let v = s.iob else { return "—" }
+        // Contract-friendly: one decimal, no unit suffix
         return String(format: "%.1f", v)
     }
 
     static func cob(_ s: GlucoseSnapshot) -> String {
         guard let v = s.cob else { return "—" }
-        return String(format: "%.0f", v)
+        // Contract-friendly: whole grams
+        return String(Int(round(v)))
     }
 
     static func projected(_ s: GlucoseSnapshot) -> String {
@@ -261,13 +273,14 @@ private enum LAFormat {
         }
     }
 
+    // MARK: Update time
+
     static func updated(_ s: GlucoseSnapshot) -> String {
+        // Contract: show minutes since reading, rounded down (0m, 1m, …)
         let minutes = max(0, Int(Date().timeIntervalSince(s.updatedAt) / 60))
         return "\(minutes)m"
     }
 }
-
-// MARK: - Threshold-driven colors (Option A)
 
 // MARK: - Threshold-driven colors (Option A, App Group-backed)
 
