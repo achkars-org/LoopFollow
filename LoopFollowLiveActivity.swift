@@ -43,7 +43,6 @@ struct LoopFollowLiveActivityWidget: Widget {
 }
 
 // MARK: - Lock Screen Contract View
-
 @available(iOS 16.1, *)
 private struct LockScreenLiveActivityView: View {
 
@@ -52,26 +51,29 @@ private struct LockScreenLiveActivityView: View {
     var body: some View {
         let s = state.snapshot
 
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
 
-            // LEFT: Dominant glucose block
+            // LEFT: Dominant glucose block (fixed proportion)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(LAFormat.glucose(s))
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .font(.system(size: 46, weight: .bold, design: .rounded))
+                        .monospacedDigit()
                         .foregroundStyle(.white)
 
                     Text(LAFormat.trendArrow(s))
                         .font(.system(size: 22, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.95))
-                        .padding(.top, 4)
+                        .padding(.top, 3)
                 }
 
                 Text(LAFormat.delta(s))
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
                     .foregroundStyle(.white.opacity(0.95))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: 170, alignment: .leading) // dominant left block
+            .layoutPriority(2)
 
             // Divider
             Rectangle()
@@ -79,21 +81,26 @@ private struct LockScreenLiveActivityView: View {
                 .frame(width: 1)
                 .padding(.vertical, 6)
 
-            // RIGHT: 2×2 metrics grid (IOB/COB | Proj/Upd)
+            // RIGHT: true 2×2 metrics grid
             VStack(spacing: 10) {
-                HStack(spacing: 18) {
+                HStack(spacing: 16) {
                     MetricBlock(label: "IOB", value: LAFormat.iob(s))
                     MetricBlock(label: "COB", value: LAFormat.cob(s))
                 }
-                HStack(spacing: 18) {
+                HStack(spacing: 16) {
                     MetricBlock(label: "Proj", value: LAFormat.projected(s))
                     MetricBlock(label: "Upd", value: LAFormat.updated(s))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
@@ -107,11 +114,15 @@ private struct MetricBlock: View {
             Text(label)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.78))
+
             Text(value)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
+                .monospacedDigit()
                 .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
-        .frame(minWidth: 58, alignment: .leading)
+        .frame(width: 64, alignment: .leading) // consistent 2×2 columns
     }
 }
 
