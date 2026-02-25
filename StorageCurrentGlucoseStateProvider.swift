@@ -7,13 +7,12 @@
 
 import Foundation
 
-/// Reads the latest glucose state from LoopFollow’s existing single source of truth (Storage/Observable).
+/// Reads the latest glucose state from LoopFollow’s existing single source of truth.
 /// Provider remains source-agnostic (Nightscout vs Dexcom).
 struct StorageCurrentGlucoseStateProvider: CurrentGlucoseStateProviding {
 
     var glucoseMgdl: Double? {
-        // Observable.shared.bg.value is raw mg/dL (set in viewUpdateNSBG today).
-        // If you later migrate to a Storage raw BG value, change only here.
+        // Observable.shared.bg.value is raw mg/dL (Int) set by LoopFollow’s BG refresh pipeline.
         let bg = Observable.shared.bg.value
         return bg > 0 ? Double(bg) : nil
     }
@@ -23,28 +22,23 @@ struct StorageCurrentGlucoseStateProvider: CurrentGlucoseStateProviding {
     }
 
     var projectedMgdl: Double? {
-        let v = Storage.shared.projectedBgMgdl.value
-        return v >= 0 ? v : nil
+        Storage.shared.projectedBgMgdl.value
     }
 
     var updatedAt: Date? {
-        let t = Storage.shared.lastBgReadingTimeSeconds.value
-        guard t > 0 else { return nil }
+        guard let t = Storage.shared.lastBgReadingTimeSeconds.value else { return nil }
         return Date(timeIntervalSince1970: t)
     }
 
     var trendCode: String? {
-        let s = Storage.shared.lastTrendCode.value
-        return s.isEmpty ? nil : s
+        Storage.shared.lastTrendCode.value
     }
 
     var iob: Double? {
-        let v = Storage.shared.lastIOB.value
-        return v >= 0 ? v : nil
+        Storage.shared.lastIOB.value
     }
 
     var cob: Double? {
-        let v = Storage.shared.lastCOB.value
-        return v >= 0 ? v : nil
+        Storage.shared.lastCOB.value
     }
 }
