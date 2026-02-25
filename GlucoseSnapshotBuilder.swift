@@ -70,23 +70,19 @@ enum GlucoseSnapshotBuilder {
     }
 
     private static func mapTrend(_ code: String?) -> GlucoseSnapshot.Trend {
-        guard let code = code?.lowercased() else { return .unknown }
-
-        // These mappings are intentionally conservative.
-        // We’ll align them to LoopFollow’s exact trend representation once you show me the source-of-truth values.
-        switch code {
-        case "up", "singleup", "up1":
-            return .up
-        case "doubleup", "up2", "upfast":
-            return .upFast
-        case "flat", "steady":
-            return .flat
-        case "down", "singledown", "down1":
-            return .down
-        case "doubledown", "down2", "downfast":
-            return .downFast
-        default:
-            return .unknown
-        }
+        guard let raw = code?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !raw.isEmpty else { return .unknown }
+    
+        // Common Nightscout strings: "Flat", "FortyFiveUp", "SingleUp", "DoubleUp", "SingleDown", "DoubleDown"
+        // Common variants: "rising", "falling", "rapidRise", "rapidFall"
+        if raw.contains("doubleup") || raw.contains("rapidrise") || raw == "up2" || raw == "upfast" { return .upFast }
+        if raw.contains("singleup") || raw.contains("fortyfiveup") || raw == "up" || raw == "up1" || raw == "rising" { return .up }
+    
+        if raw.contains("flat") || raw == "steady" || raw == "none" { return .flat }
+    
+        if raw.contains("doubledown") || raw.contains("rapidfall") || raw == "down2" || raw == "downfast" { return .downFast }
+        if raw.contains("singledown") || raw.contains("fortyfivedown") || raw == "down" || raw == "down1" || raw == "falling" { return .down }
+    
+        return .unknown
     }
 }
