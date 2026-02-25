@@ -1,5 +1,9 @@
-// LoopFollow
-// DeviceStatusLoop.swift
+//
+//  DeviceStatusLoop.swift
+//  LoopFollow
+//
+//  Created by Philippe Achkar on 2026-02-24.
+//
 
 import Charts
 import Foundation
@@ -7,6 +11,7 @@ import HealthKit
 import UIKit
 
 extension MainViewController {
+
     func DeviceStatusLoop(formatter: ISO8601DateFormatter, lastLoopRecord: [String: AnyObject]) {
         Storage.shared.device.value = "Loop"
 
@@ -17,135 +22,161 @@ extension MainViewController {
         let previousLastLoopTime = Observable.shared.previousAlertLastLoopTime.value ?? 0
         let lastLoopTime = Observable.shared.alertLastLoopTime.value ?? 0
 
+        // Failure case: Loop did not provide valid device status
         if lastLoopRecord["failureReason"] != nil {
             LoopStatusLabel.text = "X"
             latestLoopStatusString = "X"
-        } else {
-            var wasEnacted = false
-            if lastLoopRecord["enacted"] is [String: AnyObject] {
-                wasEnacted = true
+
+            // MARK: - Commit raw Device Status state (failure)
+
+            // If you prefer to keep last-known-good values on failure, remove these three lines.
+            Storage.shared.lastIOB.value = nil
+            Storage.shared.lastCOB.value = nil
+            Storage.shared.projectedBgMgdl.value = nil
+
+            LogManager.shared.log(
+                category: .deviceStatus,
+                message: "Committed DeviceStatus (failure) iob=nil cob=nil proj=nil",
+                isDebug: true
+            )
+
+            if #available(iOS 16.1, *) {
+                LiveActivityManager.shared.refreshFromCurrentState(reason: "deviceStatus")
             }
 
-            // ISF
-            let profileISF = profileManager.currentISF()
-            if let profileISF = profileISF {
-                infoManager.updateInfoData(type: .isf, value: profileISF)
-            }
+            return
+        }
 
-            // Carb Ratio (CR)
-            let profileCR = profileManager.currentCarbRatio()
-            if let profileCR = profileCR {
-                infoManager.updateInfoData(type: .carbRatio, value: profileCR)
-            }
+        var wasEnacted = false
+        if lastLoopRecord["enacted"] is [String: AnyObject] {
+            wasEnacted = true
+        }
 
-            // Target
-            let profileTargetLow = profileManager.currentTargetLow()
-            let profileTargetHigh = profileManager.currentTargetHigh()
+        // ISF
+        let profileISF = profileManager.currentISF()
+        if let profileISF = profileISF {
+            infoManager.updateInfoData(type: .isf, value: profileISF)
+        }
 
-            if let profileTargetLow = profileTargetLow, let profileTargetHigh = profileTargetHigh, profileTargetLow != profileTargetHigh {
-                infoManager.updateInfoData(type: .target, firstValue: profileTargetLow, secondValue: profileTargetHigh, separator: .dash)
-            } else if let profileTargetLow = profileTargetLow {
-                infoManager.updateInfoData(type: .target, value: profileTargetLow)
-            }
+        // Carb Ratio (CR)
+        let profileCR = profileManager.currentCarbRatio()
+        if let profileCR = profileCR {
+            infoManager.updateInfoData(type: .carbRatio, value: profileCR)
+        }
 
-            // IOB
-            if let insulinMetric = InsulinMetric(from: lastLoopRecord["iob"], key: "iob") {
-                infoManager.updateInfoData(type: .iob, value: insulinMetric)
-                latestIOB = insulinMetric
-            }
+        // Target
+        let profileTargetLow = profileManager.currentTargetLow()
+        let profileTargetHigh = profileManager.currentTargetHigh()
 
-            // COB
-            if let cobMetric = CarbMetric(from: lastLoopRecord["cob"], key: "cob") {
-                infoManager.updateInfoData(type: .cob, value: cobMetric)
-                latestCOB = cobMetric
-            }
+        if let profileTargetLow = profileTargetLow,
+           let profileTargetHigh = profileTargetHigh,
+           profileTargetLow != profileTargetHigh
+        {
+            infoManager.updateInfoData(type: .target, firstValue: profileTargetLow, secondValue: profileTargetHigh, separator: .dash)
+        } else if let profileTargetLow = profileTargetLow {
+            infoManager.updateInfoData(type: .target, value: profileTargetLow)
+        }
 
-            if let predictdata = lastLoopRecord["predicted"] as? [String: AnyObject] {
-                let prediction = predictdata["values"] as! [Double]
-                PredictionLabel.text = Localizer.toDisplayUnits(String(Int(prediction.last!)))
-                PredictionLabel.textColor = UIColor.systemPurple
-                if Storage.shared.downloadPrediction.value, previousLastLoopTime < lastLoopTime {
-                    predictionData.removeAll()
-                    var predictionTime = lastLoopTime
-                    let toLoad = Int(Storage.shared.predictionToLoad.value * 12)
-                    var i = 0
-                    while i <= toLoad {
-                        if i < prediction.count {
-                            let sgvValue = Int(round(prediction[i]))
-                            // Skip values higher than 600
-                            if sgvValue <= 600 {
-                                let prediction = ShareGlucoseData(sgv: sgvValue, date: predictionTime, direction: "flat")
-                                predictionData.append(prediction)
-                            }
-                            predictionTime += 300
-                        }
-                        i += 1
-                    }
+        // IOB
+        if let insulinMetric = InsulinMetric(from: lastLoopRecord["iob"], key: "iob") {
+            infoManager.updateInfoData(type: .iob, value: insulinMetric)
+            latestIOB = insulinMetric
+        }
 
-                    if let predMin = prediction.min(), let predMax = prediction.max() {
-                        let formattedMin = Localizer.toDisplayUnits(String(predMin))
-                        let formattedMax = Localizer.toDisplayUnits(String(predMax))
-                        let value = "\(formattedMin)/\(formattedMax)"
-                        infoManager.updateInfoData(type: .minMax, value: value)
-                    }
+        // COB
+        if let cobMetric = CarbMetric(from: lastLoopRecord["cob"], key: "cob") {
+            infoManager.updateInfoData(type: .cob, value: cobMetric)
+            latestCOB = cobMetric
+        }
 
-                    updatePredictionGraph()
-                }
-            } else {
+        // Predicted glucose
+        if let predictdata = lastLoopRecord["predicted"] as? [String: AnyObject] {
+            let prediction = predictdata["values"] as! [Double]
+            PredictionLabel.text = Localizer.toDisplayUnits(String(Int(prediction.last!)))
+            PredictionLabel.textColor = UIColor.systemPurple
+
+            if Storage.shared.downloadPrediction.value, previousLastLoopTime < lastLoopTime {
                 predictionData.removeAll()
-                infoManager.clearInfoData(type: .minMax)
+                var predictionTime = lastLoopTime
+                let toLoad = Int(Storage.shared.predictionToLoad.value * 12)
+                var i = 0
+                while i <= toLoad {
+                    if i < prediction.count {
+                        let sgvValue = Int(round(prediction[i]))
+
+                        // Skip values higher than 600
+                        if sgvValue <= 600 {
+                            let predictionPoint = ShareGlucoseData(sgv: sgvValue, date: predictionTime, direction: "flat")
+                            predictionData.append(predictionPoint)
+                        }
+                        predictionTime += 300
+                    }
+                    i += 1
+                }
+
+                if let predMin = prediction.min(), let predMax = prediction.max() {
+                    let formattedMin = Localizer.toDisplayUnits(String(predMin))
+                    let formattedMax = Localizer.toDisplayUnits(String(predMax))
+                    let value = "\(formattedMin)/\(formattedMax)"
+                    infoManager.updateInfoData(type: .minMax, value: value)
+                }
+
                 updatePredictionGraph()
             }
-            if let recBolus = lastLoopRecord["recommendedBolus"] as? Double {
-                let formattedRecBolus = String(format: "%.2fU", recBolus)
-                infoManager.updateInfoData(type: .recBolus, value: formattedRecBolus)
-                Observable.shared.deviceRecBolus.value = recBolus
-            }
-            if let loopStatus = lastLoopRecord["recommendedTempBasal"] as? [String: AnyObject] {
-                if let tempBasalTime = formatter.date(from: (loopStatus["timestamp"] as! String))?.timeIntervalSince1970 {
-                    var lastBGTime = lastLoopTime
-                    if bgData.count > 0 {
-                        lastBGTime = bgData[bgData.count - 1].date
-                    }
-                    if tempBasalTime > lastBGTime, !wasEnacted {
-                        LoopStatusLabel.text = "⏀"
-                        latestLoopStatusString = "⏀"
-                    } else {
-                        LoopStatusLabel.text = "↻"
-                        latestLoopStatusString = "↻"
-                    }
-                }
-            } else {
-                LoopStatusLabel.text = "↻"
-                latestLoopStatusString = "↻"
-            }
+        } else {
+            predictionData.removeAll()
+            infoManager.clearInfoData(type: .minMax)
+            updatePredictionGraph()
         }
-    }
-    
-    // MARK: - Commit raw Device Status state (authoritative, non-UI)
 
-    // IOB / COB are already parsed into latestIOB / latestCOB in this method.
-    // Persist raw numeric values for cross-platform consumers (Live Activity / Watch / CarPlay).
-    Storage.shared.lastIOB.value = latestIOB?.value
-    Storage.shared.lastCOB.value = latestCOB?.value
-    
-    // Projected BG: persist the *latest* predicted value (mg/dL) if available.
-    if let predictdata = lastLoopRecord["predicted"] as? [String: AnyObject],
-       let values = predictdata["values"] as? [Double],
-       let last = values.last {
-        Storage.shared.projectedBgMgdl.value = last
-    } else {
-        Storage.shared.projectedBgMgdl.value = nil
-    }
-    
-    LogManager.shared.log(
-        category: .deviceStatus,
-        message: "Committed DeviceStatus iob=\(Storage.shared.lastIOB.value?.description ?? "nil") cob=\(Storage.shared.lastCOB.value?.description ?? "nil") proj=\(Storage.shared.projectedBgMgdl.value?.description ?? "nil")",
-        isDebug: true
-    )
-    
-    // Trigger Live Activity refresh from canonical Storage-backed state
-    if #available(iOS 16.1, *) {
-        LiveActivityManager.shared.refreshFromCurrentState(reason: "deviceStatus")
+        if let recBolus = lastLoopRecord["recommendedBolus"] as? Double {
+            let formattedRecBolus = String(format: "%.2fU", recBolus)
+            infoManager.updateInfoData(type: .recBolus, value: formattedRecBolus)
+            Observable.shared.deviceRecBolus.value = recBolus
+        }
+
+        if let loopStatus = lastLoopRecord["recommendedTempBasal"] as? [String: AnyObject] {
+            if let tempBasalTime = formatter.date(from: (loopStatus["timestamp"] as! String))?.timeIntervalSince1970 {
+                var lastBGTime = lastLoopTime
+                if bgData.count > 0 {
+                    lastBGTime = bgData[bgData.count - 1].date
+                }
+
+                if tempBasalTime > lastBGTime, !wasEnacted {
+                    LoopStatusLabel.text = "⏀"
+                    latestLoopStatusString = "⏀"
+                } else {
+                    LoopStatusLabel.text = "↻"
+                    latestLoopStatusString = "↻"
+                }
+            }
+        } else {
+            LoopStatusLabel.text = "↻"
+            latestLoopStatusString = "↻"
+        }
+
+        // MARK: - Commit raw Device Status state (authoritative, non-UI)
+
+        // NOTE: Assumes InsulinMetric / CarbMetric expose `.value` as Double.
+        // If your metric types use a different property name, replace `.value` accordingly.
+        Storage.shared.lastIOB.value = latestIOB?.value
+        Storage.shared.lastCOB.value = latestCOB?.value
+
+        if let predictdata = lastLoopRecord["predicted"] as? [String: AnyObject],
+           let values = predictdata["values"] as? [Double] {
+            Storage.shared.projectedBgMgdl.value = values.last
+        } else {
+            Storage.shared.projectedBgMgdl.value = nil
+        }
+
+        LogManager.shared.log(
+            category: .deviceStatus,
+            message: "Committed DeviceStatus iob=\(Storage.shared.lastIOB.value?.description ?? "nil") cob=\(Storage.shared.lastCOB.value?.description ?? "nil") proj=\(Storage.shared.projectedBgMgdl.value?.description ?? "nil")",
+            isDebug: true
+        )
+
+        if #available(iOS 16.1, *) {
+            LiveActivityManager.shared.refreshFromCurrentState(reason: "deviceStatus")
+        }
     }
 }
