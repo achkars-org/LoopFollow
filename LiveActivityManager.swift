@@ -166,40 +166,67 @@ final class LiveActivityManager {
         update(snapshot: snapshot, reason: reason)
     }
 
-    // MARK: - Update
-
     /// Updates the Live Activity content. Safe to call repeatedly; only latest update is applied.
     func update(snapshot: GlucoseSnapshot, reason: String) {
         // Bind to an existing activity if we lost our reference (e.g. app relaunched)
         if current == nil, let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
             bind(to: existing, logReason: "bind-existing")
         }
-
+    
         guard let activity = current else {
-            LogManager.shared.log(category: .general, message: "LA update skipped (no activity) reason=\(reason)", isDebug: true)
+            LogManager.shared.log(
+                category: .general,
+                message: "LA update skipped (no activity) reason=\(reason)",
+                isDebug: true
+            )
             return
         }
-
+    
         // Cancel any in-flight update and apply only the latest
         updateTask?.cancel()
-
+    
         seq += 1
         let nextSeq = seq
-
+        let activityID = activity.id
+    
         let state = GlucoseLiveActivityAttributes.ContentState(
             snapshot: snapshot,
             seq: nextSeq,
             reason: reason,
             producedAt: Date()
         )
-
-        updateTask = Task {
+    
+        updateTask = Task { [weak self] in
+            guard let self else { return }
+    
+            // If the activity ended/dismissed between scheduling and execution, bail.
+            // (ActivityKit often no-ops, but we avoid noisy logs.)
+            if activity.activityState == .ended || activity.activityState == .dismissed {
+                LogManager.shared.log(
+                    category: .general,
+                    message: "LA update skipped (activity not active) id=\(activityID) state=\(activity.activityState) reason=\(reason)",
+                    isDebug: true
+                )
+                if self.current?.id == activityID { self.current = nil }
+                return
+            }
+    
             let content = ActivityContent(state: state, staleDate: nil)
+    
+            // iOS 16.1+ update is async; it may throw or be cancelled.
+            // If this task was cancelled, do not log success.
+            if Task.isCancelled { return }
+    
             await activity.update(content)
-
+    
+            if Task.isCancelled { return }
+    
+            // If current has moved on to another activity, don't claim success for the old one.
+            guard self.current?.id == activityID else { return }
+    
             LogManager.shared.log(
                 category: .general,
-                message: "LA updated id=\(activity.id) seq=\(nextSeq) reason=\(reason)",
+                message: "LA updated id=\(activityID) seq=\(nextSeq) reason=\(reason)",
                 isDebug: true
             )
         }
