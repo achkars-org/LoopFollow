@@ -64,7 +64,7 @@ private struct LockScreenLiveActivityView: View {
 
         HStack(spacing: 12) {
 
-            // LEFT: Dominant glucose block (fixed proportion)
+            // LEFT: Dominant glucose block (dominant but not “boxed”)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(LAFormat.glucose(s))
@@ -83,16 +83,16 @@ private struct LockScreenLiveActivityView: View {
                     .monospacedDigit()
                     .foregroundStyle(.white.opacity(0.95))
             }
-            .frame(width: 170, alignment: .leading) // dominant left block
+            .frame(width: 168, alignment: .leading)
             .layoutPriority(2)
 
-            // Divider
+            // Divider (subtle, clinical)
             Rectangle()
-                .fill(Color.white.opacity(0.22))
+                .fill(Color.white.opacity(0.20))
                 .frame(width: 1)
-                .padding(.vertical, 6)
+                .padding(.vertical, 8)
 
-            // RIGHT: true 2×2 metrics grid
+            // RIGHT: 2×2 metrics grid
             VStack(spacing: 10) {
                 HStack(spacing: 16) {
                     MetricBlock(label: "IOB", value: LAFormat.iob(s))
@@ -108,9 +108,11 @@ private struct LockScreenLiveActivityView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+
+        // Border overlay to match the “clinical panel” look
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                .stroke(Color.white.opacity(0.20), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
@@ -307,11 +309,11 @@ private enum LAColors {
         let high = t.high
 
         if mgdl < low {
-            return Color(uiColor: UIColor.systemRed).opacity(0.55)
+            return Color(uiColor: UIColor.systemRed).opacity(0.48)
         } else if mgdl > high {
-            return Color(uiColor: UIColor.systemOrange).opacity(0.55)
+            return Color(uiColor: UIColor.systemOrange).opacity(0.44)
         } else {
-            return Color(uiColor: UIColor.systemGreen).opacity(0.50)
+            return Color(uiColor: UIColor.systemGreen).opacity(0.36)
         }
     }
 
