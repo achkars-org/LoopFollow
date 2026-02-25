@@ -33,9 +33,9 @@ protocol CurrentGlucoseStateProviding {
 /// Builds a GlucoseSnapshot in the user’s preferred unit, without embedding provider logic.
 enum GlucoseSnapshotBuilder {
 
-    static func build(from provider: CurrentGlucoseStateProviding) -> GlucoseSnapshot? {
         guard
             let glucoseMgdl = provider.glucoseMgdl,
+            glucoseMgdl > 0,
             let updatedAt = provider.updatedAt
         else {
             return nil
