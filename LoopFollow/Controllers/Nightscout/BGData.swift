@@ -205,8 +205,44 @@ extension MainViewController {
         }
 
         LogManager.shared.log(category: .nightscout,
-                              message: "Graph data updated with \(bgData.count) entries.",
-                              isDebug: true)
+                      message: "Graph data updated with \(bgData.count) entries.",
+                      isDebug: true)
+
+        // MARK: - Commit raw BG state (authoritative, non-UI)
+        
+        if bgData.count >= 2 {
+            let latest = bgData[bgData.count - 1]
+            let prior = bgData[bgData.count - 2]
+        
+            Storage.shared.lastBgReadingTimeSeconds.value = latest.date
+            Storage.shared.lastDeltaMgdl.value = Double(latest.sgv - prior.sgv)
+            Storage.shared.lastTrendCode.value = latest.direction
+        
+            LogManager.shared.log(
+                category: .nightscout,
+                message: "Committed BG state t=\(latest.date) sgv=\(latest.sgv) Δ=\(latest.sgv - prior.sgv) dir=\(latest.direction ?? "")",
+                isDebug: true
+            )
+        } else {
+            // Not enough points to compute delta reliably
+            Storage.shared.lastBgReadingTimeSeconds.value = nil
+            Storage.shared.lastDeltaMgdl.value = nil
+            Storage.shared.lastTrendCode.value = nil
+        
+            LogManager.shared.log(
+                category: .nightscout,
+                message: "Committed BG state cleared (insufficient data points)",
+                isDebug: true
+            )
+        }
+        
+        // Trigger Live Activity refresh from canonical Storage-backed state
+        if #available(iOS 16.1, *) {
+            LiveActivityManager.shared.refreshFromCurrentState(reason: "bg")
+        }
+
+
+
         viewUpdateNSBG(sourceName: sourceName)
     }
 
