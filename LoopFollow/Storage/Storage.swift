@@ -162,6 +162,18 @@ class Storage {
     var lastLoopingChecked = StorageValue<Date?>(key: "lastLoopingChecked", defaultValue: nil)
     var lastBGChecked = StorageValue<Date?>(key: "lastBGChecked", defaultValue: nil)
 
+    // MARK: - Live Activity Raw State (Cross-Platform Source of Truth)
+    
+    // BG (canonical mg/dL + timestamp)
+    var lastBgReadingTimeSeconds = StorageValue<TimeInterval?>(key: "lastBgReadingTimeSeconds", defaultValue: nil)
+    var lastDeltaMgdl = StorageValue<Double?>(key: "lastDeltaMgdl", defaultValue: nil)
+    var lastTrendCode = StorageValue<String?>(key: "lastTrendCode", defaultValue: nil)
+    
+    // Device Status (IOB/COB are unitless; projected is canonical mg/dL)
+    var lastIOB = StorageValue<Double?>(key: "lastIOB", defaultValue: nil)
+    var lastCOB = StorageValue<Double?>(key: "lastCOB", defaultValue: nil)
+    var projectedBgMgdl = StorageValue<Double?>(key: "projectedBgMgdl", defaultValue: nil)
+    
     var alarmsPosition = StorageValue<TabPosition>(key: "alarmsPosition", defaultValue: .position2)
     var remotePosition = StorageValue<TabPosition>(key: "remotePosition", defaultValue: .more)
     var nightscoutPosition = StorageValue<TabPosition>(key: "nightscoutPosition", defaultValue: .position4)
