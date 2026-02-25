@@ -128,20 +128,39 @@ final class LiveActivityManager {
     /// 4) updates activity content
     func refreshFromCurrentState(reason: String) {
         let provider = StorageCurrentGlucoseStateProvider()
-
+    
         guard let snapshot = GlucoseSnapshotBuilder.build(from: provider) else {
-            LogManager.shared.log(category: .general, message: "LA refresh skipped (no snapshot) reason=\(reason)", isDebug: true)
+            LogManager.shared.log(
+                category: .general,
+                message: "LA refresh skipped (no snapshot) reason=\(reason)",
+                isDebug: true
+            )
             return
         }
-
+    
+        // Dedupe: if nothing changed compared to the last persisted snapshot, skip the ActivityKit update.
+        // This reduces update spam and lowers the chance of “hung” update behavior.
+        if let previous = GlucoseSnapshotStore.shared.load(), previous == snapshot {
+            LogManager.shared.log(
+                category: .general,
+                message: "LA refresh skipped (unchanged snapshot) reason=\(reason)",
+                isDebug: true
+            )
+            return
+        }
+    
         // Persist for extension surfaces (Live Activity / future Watch / future CarPlay)
         GlucoseSnapshotStore.shared.save(snapshot)
-
+    
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            LogManager.shared.log(category: .general, message: "LA not authorized (snapshot saved) reason=\(reason)", isDebug: true)
+            LogManager.shared.log(
+                category: .general,
+                message: "LA not authorized (snapshot saved) reason=\(reason)",
+                isDebug: true
+            )
             return
         }
-
+    
         // Ensure an activity exists & update it
         startIfNeeded()
         update(snapshot: snapshot, reason: reason)
