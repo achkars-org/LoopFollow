@@ -149,6 +149,12 @@ final class LiveActivityManager {
             return
         }
     
+        // Persist thresholds for widget coloring (Option A).
+        LAAppGroupSettings.setThresholds(
+            lowMgdl: Storage.shared.lowLine.value,
+            highMgdl: Storage.shared.highLine.value
+        )
+        
         // Persist for extension surfaces (Live Activity / future Watch / future CarPlay)
         GlucoseSnapshotStore.shared.save(snapshot)
     
