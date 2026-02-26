@@ -19,7 +19,7 @@ struct LoopFollowLiveActivityWidget: Widget {
                 .activitySystemActionForegroundColor(.white)
                 .activityBackgroundTint(LAColors.backgroundTint(for: context.state.snapshot))
                 .applyActivityContentMarginsFixIfAvailable()        
-                    } dynamicIsland: { context in
+            } dynamicIsland: { context in
             // DYNAMIC ISLAND UI
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
