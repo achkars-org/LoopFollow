@@ -18,7 +18,8 @@ struct LoopFollowLiveActivityWidget: Widget {
             LockScreenLiveActivityView(state: context.state)
                 .activitySystemActionForegroundColor(.white)
                 .activityBackgroundTint(LAColors.backgroundTint(for: context.state.snapshot))
-                .applyActivityContentMarginsFixIfAvailable()        } dynamicIsland: { context in
+                .applyActivityContentMarginsFixIfAvailable()        
+                    } dynamicIsland: { context in
             // DYNAMIC ISLAND UI
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
