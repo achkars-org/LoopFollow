@@ -347,7 +347,7 @@ private enum LAColors {
             return snapshot.glucose
         case .mmol:
             // Convert mmol/L → mg/dL for threshold comparison
-            return snapshot.glucose * 18.0
+            return GlucoseUnitConversion.convertGlucose(snapshot.glucose, from: .mmol, to: .mgdl)
         }
     }
 }
