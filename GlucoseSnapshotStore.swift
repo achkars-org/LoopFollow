@@ -29,20 +29,9 @@ final class GlucoseSnapshotStore {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
                 let data = try encoder.encode(snapshot)
-
                 try data.write(to: url, options: [.atomic])
-
-                LogManager.shared.log(
-                    category: .general,
-                    message: "Saved GlucoseSnapshot to App Group (\(url.lastPathComponent))",
-                    isDebug: true
-                )
             } catch {
-                LogManager.shared.log(
-                    category: .general,
-                    message: "Failed to save GlucoseSnapshot: \(error)",
-                    isDebug: true
-                )
+                // Intentionally silent (extension-safe, no dependencies).
             }
         }
     }
@@ -57,11 +46,7 @@ final class GlucoseSnapshotStore {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(GlucoseSnapshot.self, from: data)
         } catch {
-            LogManager.shared.log(
-                category: .general,
-                message: "Failed to load GlucoseSnapshot: \(error)",
-                isDebug: true
-            )
+            // Intentionally silent (extension-safe, no dependencies).
             return nil
         }
     }
@@ -74,11 +59,7 @@ final class GlucoseSnapshotStore {
                     try FileManager.default.removeItem(at: url)
                 }
             } catch {
-                LogManager.shared.log(
-                    category: .general,
-                    message: "Failed to delete GlucoseSnapshot: \(error)",
-                    isDebug: true
-                )
+                // Intentionally silent (extension-safe, no dependencies).
             }
         }
     }
