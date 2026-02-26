@@ -159,9 +159,7 @@ private struct DynamicIslandLeadingView: View {
             Text(LAFormat.delta(snapshot))
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.white.opacity(
-
-0.9))
+                .foregroundStyle(.white.opacity(0.9))
         }
     }
 }
@@ -173,12 +171,11 @@ private struct DynamicIslandBottomView: View {
         HStack(spacing: 14) {
             Text("IOB \(LAFormat.iob(snapshot))")
             Text("COB \(LAFormat.cob(snapshot))")
-            Text("Proj \(LAFormat.projected(snapshot))")
         }
         .font(.system(size: 13, weight: .semibold, design: .rounded))
         .foregroundStyle(.white.opacity(0.92))
         .lineLimit(1)
-        .minimumScaleFactor(0.8)
+        .minimumScaleFactor(0.85)
     }
 }
 
