@@ -146,27 +146,22 @@ private struct DynamicIslandLeadingView: View {
     let snapshot: GlucoseSnapshot
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(LAFormat.glucose(snapshot))
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(LAFormat.glucose(snapshot))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                Text(LAFormat.trendArrow(snapshot))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.95))
+                    .padding(.top, 2)
+            }
             Text(LAFormat.delta(snapshot))
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.9))
-        }
-    }
-}
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(
 
-@available(iOS 16.1, *)
-private struct DynamicIslandTrailingView: View {
-    let snapshot: GlucoseSnapshot
-    var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            Text(LAFormat.trendArrow(snapshot))
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.95))
-            Text(LAFormat.updated(snapshot))
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+0.9))
         }
     }
 }
@@ -184,6 +179,22 @@ private struct DynamicIslandBottomView: View {
         .foregroundStyle(.white.opacity(0.92))
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+    }
+}
+
+@available(iOS 16.1, *)
+private struct DynamicIslandTrailingView: View {
+    let snapshot: GlucoseSnapshot
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            Text("Upd \(LAFormat.updated(snapshot))")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.85))
+            Text("Proj \(LAFormat.projected(snapshot))")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(0.95))
+        }
     }
 }
 
