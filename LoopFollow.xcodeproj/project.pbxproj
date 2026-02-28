@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -228,7 +228,6 @@
 		DDCF9A822D85FD15004DF4DD /* AlarmType.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDCF9A812D85FD14004DF4DD /* AlarmType.swift */; };
 		DDCF9A882D85FD33004DF4DD /* AlarmData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDCF9A872D85FD33004DF4DD /* AlarmData.swift */; };
 		DDCF9A8C2D86005E004DF4DD /* AlarmManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDCF9A8B2D86005E004DF4DD /* AlarmManager.swift */; };
-		DDCFCAF22B17273200BE5751 /* LoopFollowDisplayNameConfig.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = DDCFCAF12B17273200BE5751 /* LoopFollowDisplayNameConfig.xcconfig */; };
 		DDD10EFF2C510C3C00D76A8E /* ObservableUserDefaultsValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD10EFE2C510C3C00D76A8E /* ObservableUserDefaultsValue.swift */; };
 		DDD10F012C510C6B00D76A8E /* ObservableUserDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD10F002C510C6B00D76A8E /* ObservableUserDefaults.swift */; };
 		DDD10F032C518A6500D76A8E /* TreatmentResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD10F022C518A6500D76A8E /* TreatmentResponse.swift */; };
@@ -276,7 +275,6 @@
 		FC1BDD3224A2585C001B652C /* DataStructs.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC1BDD2E24A232A3001B652C /* DataStructs.swift */; };
 		FC3AE7B5249E8E0E00AAE1E0 /* LoopFollow.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = FC3AE7B3249E8E0E00AAE1E0 /* LoopFollow.xcdatamodeld */; };
 		FC3CAB022493B6220068A152 /* BackgroundTaskAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCC688592489554800A0279D /* BackgroundTaskAudio.swift */; };
-		FC5A5C3D2497B229009C550E /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = FC5A5C3C2497B229009C550E /* Config.xcconfig */; };
 		FC7CE518248ABE37001F83B8 /* Siri_Alert_Calibration_Needed.caf in Resources */ = {isa = PBXBuildFile; fileRef = FC7CE4A9248ABE2B001F83B8 /* Siri_Alert_Calibration_Needed.caf */; };
 		FC7CE519248ABE37001F83B8 /* Rise_And_Shine.caf in Resources */ = {isa = PBXBuildFile; fileRef = FC7CE4AA248ABE2B001F83B8 /* Rise_And_Shine.caf */; };
 		FC7CE51A248ABE37001F83B8 /* Jingle_All_The_Way.caf in Resources */ = {isa = PBXBuildFile; fileRef = FC7CE4AB248ABE2B001F83B8 /* Jingle_All_The_Way.caf */; };
@@ -1743,8 +1741,9 @@
 		FC97880C2485969B00A7906C /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 2620;
-				LastUpgradeCheck = 1140;
+				LastUpgradeCheck = 2620;
 				ORGANIZATIONNAME = "Jon Fawcett";
 				TargetAttributes = {
 					375F60282F535FBE009B5652 = {
@@ -1881,9 +1880,7 @@
 				FC7CE532248ABE37001F83B8 /* Siri_High_Glucose.caf in Resources */,
 				FC7CE555248ABE37001F83B8 /* Sci-Fi_Incoming_Message_Alert.caf in Resources */,
 				FC7CE518248ABE37001F83B8 /* Siri_Alert_Calibration_Needed.caf in Resources */,
-				FC5A5C3D2497B229009C550E /* Config.xcconfig in Resources */,
 				FC7CE550248ABE37001F83B8 /* Siri_Alert_High_Glucose.caf in Resources */,
-				DDCFCAF22B17273200BE5751 /* LoopFollowDisplayNameConfig.xcconfig in Resources */,
 				FC7CE525248ABE37001F83B8 /* Sci-Fi_Warning.caf in Resources */,
 				FC7CE556248ABE37001F83B8 /* Sci-Fi_Console_Alarm.caf in Resources */,
 				FC7CE55C248ABE37001F83B8 /* Big_Clock_Ticking.caf in Resources */,
@@ -2512,6 +2509,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -2521,6 +2519,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEFINES_MODULE = YES;
+				ENABLE_MODULE_VERIFIER = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -2538,11 +2537,13 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_MODULE_NAME = LoopFollow;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -2575,6 +2576,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -2584,6 +2586,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEFINES_MODULE = YES;
+				ENABLE_MODULE_VERIFIER = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -2595,10 +2598,12 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_MODULE_NAME = LoopFollow;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
@@ -2614,6 +2619,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 2HEY366Q6J;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_MODULE_VERIFIER = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = YES;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = YES;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
 				INFOPLIST_FILE = LoopFollow/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.medical";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
@@ -2621,6 +2632,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix)";
 				PRODUCT_NAME = "Loop Follow";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -2641,6 +2653,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 2HEY366Q6J;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_MODULE_VERIFIER = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = YES;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = YES;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
 				INFOPLIST_FILE = LoopFollow/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.medical";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
@@ -2648,6 +2666,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix)";
 				PRODUCT_NAME = "Loop Follow";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

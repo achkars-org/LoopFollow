@@ -39,7 +39,9 @@ extension MainViewController {
                                    .withTime,
                                    .withDashSeparatorInDate,
                                    .withColonSeparatorInTime]
-        Storage.shared.cageInsertTime.value = formatter.date(from: lastCageString)?.timeIntervalSince1970 as! TimeInterval
+        if let t = formatter.date(from: lastCageString)?.timeIntervalSince1970 {
+            Storage.shared.cageInsertTime.value = t
+        }
         if let cageTime = formatter.date(from: lastCageString)?.timeIntervalSince1970 {
             let now = dateTimeUtils.getNowTimeIntervalUTC()
             let secondsAgo = now - cageTime

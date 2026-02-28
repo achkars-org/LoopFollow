@@ -32,46 +32,53 @@ extension MainViewController {
     func updateSage(data: [sageData]) {
         infoManager.clearInfoData(type: .sage)
 
-        if data.count == 0 {
-            return
-        }
-        currentSage = data[0]
-        var lastSageString = data[0].created_at
+        guard !data.isEmpty else { return }
 
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate,
-                                   .withTime,
-                                   .withDashSeparatorInDate,
-                                   .withColonSeparatorInTime]
-        Storage.shared.sageInsertTime.value = formatter.date(from: lastSageString)?.timeIntervalSince1970 as! TimeInterval
+        currentSage = data[0]
+
+        // created_at is already a non-optional String in your model
+        let lastSageString = data[0].created_at
+
+        // Parse the ISO8601 timestamp
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [
+            .withFullDate,
+            .withTime,
+            .withDashSeparatorInDate,
+            .withColonSeparatorInTime
+        ]
+
+        // Convert to epoch seconds and persist (only if parsing succeeds)
+        if let t = iso.date(from: lastSageString)?.timeIntervalSince1970 {
+            Storage.shared.sageInsertTime.value = t
+        }
 
         // -- Auto-snooze CGM start ────────────────────────────────────────────────
-        let now = Date()
-
-        // 1.  Do we *want* the automatic global snooze?
         if Storage.shared.alarmConfiguration.value.autoSnoozeCGMStart {
-            // 2.  When did the sensor start?
+            let nowEpoch = Date().timeIntervalSince1970
+
+            // sageInsertTime is expected to be a non-optional TimeInterval
             let insertTime = Storage.shared.sageInsertTime.value
 
-            // 3.  If the start is less than 2 h ago, snooze *all* alarms for the
-            //     remainder of that 2-hour window.
-            if now.timeIntervalSince1970 - insertTime < 7200 {
+            // If the start is less than 2 h ago, snooze all alarms for the remainder of that 2-hour window.
+            if nowEpoch - insertTime < 7200 {
                 var cfg = Storage.shared.alarmConfiguration.value
                 cfg.snoozeUntil = Date(timeIntervalSince1970: insertTime + 7200)
                 Storage.shared.alarmConfiguration.value = cfg
             }
         }
 
-        if let sageTime = formatter.date(from: (lastSageString as! String))?.timeIntervalSince1970 {
+        // Update UI "SAGE" duration string
+        if let sageTime = iso.date(from: lastSageString)?.timeIntervalSince1970 {
             let now = dateTimeUtils.getNowTimeIntervalUTC()
             let secondsAgo = now - sageTime
 
-            let formatter = DateComponentsFormatter()
-            formatter.unitsStyle = .positional // Use the appropriate positioning for the current locale
-            formatter.allowedUnits = [.day, .hour] // Units to display in the formatted string
-            formatter.zeroFormattingBehavior = [.pad] // Pad with zeroes where appropriate for the locale
+            let durationFormatter = DateComponentsFormatter()
+            durationFormatter.unitsStyle = .positional
+            durationFormatter.allowedUnits = [.day, .hour]
+            durationFormatter.zeroFormattingBehavior = [.pad]
 
-            if let formattedDuration = formatter.string(from: secondsAgo) {
+            if let formattedDuration = durationFormatter.string(from: secondsAgo) {
                 infoManager.updateInfoData(type: .sage, value: formattedDuration)
             }
         }
