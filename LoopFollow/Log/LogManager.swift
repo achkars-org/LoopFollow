@@ -17,6 +17,7 @@ class LogManager {
     private var shouldLogVersionHeader: Bool = true
 
     enum Category: String, CaseIterable {
+        case debug = "Debug" 
         case bluetooth = "Bluetooth"
         case nightscout = "Nightscout"
         case apns = "APNS"

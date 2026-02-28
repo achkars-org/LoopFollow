@@ -12,6 +12,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     let notificationCenter = UNUserNotificationCenter.current()
 
     func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        print("=== LOOPFOLLOW STDOUT BOOT TEST ===")
+        DebugLogProbe.boot("didFinishLaunching entered")
         LogManager.shared.log(category: .general, message: "App started")
         LogManager.shared.cleanupOldLogs()
 

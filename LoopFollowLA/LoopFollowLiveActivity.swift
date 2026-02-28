@@ -15,28 +15,35 @@ struct LoopFollowLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: GlucoseLiveActivityAttributes.self) { context in
             // LOCK SCREEN / BANNER UI
-            LockScreenLiveActivityView(state: context.state)
+            LockScreenLiveActivityView(state: context.state, activityID: context.activityID)
+                .id(context.state.seq) // force SwiftUI to re-render on every update
                 .activitySystemActionForegroundColor(.white)
                 .activityBackgroundTint(LAColors.backgroundTint(for: context.state.snapshot))
-                .applyActivityContentMarginsFixIfAvailable()        
+                .applyActivityContentMarginsFixIfAvailable()
             } dynamicIsland: { context in
             // DYNAMIC ISLAND UI
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     DynamicIslandLeadingView(snapshot: context.state.snapshot)
+                        .id(context.state.seq)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     DynamicIslandTrailingView(snapshot: context.state.snapshot)
+                        .id(context.state.seq)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     DynamicIslandBottomView(snapshot: context.state.snapshot)
+                        .id(context.state.seq)
                 }
             } compactLeading: {
                 DynamicIslandCompactLeadingView(snapshot: context.state.snapshot)
+                    .id(context.state.seq)
             } compactTrailing: {
                 DynamicIslandCompactTrailingView(snapshot: context.state.snapshot)
+                    .id(context.state.seq)
             } minimal: {
                 DynamicIslandMinimalView(snapshot: context.state.snapshot)
+                    .id(context.state.seq)
             }
             .keylineTint(LAColors.keyline(for: context.state.snapshot))
         }
@@ -60,14 +67,14 @@ private extension View {
 // MARK: - Lock Screen Contract View
 @available(iOS 16.1, *)
 private struct LockScreenLiveActivityView: View {
-
     let state: GlucoseLiveActivityAttributes.ContentState
-
+    let activityID: String
+    
     var body: some View {
         let s = state.snapshot
-
+        
         HStack(spacing: 12) {
-
+            
             // LEFT: Dominant glucose block (dominant but not “boxed”)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -75,13 +82,13 @@ private struct LockScreenLiveActivityView: View {
                         .font(.system(size: 46, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
-
+                    
                     Text(LAFormat.trendArrow(s))
                         .font(.system(size: 22, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.95))
                         .padding(.top, 3)
                 }
-
+                
                 Text(LAFormat.delta(s))
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .monospacedDigit()
@@ -89,13 +96,13 @@ private struct LockScreenLiveActivityView: View {
             }
             .frame(width: 168, alignment: .leading)
             .layoutPriority(2)
-
+            
             // Divider (subtle, clinical)
             Rectangle()
                 .fill(Color.white.opacity(0.20))
                 .frame(width: 1)
                 .padding(.vertical, 8)
-
+            
             // RIGHT: 2×2 metrics grid
             VStack(spacing: 10) {
                 HStack(spacing: 16) {
@@ -112,13 +119,45 @@ private struct LockScreenLiveActivityView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-
+        
         // Border overlay to match the “clinical panel” look
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(Color.white.opacity(0.20), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("seq \(state.seq) • \(LAFormat.hhmmss(state.snapshot.updatedAt))")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                
+                Text("id \(String(activityID.suffix(4)))")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                
+                if let hb = LAHeartbeatStore.shared.get() {
+                    Text("hb \(LAFormat.hhmmss(hb))")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                } else {
+                    Text("hb —")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                
+                // NEW: Show App Group diagnostic
+                let gid = AppGroupID.current()
+                let udNil = (UserDefaults(suiteName: gid) == nil)
+                
+                Text("gid \(String(gid.suffix(8))) udNil \(udNil ? "Y" : "N")")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white.opacity(0.85))
+            .padding(.top, 6)
+            .padding(.trailing, 10)
+        }
     }
 }
 
@@ -302,10 +341,28 @@ private enum LAFormat {
 
     // MARK: Update time
 
+    private static let hhmmFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = .current
+        df.timeZone = .current
+        df.dateFormat = "HH:mm" // 24h format
+        return df
+    }()
+
+    private static let hhmmssFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = .current
+        df.timeZone = .current
+        df.dateFormat = "HH:mm:ss"
+        return df
+    }()
+
+    static func hhmmss(_ date: Date) -> String {
+        hhmmssFormatter.string(from: date)
+    }
+    
     static func updated(_ s: GlucoseSnapshot) -> String {
-        // Contract: show minutes since reading, rounded down (0m, 1m, …)
-        let minutes = max(0, Int(Date().timeIntervalSince(s.updatedAt) / 60))
-        return "\(minutes)m"
+        hhmmFormatter.string(from: s.updatedAt)
     }
 }
 

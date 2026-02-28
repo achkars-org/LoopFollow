@@ -29,11 +29,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // The scene may re-connect later, as its session was not neccessarily discarded (see `application:didDiscardSceneSessions` instead).
     }
 
-    func sceneDidBecomeActive(_: UIScene) {
-        // Called when the scene has moved from an inactive state to an active state.
-        // Use this method to restart any tasks that were paused (or not yet started) when the scene was inactive.
-    }
-
     func sceneWillResignActive(_: UIScene) {
         // Called when the scene will move from an active state to an inactive state.
         // This may occur due to temporary interruptions (ex. an incoming phone call).
@@ -69,5 +64,18 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // The following method is called when the user taps on the Home Screen Quick Action
     func windowScene(_: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler _: @escaping (Bool) -> Void) {
         handleShortcutItem(shortcutItem)
+    }
+    
+    func sceneDidBecomeActive(_ scene: UIScene) {
+
+        if #available(iOS 16.1, *) {
+            LiveActivityManager.shared.startIfNeeded()
+            LiveActivityManager.shared.refreshFromCurrentState(reason: "app-visible")
+        }
+        /*
+        LogManager.shared.log(category: .general, message: "[LA] SmokeTest trigger: sceneDidBecomeActive")
+        LogManager.shared.log(category: .debug, message: "[LA] SmokeTest trigger: sceneDidBecomeActive")
+        LiveActivitySmokeTest.run(source: "sceneDidBecomeActive")
+*/
     }
 }

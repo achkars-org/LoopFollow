@@ -7,6 +7,7 @@
 
 import Foundation
 import ActivityKit
+import UIKit
 
 /// Live Activity manager for LoopFollow.
 ///
@@ -43,7 +44,7 @@ final class LiveActivityManager {
     /// or creates a new one if none exists.
     func startIfNeeded() {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            LogManager.shared.log(category: .general, message: "Live Activity not authorized", isDebug: true)
+            LogManager.shared.log(category: .debug, message: "Live Activity not authorized")
             return
         }
 
@@ -56,17 +57,20 @@ final class LiveActivityManager {
         // Start a new activity
         do {
             let attributes = GlucoseLiveActivityAttributes(title: "LoopFollow")
+
+            let seedSnapshot = GlucoseSnapshotStore.shared.load() ?? GlucoseSnapshot(
+                glucose: 0,
+                delta: 0,
+                trend: .unknown,
+                updatedAt: Date(),
+                iob: nil,
+                cob: nil,
+                projected: nil,
+                unit: .mgdl
+            )
+
             let initialState = GlucoseLiveActivityAttributes.ContentState(
-                snapshot: GlucoseSnapshot(
-                    glucose: 0,
-                    delta: 0,
-                    trend: .unknown,
-                    updatedAt: Date(),
-                    iob: nil,
-                    cob: nil,
-                    projected: nil,
-                    unit: .mgdl
-                ),
+                snapshot: seedSnapshot,
                 seq: 0,
                 reason: "start",
                 producedAt: Date()
@@ -74,14 +78,14 @@ final class LiveActivityManager {
 
             let content = ActivityContent(state: initialState, staleDate: nil)
             let activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
-            bind(to: activity, logReason: "start-new")
 
-            LogManager.shared.log(category: .general, message: "Live Activity started id=\(activity.id)", isDebug: true)
+            bind(to: activity, logReason: "start-new")
+            LogManager.shared.log(category: .debug, message: "Live Activity started id=\(activity.id)")
         } catch {
-            LogManager.shared.log(category: .general, message: "Live Activity failed to start: \(error)", isDebug: true)
+            LogManager.shared.log(category: .debug, message: "Live Activity failed to start: \(error)")
         }
     }
-
+    
     /// Ends the current Live Activity (if any).
     func end(dismissalPolicy: ActivityUIDismissalPolicy = .default) {
         updateTask?.cancel()
@@ -127,25 +131,46 @@ final class LiveActivityManager {
     /// 3) starts activity if needed
     /// 4) updates activity content
     func refreshFromCurrentState(reason: String) {
+        LFUnifiedLog.debug("=== LoopFollow beacon: viewDidLoad ===")
+        
+        let groupID = AppGroupID.current()
+        let ud = UserDefaults(suiteName: groupID)
+
+        LogManager.shared.log(category: .debug, message: "[LA HB] app groupID=\(groupID) udNil=\(ud == nil) reason=\(reason)")
+
+        LAHeartbeatStore.shared.setNow()
+
+        if let hb = LAHeartbeatStore.shared.get() {
+            LogManager.shared.log(category: .debug, message: "[LA HB] app readback hb=\(hb)")
+        } else {
+            LogManager.shared.log(category: .debug, message: "[LA HB] app readback hb=nil")
+        }
+        
         let provider = StorageCurrentGlucoseStateProvider()
     
         guard let snapshot = GlucoseSnapshotBuilder.build(from: provider) else {
             LogManager.shared.log(
-                category: .general,
-                message: "LA refresh skipped (no snapshot) reason=\(reason)",
-                isDebug: true
+                category: .debug,
+                message: "LA refresh skipped (no snapshot) reason=\(reason)"
             )
             return
         }
-    
+
+        let fingerprint =
+            "g=\(snapshot.glucose) d=\(snapshot.delta) t=\(snapshot.trend.rawValue) " +
+            "at=\(snapshot.updatedAt.timeIntervalSince1970) iob=\(snapshot.iob?.description ?? "nil") " +
+            "cob=\(snapshot.cob?.description ?? "nil") proj=\(snapshot.projected?.description ?? "nil") u=\(snapshot.unit.rawValue)"
+
+        LogManager.shared.log(category: .debug, message: "[LA] snapshot \(fingerprint) reason=\(reason)")
+        
         // Dedupe: if nothing changed compared to the last persisted snapshot, skip the ActivityKit update.
         // This reduces update spam and lowers the chance of “hung” update behavior.
         if let previous = GlucoseSnapshotStore.shared.load(), previous == snapshot {
             LogManager.shared.log(
-                category: .general,
-                message: "LA refresh skipped (unchanged snapshot) reason=\(reason)",
-                isDebug: true
+                category: .debug,
+                message: "LA refresh skipped (unchanged snapshot) reason=\(reason)"
             )
+            
             return
         }
     
@@ -160,18 +185,41 @@ final class LiveActivityManager {
     
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             LogManager.shared.log(
-                category: .general,
-                message: "LA not authorized (snapshot saved) reason=\(reason)",
-                isDebug: true
+                category: .debug,
+                message: "LA not authorized (snapshot saved) reason=\(reason)"
             )
             return
         }
     
-        // Ensure an activity exists & update it
-        startIfNeeded()
-        update(snapshot: snapshot, reason: reason)
+        // Always attempt to update if one exists.
+        // Only start a new activity when app is visible.
+        if current == nil, let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
+            bind(to: existing, logReason: "bind-existing")
+        }
+
+        if let _ = current {
+            update(snapshot: snapshot, reason: reason)
+            return
+        }
+
+        // No activity exists yet — only start if the app is currently visible.
+        if isAppVisibleForLiveActivityStart() {
+            startIfNeeded()
+            if current != nil {
+                update(snapshot: snapshot, reason: reason)
+            }
+        } else {
+            LogManager.shared.log(category: .debug, message: "LA start suppressed (not visible) reason=\(reason)")
+        }
     }
 
+    private func isAppVisibleForLiveActivityStart() -> Bool {
+        // “Visibility” errors happen when trying to start from background.
+        // We only start when there’s at least one foreground-active scene.
+        let scenes = UIApplication.shared.connectedScenes
+        return scenes.contains { $0.activationState == .foregroundActive }
+    }
+    
     /// Updates the Live Activity content. Safe to call repeatedly; only latest update is applied.
     func update(snapshot: GlucoseSnapshot, reason: String) {
         // Bind to an existing activity if we lost our reference (e.g. app relaunched)
@@ -181,9 +229,8 @@ final class LiveActivityManager {
     
         guard let activity = current else {
             LogManager.shared.log(
-                category: .general,
-                message: "LA update skipped (no activity) reason=\(reason)",
-                isDebug: true
+                category: .debug,
+                message: "LA update skipped (no activity) reason=\(reason)"
             )
             return
         }
@@ -209,9 +256,8 @@ final class LiveActivityManager {
             // (ActivityKit often no-ops, but we avoid noisy logs.)
             if activity.activityState == .ended || activity.activityState == .dismissed {
                 LogManager.shared.log(
-                    category: .general,
-                    message: "LA update skipped (activity not active) id=\(activityID) state=\(activity.activityState) reason=\(reason)",
-                    isDebug: true
+                    category: .debug,
+                    message: "LA update skipped (activity not active) id=\(activityID) state=\(activity.activityState) reason=\(reason)"
                 )
                 if self.current?.id == activityID { self.current = nil }
                 return
@@ -231,9 +277,8 @@ final class LiveActivityManager {
             guard self.current?.id == activityID else { return }
     
             LogManager.shared.log(
-                category: .general,
-                message: "LA updated id=\(activityID) seq=\(nextSeq) reason=\(reason)",
-                isDebug: true
+                category: .debug,
+                message: "LA updated id=\(activityID) seq=\(nextSeq) reason=\(reason)"
             )
         }
     }
@@ -246,7 +291,7 @@ final class LiveActivityManager {
         current = activity
         attachStateObserver(to: activity)
 
-        LogManager.shared.log(category: .general, message: "LA bound id=\(activity.id) (\(logReason))", isDebug: true)
+        LogManager.shared.log(category: .debug, message: "LA bound id=\(activity.id) (\(logReason))")
     }
 
     private func attachStateObserver(to activity: Activity<GlucoseLiveActivityAttributes>) {

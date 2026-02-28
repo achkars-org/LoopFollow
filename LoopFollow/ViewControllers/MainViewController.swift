@@ -133,6 +133,7 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
     private var loadingTimeoutTimer: Timer?
 
     override func viewDidLoad() {
+        LFUnifiedLog.debug("=== LoopFollow beacon: viewDidLoad ===")
         super.viewDidLoad()
 
         loadDebugData()
@@ -421,8 +422,23 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
         }
 
         checkAndShowImportButtonIfNeeded()
+        
+        let laLongPress = UILongPressGestureRecognizer(target: self, action: #selector(debugRefreshLiveActivity(_:)))
+        laLongPress.minimumPressDuration = 1.5
+        view.addGestureRecognizer(laLongPress)
     }
 
+    @objc private func debugRefreshLiveActivity(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began else { return }
+
+        LogManager.shared.log(category: .debug, message: "[LA] Manual refresh triggered")
+
+        if #available(iOS 16.1, *) {
+            LiveActivityDiagnostics.dump(source: "manual-gesture")
+            LiveActivityManager.shared.refreshFromCurrentState(reason: "manual")
+        }
+    }
+    
     // MARK: - Loading Overlay
 
     private func isDataSourceConfigured() -> Bool {
