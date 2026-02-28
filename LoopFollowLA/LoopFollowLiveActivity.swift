@@ -43,11 +43,14 @@ struct LoopFollowLiveActivityWidget: Widget {
     }
 }
 
+// MARK: - Live Activity content margins helper
+
 private extension View {
     @ViewBuilder
     func applyActivityContentMarginsFixIfAvailable() -> some View {
         if #available(iOS 17.0, *) {
-            self.contentMargins(.all, 0, for: .activity)
+            // Use the generic SwiftUI API available in iOS 17+ (no placement enum)
+            self.contentMargins(Edge.Set.all, 0)
         } else {
             self
         }
@@ -350,15 +353,5 @@ private enum LAColors {
             // Convert mmol/L → mg/dL for threshold comparison
             return GlucoseUnitConversion.convertGlucose(snapshot.glucose, from: .mmol, to: .mgdl)
         }
-    }
-}
-
-// MARK: - Bundle entry
-
-@available(iOS 16.1, *)
-@main
-struct LoopFollowWidgetsBundle: WidgetBundle {
-    var body: some Widget {
-        LoopFollowLiveActivityWidget()
     }
 }

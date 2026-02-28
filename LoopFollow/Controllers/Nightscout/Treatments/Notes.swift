@@ -12,7 +12,7 @@ extension MainViewController {
         var lastFoundIndex = 0
 
         for currentEntry in entries.reversed() {
-            guard let currentEntry = currentEntry as? [String: AnyObject] else { continue }
+
 
             var date: String
             if currentEntry["timestamp"] != nil {

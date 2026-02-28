@@ -253,7 +253,14 @@ class ImportExportSettingsViewModel: ObservableObject {
     private func createImportPreview(from settings: CombinedSettingsExport) {
         let nightscoutURL = settings.nightscout?.url.isEmpty == false ? settings.nightscout?.url : nil
         let dexcomUsername = settings.dexcom?.userName.isEmpty == false ? settings.dexcom?.userName : nil
-        let remoteType = settings.remote?.remoteType != .none ? settings.remote?.remoteType.rawValue : nil
+        let remoteType: String? = {
+            guard let type = settings.remote?.remoteType,
+                  type != .none
+            else {
+                return nil
+            }
+            return type.rawValue
+        }()
         let alarmCount = settings.alarms?.alarms.count ?? 0
         let alarmNames = settings.alarms?.alarms.map { $0.name } ?? []
 

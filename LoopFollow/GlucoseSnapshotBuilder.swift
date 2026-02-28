@@ -2,7 +2,7 @@
 //  GlucoseSnapshotBuilder.swift
 //  LoopFollow
 //
-//  Created by Philippe Achkar on 2026-02-28.
+//  Created by Philippe Achkar on 2026-02-24.
 //
 
 import Foundation
@@ -33,19 +33,11 @@ protocol CurrentGlucoseStateProviding {
 /// Builds a GlucoseSnapshot in the user’s preferred unit, without embedding provider logic.
 enum GlucoseSnapshotBuilder {
 
-    static func build(from provider: CurrentGlucoseStateProviding) -> GlucoseSnapshot? {
         guard
             let glucoseMgdl = provider.glucoseMgdl,
             glucoseMgdl > 0,
             let updatedAt = provider.updatedAt
         else {
-            // Debug-only signal: we’re missing core state.
-            // (If you prefer no logs here, remove this line.)
-            LogManager.shared.log(
-                category: .general,
-                message: "GlucoseSnapshotBuilder: missing/invalid core values glucoseMgdl=\(provider.glucoseMgdl?.description ?? "nil") updatedAt=\(provider.updatedAt?.description ?? "nil")",
-                isDebug: true
-            )
             return nil
         }
 
@@ -78,36 +70,19 @@ enum GlucoseSnapshotBuilder {
     }
 
     private static func mapTrend(_ code: String?) -> GlucoseSnapshot.Trend {
-        guard
-            let raw = code?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .lowercased(),
-            !raw.isEmpty
-        else { return .unknown }
-
-        // Common Nightscout strings:
-        // "Flat", "FortyFiveUp", "SingleUp", "DoubleUp", "FortyFiveDown", "SingleDown", "DoubleDown"
-        // Common variants:
-        // "rising", "falling", "rapidRise", "rapidFall"
-
-        if raw.contains("doubleup") || raw.contains("rapidrise") || raw == "up2" || raw == "upfast" {
-            return .upFast
-        }
-        if raw.contains("singleup") || raw.contains("fortyfiveup") || raw == "up" || raw == "up1" || raw == "rising" {
-            return .up
-        }
-
-        if raw.contains("flat") || raw == "steady" || raw == "none" {
-            return .flat
-        }
-
-        if raw.contains("doubledown") || raw.contains("rapidfall") || raw == "down2" || raw == "downfast" {
-            return .downFast
-        }
-        if raw.contains("singledown") || raw.contains("fortyfivedown") || raw == "down" || raw == "down1" || raw == "falling" {
-            return .down
-        }
-
+        guard let raw = code?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !raw.isEmpty else { return .unknown }
+    
+        // Common Nightscout strings: "Flat", "FortyFiveUp", "SingleUp", "DoubleUp", "SingleDown", "DoubleDown"
+        // Common variants: "rising", "falling", "rapidRise", "rapidFall"
+        if raw.contains("doubleup") || raw.contains("rapidrise") || raw == "up2" || raw == "upfast" { return .upFast }
+        if raw.contains("singleup") || raw.contains("fortyfiveup") || raw == "up" || raw == "up1" || raw == "rising" { return .up }
+    
+        if raw.contains("flat") || raw == "steady" || raw == "none" { return .flat }
+    
+        if raw.contains("doubledown") || raw.contains("rapidfall") || raw == "down2" || raw == "downfast" { return .downFast }
+        if raw.contains("singledown") || raw.contains("fortyfivedown") || raw == "down" || raw == "down1" || raw == "falling" { return .down }
+    
         return .unknown
     }
 }

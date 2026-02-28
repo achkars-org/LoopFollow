@@ -227,7 +227,7 @@ struct SettingsMenuView: View {
     private func shareLogs() {
         let files = LogManager.shared.logFilesForTodayAndYesterday()
         guard !files.isEmpty else {
-            UIApplication.shared.topMost?.presentSimpleAlert(
+            UIApplication.shared.topMostViewController?.presentSimpleAlert(
                 title: "No Logs Available",
                 message: "There are no logs to share."
             )
@@ -235,7 +235,7 @@ struct SettingsMenuView: View {
         }
         let avc = UIActivityViewController(activityItems: files,
                                            applicationActivities: nil)
-        UIApplication.shared.topMost?.present(avc, animated: true)
+        UIApplication.shared.topMostViewController?.present(avc, animated: true)
     }
 
     private func handleTabReorganization() {
@@ -312,11 +312,36 @@ private enum Sheet: Hashable, Identifiable {
 import UIKit
 
 extension UIApplication {
-    var topMost: UIViewController? {
-        guard var top = keyWindow?.rootViewController else { return nil }
+
+    /// Scene-safe key window (iOS 13+)
+    var activeKeyWindow: UIWindow? {
+        connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }
+            .flatMap { $0.windows }
+            .first(where: { $0.isKeyWindow })
+    }
+
+    /// Top-most view controller from the active key window
+    var topMostViewController: UIViewController? {
+        guard var top = activeKeyWindow?.rootViewController else { return nil }
+
+        // Walk through presented VCs
         while let presented = top.presentedViewController {
             top = presented
         }
+
+        // If you want to handle nav/tab containers too:
+        while true {
+            if let nav = top as? UINavigationController, let visible = nav.visibleViewController {
+                top = visible
+            } else if let tab = top as? UITabBarController, let selected = tab.selectedViewController {
+                top = selected
+            } else {
+                break
+            }
+        }
+
         return top
     }
 }

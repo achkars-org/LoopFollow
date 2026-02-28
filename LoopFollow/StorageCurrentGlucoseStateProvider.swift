@@ -12,14 +12,9 @@ import Foundation
 struct StorageCurrentGlucoseStateProvider: CurrentGlucoseStateProviding {
 
     var glucoseMgdl: Double? {
-        guard
-            let bg = Observable.shared.bg.value,
-            bg > 0
-        else {
-            return nil
-        }
-
-        return Double(bg)
+        // Observable.shared.bg.value is raw mg/dL (Int) set by LoopFollow’s BG refresh pipeline.
+        let bg = Observable.shared.bg.value
+        return bg > 0 ? Double(bg) : nil
     }
 
     var deltaMgdl: Double? {
