@@ -35,6 +35,10 @@ final class GlucoseSnapshotStore {
             }
         }
     }
+    
+    // Intentionally synchronous — file is small (<1KB).
+    // Called from main thread in refresh path; acceptable for this payload size.
+    // If this ever grows, move to queue.sync { ... }
 
     func load() -> GlucoseSnapshot? {
         do {
