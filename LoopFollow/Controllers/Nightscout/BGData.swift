@@ -311,6 +311,21 @@ extension MainViewController {
             }
             Storage.shared.lastBGChecked.value = Date()
             
+            // ── Live Activity Storage writes ───────────────────────────
+            // Write canonical values to Storage so StorageCurrentGlucoseStateProvider
+            // can read them. Must happen after all local computations above.
+    
+            // Timestamp of this reading
+            Storage.shared.lastBgReadingTimeSeconds.value = entries[latestEntryIndex].date.timeIntervalSince1970
+    
+            // Delta in mg/dL (raw, not display-formatted)
+            Storage.shared.lastDeltaMgdl.value = Double(deltaBG)
+    
+            // Raw Nightscout direction string (e.g. "SingleUp", "Flat")
+            // directionBG is the raw string before bgDirectionGraphic() converts it to an arrow
+            Storage.shared.lastTrendCode.value = entries[latestEntryIndex].direction
+    
+                
             LiveActivityManager.shared.refreshFromCurrentState(reason: "bg-update")
         }
     }
