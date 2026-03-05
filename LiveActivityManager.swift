@@ -67,7 +67,7 @@ final class LiveActivityManager {
                 producedAt: Date()
             )
 
-            let content = ActivityContent(state: initialState, staleDate: nil)
+            let content = ActivityContent(state: initialState, staleDate: Date().addingTimeInterval(15 * 60))
             let activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
 
             bind(to: activity, logReason: "start-new")
@@ -254,7 +254,7 @@ final class LiveActivityManager {
                 return
             }
     
-            let content = ActivityContent(state: state, staleDate: nil)
+            let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(15 * 60))
     
             // iOS 16.1+ update is async; it may throw or be cancelled.
             // If this task was cancelled, do not log success.
