@@ -45,6 +45,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         DispatchQueue.main.async {
             UIApplication.shared.registerForRemoteNotifications()
         }
+        
+        Task {
+            await LiveActivityManager.shared.refreshFromCurrentState(source: "launch")
+        }
+
         return true
     }
 
