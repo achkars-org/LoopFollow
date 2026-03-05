@@ -239,6 +239,12 @@ extension MainViewController {
         // Mark device status as loaded for initial loading state
         markDataLoaded("deviceStatus")
 
+        // ── Live Activity ──────────────────────────────────────────
+        // Called after all Storage writes in DeviceStatusLoop /
+        // DeviceStatusOpenAPS are complete.
+        LiveActivityManager.shared.refreshFromCurrentState(reason: "deviceStatus")
+        // ──────────────────────────────────────────────────────────
+        
         LogManager.shared.log(category: .deviceStatus, message: "Update Device Status done", isDebug: true)
     }
 }
