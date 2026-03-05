@@ -7,5 +7,7 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<key>LFAppGroupBaseBundleID</key>
+	<string>com.$(unique_id).LoopFollow$(app_suffix)</string>
 </dict>
 </plist>
