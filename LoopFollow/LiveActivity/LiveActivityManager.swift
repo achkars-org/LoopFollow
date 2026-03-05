@@ -50,8 +50,6 @@ final class LiveActivityManager {
         case state      = "STATE"
     }
 
-    import ActivityKit
-
     // MARK: - Start / Reuse
     func startIfNeeded() {
         
