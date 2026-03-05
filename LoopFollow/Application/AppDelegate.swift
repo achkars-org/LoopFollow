@@ -53,6 +53,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        Task {
+            await LiveActivityManager.shared.refreshFromCurrentState(source: "foreground")
+        }
+    }
+
     func applicationWillTerminate(_: UIApplication) {}
 
     // MARK: - Remote Notifications
