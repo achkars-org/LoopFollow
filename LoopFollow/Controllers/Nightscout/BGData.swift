@@ -310,6 +310,8 @@ extension MainViewController {
                     )
             }
             Storage.shared.lastBGChecked.value = Date()
+            
+            LiveActivityManager.shared.refreshFromCurrentState(reason: "bg-update")
         }
     }
 }
