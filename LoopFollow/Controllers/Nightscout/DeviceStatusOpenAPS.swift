@@ -225,5 +225,19 @@ extension MainViewController {
                 latestLoopStatusString = "↻"
             }
         }
+        
+        // MARK: - Commit raw Device Status state (authoritative, non-UI)
+        Storage.shared.lastIOB.value = latestIOB?.value
+        Storage.shared.lastCOB.value = latestCOB?.value
+        
+        // OpenAPS uses eventualBG, not a prediction array.
+        // Projected is not available in this path — clear it.
+        Storage.shared.projectedBgMgdl.value = nil
+        
+        LogManager.shared.log(
+            category: .deviceStatus,
+            message: "Committed OpenAPS DeviceStatus iob=\(Storage.shared.lastIOB.value?.description ?? "nil") cob=\(Storage.shared.lastCOB.value?.description ?? "nil")",
+            isDebug: true
+        )
     }
 }
