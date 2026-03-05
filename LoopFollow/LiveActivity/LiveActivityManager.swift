@@ -250,7 +250,23 @@ final class LiveActivityManager {
             self.log(.updAttempt, source: source, msg: "id=\(activity.id) seq=\(self.seq)")
 
             // ActivityKit update (non-throwing)
-            await activity.update(content)
+
+            await withCheckedContinuation { continuation in
+                ProcessInfo.processInfo.performExpiringActivity(
+                    withReason: "LiveActivity.update"
+                ) { expired in
+                    guard !expired else {
+                        self.log(.zombie, source: source, msg: "background time expired before update")
+                        continuation.resume()
+                        return
+                    }
+                    Task {
+                        await activity.update(content)
+                        continuation.resume()
+                    }
+                }
+            }
+
 
             if Task.isCancelled {
                 // Update landed, but task cancelled immediately after; still record it
