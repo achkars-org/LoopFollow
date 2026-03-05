@@ -9,15 +9,7 @@ import Foundation
 
 /// Canonical, source-agnostic glucose state used by
 /// Live Activity, future Watch complication, and CarPlay.
-///
-/// IMPORTANT:
-/// - Contains raw numeric values only.
-/// - Contains no formatting logic.
-/// - Contains no threshold logic.
-/// - Contains no provider-specific logic.
-/// - All display formatting happens at render time.
-/// - All color decisions happen via GlucoseColorResolver.
-///
+
 struct GlucoseSnapshot: Codable, Equatable, Hashable {
 
     // MARK: - Units
