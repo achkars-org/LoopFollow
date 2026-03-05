@@ -1,61 +1,188 @@
-//
-//  LiveActivityManager.swift
-//  LoopFollow
-//
-//  Created by Philippe Achkar on 2026-02-24.
-//
+// LiveActivityManager.swift
+// Philippe Achkar
+// 2026-03-05
 
-import Foundation
 import ActivityKit
+import Foundation
+import os
 
 /// Live Activity manager for LoopFollow.
 ///
 /// Contract:
-/// - This manager does NOT know about Nightscout vs Dexcom.
-/// - It consumes a GlucoseSnapshot (already unit-converted by the SnapshotBuilder).
-/// - It does NOT hardcode thresholds or colors.
-/// - It is safe to call from foreground or background refresh completions.
+/// - Does NOT know about Nightscout vs Dexcom.
+/// - Consumes a GlucoseSnapshot already built by GlucoseSnapshotBuilder.
+/// - Does NOT hardcode thresholds or colors.
+/// - Safe to call from foreground or background refresh completions.
 ///
-/// Notes:
-/// - Uses a single in-flight Task to serialize updates.
-/// - Observes activity lifecycle to avoid updating ended/dismissed activities.
-@available(iOS 16.1, *)
+/// Update flow:
+/// - refreshFromCurrentState(reason:) is the single public entry point.
+/// - A 3-second debounce coalesces BG + DeviceStatus calls into one update.
+/// - The actual ActivityKit update is wrapped in performExpiringActivity
+///   to ensure delivery when the app is backgrounded.
+/// - All ActivityKit calls are serialized via a cancellable Task.
 final class LiveActivityManager {
 
     static let shared = LiveActivityManager()
     private init() {}
 
-    // Bound activity (if any)
+    // MARK: - Private State
+
     private(set) var current: Activity<GlucoseLiveActivityAttributes>?
 
-    // Observe lifecycle changes (ended/dismissed)
+    /// Observes activity lifecycle (ended / dismissed).
     private var stateObserverTask: Task<Void, Never>?
 
-    // Serialize updates
+    /// Coalesces rapid successive refresh calls into a single update.
+    private var debounceTask: Task<Void, Never>?
+
+    /// Serializes ActivityKit update calls — only the latest wins.
     private var updateTask: Task<Void, Never>?
 
-    // Monotonic sequence for debugging / “hung” detection in UI if desired
+    /// Monotonic sequence for debugging and hung-update detection.
     private var seq: Int = 0
+
+    // MARK: - Configuration
+
+    private let debounceInterval: TimeInterval = 3.0
+    private let staleDateInterval: TimeInterval = 15 * 60
 
     // MARK: - Public API
 
-    /// Ensures we are bound to an existing Live Activity if present,
-    /// or creates a new one if none exists.
-    func startIfNeeded() {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            LogManager.shared.log(category: .general, message: "Live Activity not authorized", isDebug: true)
+    /// The single entry point for all refresh triggers.
+    ///
+    /// Call this from:
+    /// - viewUpdateNSBG (after all Storage writes are complete)
+    /// - updateDeviceStatusDisplay (after markDataLoaded)
+    /// - AppDelegate.didFinishLaunchingWithOptions
+    /// - AppDelegate.applicationDidBecomeActive
+    ///
+    /// A 3-second debounce window coalesces BG + DeviceStatus calls
+    /// that arrive close together into a single ActivityKit update.
+    func refreshFromCurrentState(reason: String) {
+        debounceTask?.cancel()
+
+        debounceTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                try await Task.sleep(nanoseconds: UInt64(debounceInterval * 1_000_000_000))
+            } catch {
+                // Task was cancelled — a newer refresh call arrived. Exit silently.
+                return
+            }
+
+            guard !Task.isCancelled else { return }
+
+            self.performRefresh(reason: reason)
+        }
+    }
+
+    /// Ends the current Live Activity.
+    func end(dismissalPolicy: ActivityUIDismissalPolicy = .default) {
+        debounceTask?.cancel()
+        debounceTask = nil
+        updateTask?.cancel()
+        updateTask = nil
+
+        guard let activity = current else { return }
+
+        Task {
+            let finalState = GlucoseLiveActivityAttributes.ContentState(
+                snapshot: GlucoseSnapshotStore.shared.load() ?? GlucoseSnapshot(
+                    glucose: 0,
+                    delta: 0,
+                    trend: .unknown,
+                    updatedAt: Date(),
+                    iob: nil,
+                    cob: nil,
+                    projected: nil,
+                    unit: .mgdl
+                ),
+                seq: seq,
+                reason: "end",
+                producedAt: Date()
+            )
+
+            let content = ActivityContent(
+                state: finalState,
+                staleDate: nil
+            )
+
+            await activity.end(content, dismissalPolicy: dismissalPolicy)
+
+            LogManager.shared.log(
+                category: .general,
+                message: "LA ended id=\(activity.id)",
+                isDebug: true
+            )
+
+            if current?.id == activity.id {
+                current = nil
+            }
+        }
+    }
+
+    // MARK: - Core Refresh (Post-Debounce)
+
+    /// Executes after the debounce window closes.
+    /// Builds the snapshot, persists it, then submits the ActivityKit update.
+    private func performRefresh(reason: String) {
+        let provider = StorageCurrentGlucoseStateProvider()
+
+        guard let snapshot = GlucoseSnapshotBuilder.build(from: provider) else {
+            LogManager.shared.log(
+                category: .general,
+                message: "LA refresh skipped (no snapshot) reason=\(reason)",
+                isDebug: true
+            )
             return
         }
 
-        // Reuse an existing activity if present
+        // Deduplicate: skip if snapshot is unchanged since last update.
+        if let previous = GlucoseSnapshotStore.shared.load(), previous == snapshot {
+            LogManager.shared.log(
+                category: .general,
+                message: "LA refresh skipped (unchanged snapshot) reason=\(reason)",
+                isDebug: true
+            )
+            return
+        }
+
+        // Persist thresholds for extension coloring.
+        LAAppGroupSettings.setThresholds(
+            lowMgdl: Storage.shared.lowLine.value,
+            highMgdl: Storage.shared.highLine.value
+        )
+
+        // Persist snapshot for extension reload and future Watch / CarPlay.
+        GlucoseSnapshotStore.shared.save(snapshot)
+
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            LogManager.shared.log(
+                category: .general,
+                message: "LA not authorized (snapshot saved) reason=\(reason)",
+                isDebug: true
+            )
+            return
+        }
+
+        startIfNeeded()
+        submitUpdate(snapshot: snapshot, reason: reason)
+    }
+
+    // MARK: - Activity Lifecycle
+
+    private func startIfNeeded() {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
         if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
             bind(to: existing, logReason: "reuse")
             return
         }
 
-        // Start a new activity
         do {
             let attributes = GlucoseLiveActivityAttributes(title: "LoopFollow")
+
             let initialState = GlucoseLiveActivityAttributes.ContentState(
                 snapshot: GlucoseSnapshot(
                     glucose: 0,
@@ -72,113 +199,41 @@ final class LiveActivityManager {
                 producedAt: Date()
             )
 
-            let content = ActivityContent(state: initialState, staleDate: nil)
-            let activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
+            let content = ActivityContent(
+                state: initialState,
+                staleDate: Date().addingTimeInterval(staleDateInterval)
+            )
+
+            let activity = try Activity.request(
+                attributes: attributes,
+                content: content,
+                pushType: nil
+            )
+
             bind(to: activity, logReason: "start-new")
 
-            LogManager.shared.log(category: .general, message: "Live Activity started id=\(activity.id)", isDebug: true)
+            LogManager.shared.log(
+                category: .general,
+                message: "LA started id=\(activity.id)",
+                isDebug: true
+            )
         } catch {
-            LogManager.shared.log(category: .general, message: "Live Activity failed to start: \(error)", isDebug: true)
+            LogManager.shared.log(
+                category: .general,
+                message: "LA failed to start: \(error)",
+                isDebug: true
+            )
         }
     }
 
-    /// Ends the current Live Activity (if any).
-    func end(dismissalPolicy: ActivityUIDismissalPolicy = .default) {
-        updateTask?.cancel()
-        updateTask = nil
+    // MARK: - Update Submission
 
-        guard let activity = current else { return }
-
-        Task {
-            let finalState = GlucoseLiveActivityAttributes.ContentState(
-                snapshot: (GlucoseSnapshotStore.shared.load() ?? GlucoseSnapshot(
-                    glucose: 0,
-                    delta: 0,
-                    trend: .unknown,
-                    updatedAt: Date(),
-                    iob: nil,
-                    cob: nil,
-                    projected: nil,
-                    unit: .mgdl
-                )),
-                seq: seq,
-                reason: "end",
-                producedAt: Date()
-            )
-
-            let content = ActivityContent(state: finalState, staleDate: nil)
-            await activity.end(content, dismissalPolicy: dismissalPolicy)
-
-            LogManager.shared.log(category: .general, message: "Live Activity ended id=\(activity.id)", isDebug: true)
-
-            if current?.id == activity.id {
-                current = nil
-            }
-        }
-    }
-
-    /// The main entrypoint you will call from LoopFollow’s workflow completion points:
-    /// - BG pipeline completion (after BG processing commits raw fields)
-    /// - DeviceStatus completion (after IOB/COB/Proj commits raw fields)
-    ///
-    /// This:
-    /// 1) builds a GlucoseSnapshot from Storage-backed provider
-    /// 2) persists it to App Group
-    /// 3) starts activity if needed
-    /// 4) updates activity content
-    func refreshFromCurrentState(reason: String) {
-        let provider = StorageCurrentGlucoseStateProvider()
-    
-        guard let snapshot = GlucoseSnapshotBuilder.build(from: provider) else {
-            LogManager.shared.log(
-                category: .general,
-                message: "LA refresh skipped (no snapshot) reason=\(reason)",
-                isDebug: true
-            )
-            return
-        }
-    
-        // Dedupe: if nothing changed compared to the last persisted snapshot, skip the ActivityKit update.
-        // This reduces update spam and lowers the chance of “hung” update behavior.
-        if let previous = GlucoseSnapshotStore.shared.load(), previous == snapshot {
-            LogManager.shared.log(
-                category: .general,
-                message: "LA refresh skipped (unchanged snapshot) reason=\(reason)",
-                isDebug: true
-            )
-            return
-        }
-    
-        // Persist thresholds for widget coloring (Option A).
-        LAAppGroupSettings.setThresholds(
-            lowMgdl: Storage.shared.lowLine.value,
-            highMgdl: Storage.shared.highLine.value
-        )
-        
-        // Persist for extension surfaces (Live Activity / future Watch / future CarPlay)
-        GlucoseSnapshotStore.shared.save(snapshot)
-    
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            LogManager.shared.log(
-                category: .general,
-                message: "LA not authorized (snapshot saved) reason=\(reason)",
-                isDebug: true
-            )
-            return
-        }
-    
-        // Ensure an activity exists & update it
-        startIfNeeded()
-        update(snapshot: snapshot, reason: reason)
-    }
-
-    /// Updates the Live Activity content. Safe to call repeatedly; only latest update is applied.
-    func update(snapshot: GlucoseSnapshot, reason: String) {
-        // Bind to an existing activity if we lost our reference (e.g. app relaunched)
+    private func submitUpdate(snapshot: GlucoseSnapshot, reason: String) {
+        // Rebind if we lost our reference (e.g. app relaunched).
         if current == nil, let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
-            bind(to: existing, logReason: "bind-existing")
+            bind(to: existing, logReason: "rebind")
         }
-    
+
         guard let activity = current else {
             LogManager.shared.log(
                 category: .general,
@@ -187,49 +242,85 @@ final class LiveActivityManager {
             )
             return
         }
-    
-        // Cancel any in-flight update and apply only the latest
+
+        // Cancel any in-flight update — latest snapshot wins.
         updateTask?.cancel()
-    
+
         seq += 1
         let nextSeq = seq
         let activityID = activity.id
-    
+
         let state = GlucoseLiveActivityAttributes.ContentState(
             snapshot: snapshot,
             seq: nextSeq,
             reason: reason,
             producedAt: Date()
         )
-    
+
+        let content = ActivityContent(
+            state: state,
+            staleDate: Date().addingTimeInterval(staleDateInterval)
+        )
+
         updateTask = Task { [weak self] in
             guard let self else { return }
-    
-            // If the activity ended/dismissed between scheduling and execution, bail.
-            // (ActivityKit often no-ops, but we avoid noisy logs.)
+
+            // Guard against updating an already-ended activity.
             if activity.activityState == .ended || activity.activityState == .dismissed {
                 LogManager.shared.log(
                     category: .general,
-                    message: "LA update skipped (activity not active) id=\(activityID) state=\(activity.activityState) reason=\(reason)",
+                    message: "LA update skipped (activity not active) id=\(activityID) reason=\(reason)",
                     isDebug: true
                 )
                 if self.current?.id == activityID { self.current = nil }
                 return
             }
-    
-            let content = ActivityContent(state: state, staleDate: nil)
-    
-            // iOS 16.1+ update is async; it may throw or be cancelled.
-            // If this task was cancelled, do not log success.
+
             if Task.isCancelled { return }
-    
-            await activity.update(content)
-    
+
+            // Wrap in performExpiringActivity to ensure delivery when backgrounded.
+            // OSAllocatedUnfairLock guarantees continuation.resume() is called exactly once,
+            // even if the expiry callback fires concurrently with the update completing.
+            await withCheckedContinuation { continuation in
+                let hasResumed = OSAllocatedUnfairLock(initialState: false)
+
+                ProcessInfo.processInfo.performExpiringActivity(
+                    withReason: "LiveActivity.update"
+                ) { expired in
+                    if expired {
+                        let alreadyDone = hasResumed.withLock { state -> Bool in
+                            if state { return true }
+                            state = true
+                            return false
+                        }
+                        if !alreadyDone {
+                            LogManager.shared.log(
+                                category: .general,
+                                message: "LA background time expired id=\(activityID) seq=\(nextSeq)",
+                                isDebug: true
+                            )
+                            continuation.resume()
+                        }
+                        return
+                    }
+
+                    Task {
+                        await activity.update(content)
+                        let alreadyDone = hasResumed.withLock { state -> Bool in
+                            if state { return true }
+                            state = true
+                            return false
+                        }
+                        if !alreadyDone {
+                            continuation.resume()
+                        }
+                    }
+                }
+            }
+
             if Task.isCancelled { return }
-    
-            // If current has moved on to another activity, don't claim success for the old one.
             guard self.current?.id == activityID else { return }
-    
+
             LogManager.shared.log(
                 category: .general,
                 message: "LA updated id=\(activityID) seq=\(nextSeq) reason=\(reason)",
@@ -238,7 +329,7 @@ final class LiveActivityManager {
         }
     }
 
-    // MARK: - Binding / Lifecycle
+    // MARK: - Binding and Lifecycle Observation
 
     private func bind(to activity: Activity<GlucoseLiveActivityAttributes>, logReason: String) {
         if current?.id == activity.id { return }
@@ -246,18 +337,30 @@ final class LiveActivityManager {
         current = activity
         attachStateObserver(to: activity)
 
-        LogManager.shared.log(category: .general, message: "LA bound id=\(activity.id) (\(logReason))", isDebug: true)
+        LogManager.shared.log(
+            category: .general,
+            message: "LA bound id=\(activity.id) (\(logReason))",
+            isDebug: true
+        )
     }
 
     private func attachStateObserver(to activity: Activity<GlucoseLiveActivityAttributes>) {
         stateObserverTask?.cancel()
         stateObserverTask = Task {
             for await state in activity.activityStateUpdates {
-                LogManager.shared.log(category: .general, message: "LA state id=\(activity.id) -> \(state)", isDebug: true)
+                LogManager.shared.log(
+                    category: .general,
+                    message: "LA state id=\(activity.id) -> \(state)",
+                    isDebug: true
+                )
                 if state == .ended || state == .dismissed {
                     if current?.id == activity.id {
                         current = nil
-                        LogManager.shared.log(category: .general, message: "LA cleared current id=\(activity.id)", isDebug: true)
+                        LogManager.shared.log(
+                            category: .general,
+                            message: "LA cleared current id=\(activity.id)",
+                            isDebug: true
+                        )
                     }
                 }
             }
