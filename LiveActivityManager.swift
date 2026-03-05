@@ -10,16 +10,7 @@ import ActivityKit
 import UIKit
 
 /// Live Activity manager for LoopFollow.
-///
-/// Contract:
-/// - This manager does NOT know about Nightscout vs Dexcom.
-/// - It consumes a GlucoseSnapshot (already unit-converted by the SnapshotBuilder).
-/// - It does NOT hardcode thresholds or colors.
-/// - It is safe to call from foreground or background refresh completions.
-///
-/// Notes:
-/// - Uses a single in-flight Task to serialize updates.
-/// - Observes activity lifecycle to avoid updating ended/dismissed activities.
+
 @available(iOS 16.1, *)
 final class LiveActivityManager {
 
@@ -269,8 +260,44 @@ final class LiveActivityManager {
             // If this task was cancelled, do not log success.
             if Task.isCancelled { return }
     
-            await activity.update(content)
-    
+                await withCheckedContinuation { continuation in
+                    let hasResumed = OSAllocatedUnfairLock(initialState: false)
+            
+                    ProcessInfo.processInfo.performExpiringActivity(
+                        withReason: "LiveActivity.update"
+                    ) { expired in
+                        if expired {
+                            let alreadyDone = hasResumed.withLock { state -> Bool in
+                                if state { return true }
+                                state = true
+                                return false
+                            }
+                            if !alreadyDone {
+                                LogManager.shared.log(
+                                    category: .general,
+                                    message: "LA background time expired id=\(activityID) seq=\(nextSeq)",
+                                    isDebug: true
+                                )
+                                continuation.resume()
+                            }
+                            return
+                        }
+            
+                        Task {
+                            await activity.update(content)
+                            let alreadyDone = hasResumed.withLock { state -> Bool in
+                                if state { return true }
+                                state = true
+                                return false
+                            }
+                            if !alreadyDone {
+                                continuation.resume()
+                            }
+                        }
+                    }
+                }
+            
+            
             if Task.isCancelled { return }
     
             // If current has moved on to another activity, don't claim success for the old one.
