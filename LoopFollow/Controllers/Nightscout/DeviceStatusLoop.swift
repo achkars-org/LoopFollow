@@ -40,10 +40,6 @@ extension MainViewController {
                 isDebug: true
             )
 
-            if #available(iOS 16.1, *) {
-                LiveActivityManager.shared.refreshFromCurrentState(reason: "deviceStatus")
-            }
-
             return
         }
 
@@ -174,9 +170,5 @@ extension MainViewController {
             message: "Committed DeviceStatus iob=\(Storage.shared.lastIOB.value?.description ?? "nil") cob=\(Storage.shared.lastCOB.value?.description ?? "nil") proj=\(Storage.shared.projectedBgMgdl.value?.description ?? "nil")",
             isDebug: true
         )
-
-        if #available(iOS 16.1, *) {
-            LiveActivityManager.shared.refreshFromCurrentState(reason: "deviceStatus")
-        }
     }
 }
