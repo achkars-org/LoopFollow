@@ -43,7 +43,7 @@ final class LiveActivityManager {
 
     // MARK: - Configuration
 
-    private let debounceInterval: TimeInterval = 3.0
+    private let debounceInterval: TimeInterval = 5.0
     private let staleDateInterval: TimeInterval = 15 * 60
 
     // MARK: - Public API
