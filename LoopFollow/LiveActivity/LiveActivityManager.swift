@@ -252,20 +252,40 @@ final class LiveActivityManager {
             // ActivityKit update (non-throwing)
 
             await withCheckedContinuation { continuation in
+                let hasResumed = OSAllocatedUnfairLock(initialState: false)
+            
                 ProcessInfo.processInfo.performExpiringActivity(
                     withReason: "LiveActivity.update"
                 ) { expired in
-                    guard !expired else {
-                        self.log(.zombie, source: source, msg: "background time expired before update")
-                        continuation.resume()
+                    if expired {
+                        // iOS is reclaiming time — resume if we haven't yet
+                        let alreadyDone = hasResumed.withLock { state -> Bool in
+                            if state { return true }
+                            state = true
+                            return false
+                        }
+                        if !alreadyDone {
+                            self.log(.zombie, source: source, msg: "background time expired — resuming")
+                            continuation.resume()
+                        }
                         return
                     }
+            
+                    // We have execution time — do the update
                     Task {
                         await activity.update(content)
-                        continuation.resume()
+                        let alreadyDone = hasResumed.withLock { state -> Bool in
+                            if state { return true }
+                            state = true
+                            return false
+                        }
+                        if !alreadyDone {
+                            continuation.resume()
+                        }
                     }
                 }
             }
+
 
 
             if Task.isCancelled {
