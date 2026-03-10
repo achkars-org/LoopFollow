@@ -22,8 +22,8 @@ final class LiveActivityManager {
     private var lastUpdateTime: Date?
     private var pushToken: String?
     private var tokenObservationTask: Task<Void, Never>?
-    private var refreshWorkItem: DispatchWorkItem?
-
+    private var refreshWorkItem: Task<Void, Never>?
+    
     // MARK: - Public API
 
     func startIfNeeded() {
@@ -118,52 +118,67 @@ final class LiveActivityManager {
     
     func refreshFromCurrentState(reason: String) {
         refreshWorkItem?.cancel()
-        let workItem = DispatchWorkItem { [weak self] in
-            self?.performRefresh(reason: reason)
+        let task = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            await self?.performRefresh(reason: reason)
         }
-        refreshWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: workItem)
+        refreshWorkItem = task
     }
     
-    private func performRefresh(reason: String) {
+    private func performRefresh(reason: String) async {
         let provider = StorageCurrentGlucoseStateProvider()
         guard let snapshot = GlucoseSnapshotBuilder.build(from: provider) else {
+            LogManager.shared.log(category: .general, message: "[LA] performRefresh: snapshot nil, skipping reason=\(reason)")
             return
         }
-        LogManager.shared.log(category: .general, message: "[LA] refresh g=\(snapshot.glucose) reason=\(reason)", isDebug: true)
+
         let fingerprint =
             "g=\(snapshot.glucose) d=\(snapshot.delta) t=\(snapshot.trend.rawValue) " +
             "at=\(snapshot.updatedAt.timeIntervalSince1970) iob=\(snapshot.iob?.description ?? "nil") " +
             "cob=\(snapshot.cob?.description ?? "nil") proj=\(snapshot.projected?.description ?? "nil") u=\(snapshot.unit.rawValue)"
         LogManager.shared.log(category: .general, message: "[LA] snapshot \(fingerprint) reason=\(reason)", isDebug: true)
+
         let now = Date()
         let timeSinceLastUpdate = now.timeIntervalSince(lastUpdateTime ?? .distantPast)
         let forceRefreshNeeded = timeSinceLastUpdate >= 5 * 60
         if let previous = GlucoseSnapshotStore.shared.load(), previous == snapshot, !forceRefreshNeeded {
             return
         }
+
         LAAppGroupSettings.setThresholds(
             lowMgdl: Storage.shared.lowLine.value,
             highMgdl: Storage.shared.highLine.value
         )
         GlucoseSnapshotStore.shared.save(snapshot)
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            return
+
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        // Resolve activity state — three cases handled serially with no timing dependency.
+        if current == nil {
+            if let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
+                if existing.activityState == .ended || existing.activityState == .dismissed {
+                    // Dying activity still in system list. End it and wait before starting fresh.
+                    LogManager.shared.log(category: .general, message: "[LA] stale activity found, ending before restart id=\(existing.id)")
+                    await existing.end(nil, dismissalPolicy: .immediate)
+                    LogManager.shared.log(category: .general, message: "[LA] stale activity ended, starting fresh")
+                    startIfNeeded()
+                } else {
+                    // Healthy activity we don't have a reference to — bind it.
+                    bind(to: existing, logReason: "bind-existing")
+                }
+            } else {
+                // No activity in system at all — start one if visible.
+                if isAppVisibleForLiveActivityStart() {
+                    startIfNeeded()
+                } else {
+                    LogManager.shared.log(category: .general, message: "[LA] start suppressed (not visible) reason=\(reason)", isDebug: true)
+                }
+            }
         }
-        if current == nil, let existing = Activity<GlucoseLiveActivityAttributes>.activities.first {
-            bind(to: existing, logReason: "bind-existing")
-        }
+
         if let _ = current {
             update(snapshot: snapshot, reason: reason)
-            return
-        }
-        if isAppVisibleForLiveActivityStart() {
-            startIfNeeded()
-            if current != nil {
-                update(snapshot: snapshot, reason: reason)
-            }
-        } else {
-            LogManager.shared.log(category: .general, message: "LA start suppressed (not visible) reason=\(reason)", isDebug: true)
         }
     }
     
@@ -196,6 +211,7 @@ final class LiveActivityManager {
             guard let self else { return }
 
             if activity.activityState == .ended || activity.activityState == .dismissed {
+                LogManager.shared.log(category: .general, message: "[LA] update dropped — activity ended/dismissed id=\(activityID) seq=\(nextSeq)")
                 if self.current?.id == activityID { self.current = nil }
                 return
             }
