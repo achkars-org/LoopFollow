@@ -151,6 +151,7 @@ final class LiveActivityManager {
             highMgdl: Storage.shared.highLine.value
         )
         GlucoseSnapshotStore.shared.save(snapshot)
+        WatchConnectivityManager.shared.send(snapshot: snapshot)
 
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
