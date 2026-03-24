@@ -1009,6 +1009,11 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
             LogManager.shared.log(category: .general, message: "BFU reload triggered — reloading all StorageValues")
             Storage.shared.reloadAll()
             LogManager.shared.log(category: .general, message: "BFU reload complete: url='\(Storage.shared.url.value)'")
+            // Rebuild the tab bar immediately with the now-correct positions. The
+            // Combine-debounced observer will also fire ~100ms later, but calling
+            // setupTabBar() here ensures we don't wait for it and avoids any edge
+            // cases where the debounce guard conditions might prevent the rebuild.
+            setupTabBar()
             // Show the loading overlay so the user sees feedback during the 2-5s
             // while tasks re-run with the now-correct credentials.
             loadingStates = ["bg": false, "profile": false, "deviceStatus": false]
