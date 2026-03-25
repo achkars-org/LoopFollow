@@ -28,9 +28,10 @@
 		37989DC62F609C5E0004BD8B /* GlucoseSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 374A77AF2F5BE1AC00E96858 /* GlucoseSnapshotStore.swift */; };
 		37989DC72F609C730004BD8B /* AppGroupID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 374A779F2F5BE17000E96858 /* AppGroupID.swift */; };
 		37989DC82F609C7A0004BD8B /* LAAppGroupSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 374A77A32F5BE17000E96858 /* LAAppGroupSettings.swift */; };
-		37989DC92F609C800004BD8B /* GlucoseUnitConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 374A77A22F5BE17000E96858 /* GlucoseUnitConversion.swift */; };
 		37989DCE2F609ED40004BD8B /* WatchComplicationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DCC2F609DAE0004BD8B /* WatchComplicationProvider.swift */; };
 		37989DD02F609F570004BD8B /* ComplicationEntryBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DCF2F609F570004BD8B /* ComplicationEntryBuilder.swift */; };
+		37989DDC2F60A2010004BD8B /* WatchFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DDB2F60A2000004BD8B /* WatchFormat.swift */; };
+		37989DDD2F60A2020004BD8B /* GlucoseConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD91E4DC2BDEC3F8002D9E97 /* GlucoseConversion.swift */; };
 		37989DD22F60A0ED0004BD8B /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37989DD12F60A0ED0004BD8B /* WatchConnectivity.framework */; };
 		37989DD42F60A11E0004BD8B /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DD32F60A11E0004BD8B /* WatchConnectivityManager.swift */; };
 		37989DD62F60A15E0004BD8B /* WatchSessionReceiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DD52F60A15E0004BD8B /* WatchSessionReceiver.swift */; };
@@ -498,6 +499,7 @@
 		37989DB52F609B0C0004BD8B /* LoopFollowWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LoopFollowWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		37989DCC2F609DAE0004BD8B /* WatchComplicationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchComplicationProvider.swift; sourceTree = "<group>"; };
 		37989DCF2F609F570004BD8B /* ComplicationEntryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComplicationEntryBuilder.swift; sourceTree = "<group>"; };
+		37989DDB2F60A2000004BD8B /* WatchFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFormat.swift; sourceTree = "<group>"; };
 		37989DD12F60A0ED0004BD8B /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk/System/iOSSupport/System/Library/Frameworks/WatchConnectivity.framework; sourceTree = DEVELOPER_DIR; };
 		37989DD32F60A11E0004BD8B /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
 		37989DD52F60A15E0004BD8B /* WatchSessionReceiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionReceiver.swift; sourceTree = "<group>"; };
@@ -974,6 +976,7 @@
 				37989DD52F60A15E0004BD8B /* WatchSessionReceiver.swift */,
 				37989DCF2F609F570004BD8B /* ComplicationEntryBuilder.swift */,
 				37989DCC2F609DAE0004BD8B /* WatchComplicationProvider.swift */,
+				37989DDB2F60A2000004BD8B /* WatchFormat.swift */,
 			);
 			path = WatchComplication;
 			sourceTree = "<group>";
@@ -2144,13 +2147,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				37989DC62F609C5E0004BD8B /* GlucoseSnapshotStore.swift in Sources */,
-				37989DC92F609C800004BD8B /* GlucoseUnitConversion.swift in Sources */,
 				37989DD02F609F570004BD8B /* ComplicationEntryBuilder.swift in Sources */,
 				37989DC52F609C550004BD8B /* GlucoseSnapshot.swift in Sources */,
 				37989DC72F609C730004BD8B /* AppGroupID.swift in Sources */,
 				37989DD62F60A15E0004BD8B /* WatchSessionReceiver.swift in Sources */,
 				37989DC82F609C7A0004BD8B /* LAAppGroupSettings.swift in Sources */,
 				37989DCE2F609ED40004BD8B /* WatchComplicationProvider.swift in Sources */,
+				37989DDC2F60A2010004BD8B /* WatchFormat.swift in Sources */,
+				37989DDD2F60A2020004BD8B /* GlucoseConversion.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

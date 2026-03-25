@@ -17,13 +17,17 @@ final class WatchComplicationProvider: NSObject, CLKComplicationDataSource {
 
     func getComplicationDescriptors(handler: @escaping ([CLKComplicationDescriptor]) -> Void) {
         let descriptors = [
+            // Complication 1: BG + gauge arc (graphicCircular + graphicCorner)
             CLKComplicationDescriptor(
-                identifier: "LoopFollowGlucose",
+                identifier: ComplicationID.gaugeCorner,
                 displayName: "LoopFollow",
-                supportedFamilies: [
-                    .graphicCircular,
-                    .graphicCorner
-                ]
+                supportedFamilies: [.graphicCircular, .graphicCorner]
+            ),
+            // Complication 2: BG + delta/age stacked text (graphicCorner only)
+            CLKComplicationDescriptor(
+                identifier: ComplicationID.stackCorner,
+                displayName: "LoopFollow Text",
+                supportedFamilies: [.graphicCorner]
             )
         ]
         handler(descriptors)
@@ -47,7 +51,11 @@ final class WatchComplicationProvider: NSObject, CLKComplicationDataSource {
             return
         }
 
-        let template = ComplicationEntryBuilder.template(for: complication.family, snapshot: snapshot)
+        let template = ComplicationEntryBuilder.template(
+            for: complication.family,
+            snapshot: snapshot,
+            identifier: complication.identifier
+        )
         let entry = template.map {
             CLKComplicationTimelineEntry(date: snapshot.updatedAt, complicationTemplate: $0)
         }
@@ -81,13 +89,19 @@ final class WatchComplicationProvider: NSObject, CLKComplicationDataSource {
         for complication: CLKComplication,
         withHandler handler: @escaping (CLKComplicationTemplate?) -> Void
     ) {
-        handler(ComplicationEntryBuilder.placeholderTemplate(for: complication.family))
+        handler(ComplicationEntryBuilder.placeholderTemplate(
+            for: complication.family,
+            identifier: complication.identifier
+        ))
     }
 
     // MARK: - Private
 
     private func staleEntry(for complication: CLKComplication) -> CLKComplicationTimelineEntry? {
-        let template = ComplicationEntryBuilder.staleTemplate(for: complication.family)
+        let template = ComplicationEntryBuilder.staleTemplate(
+            for: complication.family,
+            identifier: complication.identifier
+        )
         return template.map {
             CLKComplicationTimelineEntry(date: Date(), complicationTemplate: $0)
         }
