@@ -2524,14 +2524,14 @@
 				INFOPLIST_KEY_CFBundleDisplayName = LoopFollowWatch;
 				INFOPLIST_KEY_CLKComplicationPrincipalClass = "$(PRODUCT_MODULE_NAME).WatchComplicationProvider";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.2HEY366Q6J.LoopFollow;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.$(unique_id).LoopFollow$(app_suffix)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.2HEY366Q6J.LoopFollow.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix).watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -2567,14 +2567,14 @@
 				INFOPLIST_KEY_CFBundleDisplayName = LoopFollowWatch;
 				INFOPLIST_KEY_CLKComplicationPrincipalClass = "$(PRODUCT_MODULE_NAME).WatchComplicationProvider";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.2HEY366Q6J.LoopFollow;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.$(unique_id).LoopFollow$(app_suffix)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.2HEY366Q6J.LoopFollow.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix).watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
