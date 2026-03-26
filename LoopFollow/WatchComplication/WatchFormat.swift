@@ -56,6 +56,13 @@ enum WatchFormat {
         return "\(min(mins, 99))m"
     }
 
+    /// Time of last update formatted as "HH:mm"
+    static func updateTime(_ s: GlucoseSnapshot) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: s.updatedAt)
+    }
+
     // MARK: - Secondary metrics
 
     static func iob(_ s: GlucoseSnapshot) -> String {

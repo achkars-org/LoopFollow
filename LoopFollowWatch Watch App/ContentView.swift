@@ -99,34 +99,29 @@ struct GlucoseView: View {
 
     var body: some View {
         if let s = model.snapshot, s.age < 900, !s.isNotLooping {
-            HStack(spacing: 8) {
-                Text(WatchFormat.glucose(s))
-                    .font(.system(size: 44, weight: .semibold, design: .rounded))
-                    .minimumScaleFactor(0.5)
+            VStack(alignment: .leading, spacing: 6) {
+                // Large BG + trend arrow, single line, auto-scaled to fit 7 chars
+                Text("\(WatchFormat.glucose(s)) \(WatchFormat.trendArrow(s))")
+                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.4)
+                    .lineLimit(1)
                     .foregroundColor(ComplicationEntryBuilder.thresholdColor(for: s).swiftUIColor)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(WatchFormat.trendArrow(s))
-                        .font(.system(size: 18, weight: .medium))
-                    Text(WatchFormat.delta(s))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Delta: \(WatchFormat.delta(s)) \(s.unit.displayName)")
                         .font(.system(size: 14))
+                        .foregroundColor(.white)
+
                     if s.projected != nil {
-                        Text(WatchFormat.projected(s))
+                        Text("Projected: \(WatchFormat.projected(s)) \(s.unit.displayName)")
                             .font(.system(size: 14))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
                     }
-                    Text(WatchFormat.minAgo(s))
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                    if WCSession.default.isReachable {
-                        Button("Open iPhone") {
-                            WCSession.default.sendMessage(["action": "open"], replyHandler: nil)
-                        }
-                        .font(.system(size: 12))
-                        .buttonStyle(.borderedProminent)
-                        .tint(.blue)
-                    }
+
+                    Text("Last update: \(WatchFormat.updateTime(s))")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white)
                 }
             }
             .padding(.horizontal, 4)
@@ -201,7 +196,7 @@ struct SlotSelectionView: View {
 
     var body: some View {
         List {
-            ForEach(LiveActivitySlotOption.allCases.filter { $0 != .none }, id: \.self) { option in
+            ForEach(LiveActivitySlotOption.allCases.filter { $0 != .none && $0 != .delta && $0 != .projectedBG }, id: \.self) { option in
                 Button(action: { model.toggleSlot(option) }) {
                     HStack {
                         Text(option.displayName)

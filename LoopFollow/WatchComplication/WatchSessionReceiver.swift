@@ -53,6 +53,29 @@ extension WatchSessionReceiver: WCSessionDelegate {
             os_log("WatchSessionReceiver: activation failed — %{public}@", log: watchLog, type: .error, error.localizedDescription)
         } else {
             os_log("WatchSessionReceiver: activation complete — state %d", log: watchLog, type: .debug, activationState.rawValue)
+            bootstrapFromApplicationContext(session)
+        }
+    }
+
+    /// Loads a snapshot from the last received applicationContext so the Watch app
+    /// has data immediately on launch without waiting for the next transferUserInfo.
+    private func bootstrapFromApplicationContext(_ session: WCSession) {
+        guard let data = session.receivedApplicationContext["snapshot"] as? Data else { return }
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let snapshot = try decoder.decode(GlucoseSnapshot.self, from: data)
+            GlucoseSnapshotStore.shared.save(snapshot)
+            os_log("WatchSessionReceiver: bootstrapped snapshot from applicationContext", log: watchLog, type: .debug)
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: WatchSessionReceiver.snapshotReceivedNotification,
+                    object: nil,
+                    userInfo: ["snapshot": snapshot]
+                )
+            }
+        } catch {
+            os_log("WatchSessionReceiver: failed to decode applicationContext snapshot — %{public}@", log: watchLog, type: .error, error.localizedDescription)
         }
     }
 

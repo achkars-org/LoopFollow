@@ -68,6 +68,7 @@ final class WatchConnectivityManager: NSObject {
             let data = try JSONEncoder().encode(snapshot)
             let payload: [String: Any] = ["snapshot": data]
             session.transferUserInfo(payload)
+            try? session.updateApplicationContext(payload)
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot transferred to Watch")
         } catch {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: failed to encode snapshot — \(error)")
