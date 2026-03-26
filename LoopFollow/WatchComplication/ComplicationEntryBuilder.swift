@@ -71,15 +71,15 @@ enum ComplicationEntryBuilder {
         case .graphicCorner:
             if identifier == ComplicationID.stackCorner {
                 let outer = CLKSimpleTextProvider(text: "---")
-                outer.tintColor = .systemGreen
+                outer.tintColor = .green
                 return CLKComplicationTemplateGraphicCornerStackText(
                     innerTextProvider: CLKSimpleTextProvider(text: "+0  0m"),
                     outerTextProvider: outer
                 )
             } else {
                 let outer = CLKSimpleTextProvider(text: "---")
-                outer.tintColor = .systemGreen
-                let gauge = CLKSimpleGaugeProvider(style: .fill, gaugeColor: .systemGreen, fillFraction: 0)
+                outer.tintColor = .green
+                let gauge = CLKSimpleGaugeProvider(style: .fill, gaugeColor: .green, fillFraction: 0)
                 return CLKComplicationTemplateGraphicCornerGaugeText(
                     gaugeProvider: gauge,
                     leadingTextProvider: CLKSimpleTextProvider(text: "0"),
@@ -133,9 +133,9 @@ enum ComplicationEntryBuilder {
 
     private static func staleGaugeTemplate() -> CLKComplicationTemplate {
         let warnText = CLKSimpleTextProvider(text: "⚠")
-        warnText.tintColor = .systemYellow
+        warnText.tintColor = .yellow
 
-        let gauge = CLKSimpleGaugeProvider(style: .fill, gaugeColor: .systemYellow, fillFraction: 1.0)
+        let gauge = CLKSimpleGaugeProvider(style: .fill, gaugeColor: .yellow, fillFraction: 1.0)
 
         return CLKComplicationTemplateGraphicCornerGaugeText(
             gaugeProvider: gauge,
@@ -174,8 +174,8 @@ enum ComplicationEntryBuilder {
     /// snapshot.glucose is always in mg/dL (builder stores canonical mg/dL).
     static func thresholdColor(for snapshot: GlucoseSnapshot) -> UIColor {
         let t = LAAppGroupSettings.thresholdsMgdl()
-        if snapshot.glucose < t.low  { return .systemRed }
-        if snapshot.glucose > t.high { return .systemOrange }
-        return .systemGreen
+        if snapshot.glucose < t.low  { return .red }
+        if snapshot.glucose > t.high { return .orange }
+        return .green
     }
 }
