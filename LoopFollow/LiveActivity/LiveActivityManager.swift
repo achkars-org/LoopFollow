@@ -256,6 +256,11 @@ final class LiveActivityManager {
         }
     }
 
+    func forceRestart() {
+        end(dismissalPolicy: .immediate)
+        startFromCurrentState()
+    }
+
     func startFromCurrentState() {
         let provider = StorageCurrentGlucoseStateProvider()
         if let snapshot = GlucoseSnapshotBuilder.build(from: provider) {
