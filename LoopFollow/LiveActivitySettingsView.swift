@@ -20,7 +20,8 @@ struct LiveActivitySettingsView: View {
             if laEnabled {
                 Section {
                     Button(restartConfirmed ? "Live Activity Restarted" : "Restart Live Activity") {
-                        LiveActivityManager.shared.forceRestart()
+                        LiveActivityManager.shared.end(dismissalPolicy: .immediate)
+                        LiveActivityManager.shared.startFromCurrentState()
                         restartConfirmed = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                             restartConfirmed = false
@@ -64,7 +65,8 @@ struct LiveActivitySettingsView: View {
         .onChange(of: laEnabled) { newValue in
             Storage.shared.laEnabled.value = newValue
             if newValue {
-                LiveActivityManager.shared.forceRestart()
+                LiveActivityManager.shared.end(dismissalPolicy: .immediate)
+                LiveActivityManager.shared.startFromCurrentState()
             } else {
                 LiveActivityManager.shared.end(dismissalPolicy: .immediate)
             }
