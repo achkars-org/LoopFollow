@@ -18,8 +18,12 @@ struct ContentView: View {
     var body: some View {
         TabView {
             GlucoseView(model: model)
-            DataCardView(model: model)
-            SettingsView(model: model)
+
+            ForEach(Array(model.pages.enumerated()), id: \.offset) { _, page in
+                DataGridPage(slots: page, snapshot: model.snapshot)
+            }
+
+            SlotSelectionView(model: model)
         }
         .tabViewStyle(.page)
         .onAppear { model.refresh() }
@@ -27,8 +31,12 @@ struct ContentView: View {
             NotificationCenter.default.publisher(
                 for: WatchSessionReceiver.snapshotReceivedNotification
             )
-        ) { _ in
-            model.refresh()
+        ) { notification in
+            if let s = notification.userInfo?["snapshot"] as? GlucoseSnapshot {
+                model.update(snapshot: s)
+            } else {
+                model.refresh()
+            }
         }
     }
 }
@@ -37,11 +45,12 @@ struct ContentView: View {
 
 final class WatchViewModel: ObservableObject {
     @Published var snapshot: GlucoseSnapshot?
-    @Published var slots: [LiveActivitySlotOption] = LAAppGroupSettings.watchSlots()
+    @Published var selectedSlots: [LiveActivitySlotOption] = LAAppGroupSettings.watchSelectedSlots()
 
     private var timer: Timer?
 
     init() {
+        snapshot = GlucoseSnapshotStore.shared.load()
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             self?.refresh()
         }
@@ -50,12 +59,36 @@ final class WatchViewModel: ObservableObject {
     deinit { timer?.invalidate() }
 
     func refresh() {
-        snapshot = GlucoseSnapshotStore.shared.load()
-        slots = LAAppGroupSettings.watchSlots()
+        if let loaded = GlucoseSnapshotStore.shared.load() {
+            snapshot = loaded
+        }
+        selectedSlots = LAAppGroupSettings.watchSelectedSlots()
     }
 
-    func saveSlots() {
-        LAAppGroupSettings.setWatchSlots(slots)
+    func update(snapshot: GlucoseSnapshot) {
+        self.snapshot = snapshot
+        selectedSlots = LAAppGroupSettings.watchSelectedSlots()
+    }
+
+    /// Slots grouped into pages of 4 for the swipable grid tabs.
+    var pages: [[LiveActivitySlotOption]] {
+        guard !selectedSlots.isEmpty else { return [] }
+        return stride(from: 0, to: selectedSlots.count, by: 4).map {
+            Array(selectedSlots[$0..<min($0 + 4, selectedSlots.count)])
+        }
+    }
+
+    func isSelected(_ option: LiveActivitySlotOption) -> Bool {
+        selectedSlots.contains(option)
+    }
+
+    func toggleSlot(_ option: LiveActivitySlotOption) {
+        if let idx = selectedSlots.firstIndex(of: option) {
+            selectedSlots.remove(at: idx)
+        } else {
+            selectedSlots.append(option)
+        }
+        LAAppGroupSettings.setWatchSelectedSlots(selectedSlots)
     }
 }
 
@@ -78,7 +111,7 @@ struct GlucoseView: View {
                         .font(.system(size: 18, weight: .medium))
                     Text(WatchFormat.delta(s))
                         .font(.system(size: 14))
-                    if let _ = s.projected {
+                    if s.projected != nil {
                         Text(WatchFormat.projected(s))
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
@@ -102,7 +135,7 @@ struct GlucoseView: View {
                 Text("--")
                     .font(.system(size: 44, weight: .semibold, design: .rounded))
                     .foregroundColor(.secondary)
-                Text("No data")
+                Text(model.snapshot == nil ? "No data" : "Stale")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -110,25 +143,34 @@ struct GlucoseView: View {
     }
 }
 
-// MARK: - Page 2: Data card
+// MARK: - Data grid page (2×2, up to 4 slots)
 
-struct DataCardView: View {
-    @ObservedObject var model: WatchViewModel
+struct DataGridPage: View {
+    let slots: [LiveActivitySlotOption]
+    let snapshot: GlucoseSnapshot?
 
     var body: some View {
-        let s = model.snapshot
         LazyVGrid(
             columns: [GridItem(.flexible()), GridItem(.flexible())],
             spacing: 8
         ) {
             ForEach(0..<4, id: \.self) { i in
-                let option = i < model.slots.count ? model.slots[i] : .none
-                MetricCell(label: option.gridLabel, value: s.map { WatchFormat.slotValue(option: option, snapshot: $0) } ?? "—")
+                if i < slots.count {
+                    let option = slots[i]
+                    MetricCell(
+                        label: option.gridLabel,
+                        value: snapshot.map { WatchFormat.slotValue(option: option, snapshot: $0) } ?? "—"
+                    )
+                } else {
+                    Color.clear.frame(height: 52)
+                }
             }
         }
         .padding(.horizontal, 4)
     }
 }
+
+// MARK: - Metric cell
 
 struct MetricCell: View {
     let label: String
@@ -152,33 +194,31 @@ struct MetricCell: View {
     }
 }
 
-// MARK: - Page 3: Settings
+// MARK: - Last tab: slot selection checklist
 
-struct SettingsView: View {
+struct SlotSelectionView: View {
     @ObservedObject var model: WatchViewModel
-
-    private let slotLabels = ["Top Left", "Bottom Left", "Top Right", "Bottom Right"]
 
     var body: some View {
         List {
-            ForEach(0..<4, id: \.self) { i in
-                let binding = Binding(
-                    get: { i < model.slots.count ? model.slots[i] : .none },
-                    set: { newVal in
-                        if i < model.slots.count {
-                            model.slots[i] = newVal
-                            model.saveSlots()
-                        }
-                    }
-                )
-                Picker(slotLabels[i], selection: binding) {
-                    ForEach(LiveActivitySlotOption.allCases, id: \.self) { opt in
-                        Text(opt.displayName).tag(opt)
+            ForEach(LiveActivitySlotOption.allCases.filter { $0 != .none }, id: \.self) { option in
+                Button(action: { model.toggleSlot(option) }) {
+                    HStack {
+                        Text(option.displayName)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Image(
+                            systemName: model.isSelected(option)
+                                ? "checkmark.circle.fill"
+                                : "circle"
+                        )
+                        .foregroundColor(model.isSelected(option) ? .green : .secondary)
                     }
                 }
+                .buttonStyle(.plain)
             }
         }
-        .navigationTitle("Watch Settings")
+        .navigationTitle("Data")
     }
 }
 

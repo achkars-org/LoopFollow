@@ -70,7 +70,11 @@ extension WatchSessionReceiver: WCSessionDelegate {
             GlucoseSnapshotStore.shared.save(snapshot)
             os_log("WatchSessionReceiver: snapshot saved, requesting complication reload", log: watchLog, type: .debug)
             reloadComplications()
-            NotificationCenter.default.post(name: WatchSessionReceiver.snapshotReceivedNotification, object: nil)
+            NotificationCenter.default.post(
+                name: WatchSessionReceiver.snapshotReceivedNotification,
+                object: nil,
+                userInfo: ["snapshot": snapshot]
+            )
         } catch {
             os_log("WatchSessionReceiver: failed to decode snapshot — %{public}@", log: watchLog, type: .error, error.localizedDescription)
         }
