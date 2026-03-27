@@ -63,6 +63,12 @@ enum WatchFormat {
         return f.string(from: s.updatedAt)
     }
 
+    static func currentTime() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: Date())
+    }
+
     // MARK: - Secondary metrics
 
     static func iob(_ s: GlucoseSnapshot) -> String {

@@ -124,6 +124,8 @@ extension WatchSessionReceiver: WCSessionDelegate {
                 self?.reloadComplications()
                 self?.pendingConnectivityTask?.setTaskCompletedWithSnapshot(false)
                 self?.pendingConnectivityTask = nil
+                // ACK to iPhone so it can detect missed deliveries.
+                self?.sendAck(for: snapshot)
                 DispatchQueue.main.async {
                     NotificationCenter.default.post(
                         name: WatchSessionReceiver.snapshotReceivedNotification,
@@ -135,6 +137,18 @@ extension WatchSessionReceiver: WCSessionDelegate {
         } catch {
             os_log("WatchSessionReceiver: %{public}@ decode failed — %{public}@", log: watchLog, type: .error, source, error.localizedDescription)
         }
+    }
+
+    private func sendAck(for snapshot: GlucoseSnapshot) {
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        let ack: [String: Any] = ["watchAck": snapshot.updatedAt.timeIntervalSince1970]
+        if session.isReachable {
+            session.sendMessage(ack, replyHandler: nil, errorHandler: nil)
+        } else {
+            session.transferUserInfo(ack)
+        }
+        os_log("WatchSessionReceiver: ACK sent for snapshot at %f", log: watchLog, type: .debug, snapshot.updatedAt.timeIntervalSince1970)
     }
 
     private func reloadComplications() {

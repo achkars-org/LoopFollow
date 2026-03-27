@@ -46,13 +46,37 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
     }
 
     private func handleRefresh(_ task: WKApplicationRefreshBackgroundTask) {
-        // Read latest snapshot from store — written by WatchConnectivity deliveries
-        if let snapshot = GlucoseSnapshotStore.shared.load() {
-            WatchSessionReceiver.shared.reloadComplicationsIfNeeded(for: snapshot)
+        // receivedApplicationContext always holds the last value the iPhone sent —
+        // no active Bluetooth or WKWatchConnectivityRefreshBackgroundTask needed.
+        // If it's newer than what's in the file store, persist it and reload complications.
+        let contextSnapshot = Self.decodeContextSnapshot()
+        let storeSnapshot   = GlucoseSnapshotStore.shared.load()
+
+        let useContext = contextSnapshot != nil && (
+            storeSnapshot == nil ||
+            contextSnapshot!.updatedAt > storeSnapshot!.updatedAt
+        )
+
+        if useContext, let ctx = contextSnapshot {
+            GlucoseSnapshotStore.shared.save(ctx) {
+                WatchSessionReceiver.shared.reloadComplicationsIfNeeded(for: ctx)
+                WatchAppDelegate.scheduleNextRefresh()
+                task.setTaskCompletedWithSnapshot(false)
+            }
+        } else {
+            if let snapshot = storeSnapshot {
+                WatchSessionReceiver.shared.reloadComplicationsIfNeeded(for: snapshot)
+            }
+            WatchAppDelegate.scheduleNextRefresh()
+            task.setTaskCompletedWithSnapshot(false)
         }
-        // Schedule next background wake to stay in sync with iPhone's 5-min BG cycle
-        scheduleNextRefresh()
-        task.setTaskCompletedWithSnapshot(false)
+    }
+
+    static func decodeContextSnapshot() -> GlucoseSnapshot? {
+        guard let data = WCSession.default.receivedApplicationContext["snapshot"] as? Data else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(GlucoseSnapshot.self, from: data)
     }
 
     static func scheduleNextRefresh() {

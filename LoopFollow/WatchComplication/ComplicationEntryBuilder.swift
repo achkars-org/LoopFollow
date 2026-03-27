@@ -177,9 +177,12 @@ enum ComplicationEntryBuilder {
         let bgText = CLKSimpleTextProvider(text: WatchFormat.glucose(snapshot))
         bgText.tintColor = thresholdColor(for: snapshot)
 
-        let bottomLabel = snapshot.projected != nil
-            ? "⛳ \(WatchFormat.projected(snapshot))"
-            : WatchFormat.delta(snapshot)
+        let bottomLabel: String
+        if let _ = snapshot.projected {
+            bottomLabel = "\(WatchFormat.delta(snapshot)) 🎯 \(WatchFormat.projected(snapshot))"
+        } else {
+            bottomLabel = WatchFormat.delta(snapshot)
+        }
 
         return CLKComplicationTemplateGraphicCornerStackText(
             innerTextProvider: CLKSimpleTextProvider(text: bottomLabel),
@@ -188,26 +191,21 @@ enum ComplicationEntryBuilder {
     }
 
     // MARK: - Graphic Corner — Debug (Complication 3)
-    // Outer (top): HH:mm of the snapshot's updatedAt.
-    // Inner (bottom): "NEW" (green) if updatedAt changed since last build, "SAME" (gray) otherwise.
-
-    private static let debugLastTimestampKey = "debugComplicationLastTimestamp"
+    // Outer (top): HH:mm of the snapshot's updatedAt — when the CGM reading arrived.
+    // Inner (bottom): "↺ HH:mm" — when ClockKit last called getCurrentTimelineEntry.
+    //
+    // Reading the two times tells you:
+    //   outer changes  → Watch is receiving new data
+    //   inner changes  → ClockKit is refreshing the complication face
+    //   inner stale    → reloadTimeline is not being called or ClockKit is ignoring it
 
     private static func graphicCornerDebugTemplate(snapshot: GlucoseSnapshot) -> CLKComplicationTemplate {
-        let timeText = WatchFormat.updateTime(snapshot)
-
-        let defaults = UserDefaults(suiteName: AppGroupID.current())
-        let lastTimestamp = defaults?.double(forKey: debugLastTimestampKey) ?? 0
-        let currentTimestamp = snapshot.updatedAt.timeIntervalSince1970
-        let isNew = currentTimestamp != lastTimestamp
-        defaults?.set(currentTimestamp, forKey: debugLastTimestampKey)
-
-        let statusProvider = CLKSimpleTextProvider(text: isNew ? "NEW" : "SAME")
-        statusProvider.tintColor = isNew ? .green : .gray
+        let dataTime  = WatchFormat.updateTime(snapshot)
+        let buildTime = WatchFormat.currentTime()
 
         return CLKComplicationTemplateGraphicCornerStackText(
-            innerTextProvider: statusProvider,
-            outerTextProvider: CLKSimpleTextProvider(text: timeText)
+            innerTextProvider: CLKSimpleTextProvider(text: "↺ \(buildTime)"),
+            outerTextProvider: CLKSimpleTextProvider(text: dataTime)
         )
     }
 

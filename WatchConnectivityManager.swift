@@ -22,6 +22,9 @@ final class WatchConnectivityManager: NSObject {
 
     // MARK: - Init
 
+    /// Timestamp of the last snapshot the Watch ACK'd via sendAck().
+    private var lastWatchAckTimestamp: TimeInterval = 0
+
     private override init() {
         super.init()
     }
@@ -65,6 +68,12 @@ final class WatchConnectivityManager: NSObject {
             let data = try encoder.encode(snapshot)
             let payload: [String: Any] = ["snapshot": data]
 
+            // Warn if Watch hasn't ACK'd this or a recent snapshot.
+            let behindBy = snapshot.updatedAt.timeIntervalSince1970 - lastWatchAckTimestamp
+            if lastWatchAckTimestamp > 0, behindBy > 600 {
+                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch ACK is \(Int(behindBy))s behind — Watch may be missing deliveries")
+            }
+
             // sendMessage: immediate delivery when Watch app is in foreground.
             if session.isReachable {
                 session.sendMessage(payload, replyHandler: nil, errorHandler: nil)
@@ -99,6 +108,21 @@ extension WatchConnectivityManager: WCSessionDelegate {
 
     /// When the Watch app comes to the foreground, send the latest snapshot immediately
     /// so the Watch app has fresh data without waiting for the next BG poll.
+    /// Receives ACKs from the Watch (sent after each snapshot is saved).
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        if let ackTimestamp = message["watchAck"] as? TimeInterval {
+            lastWatchAckTimestamp = ackTimestamp
+            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch ACK received for snapshot at \(ackTimestamp)")
+        }
+    }
+
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        if let ackTimestamp = userInfo["watchAck"] as? TimeInterval {
+            lastWatchAckTimestamp = ackTimestamp
+            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch ACK (userInfo) received for snapshot at \(ackTimestamp)")
+        }
+    }
+
     func sessionReachabilityDidChange(_ session: WCSession) {
         guard session.isReachable else { return }
         if let snapshot = GlucoseSnapshotStore.shared.load() {
