@@ -59,11 +59,6 @@ final class WatchConnectivityManager: NSObject {
             return
         }
 
-        guard session.isWatchAppInstalled else {
-            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch app not installed, skipping send")
-            return
-        }
-
         do {
             let data = try JSONEncoder().encode(snapshot)
             let payload: [String: Any] = ["snapshot": data]
