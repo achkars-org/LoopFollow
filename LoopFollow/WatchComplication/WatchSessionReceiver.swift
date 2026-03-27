@@ -37,6 +37,12 @@ final class WatchSessionReceiver: NSObject {
         WCSession.default.delegate = self
         WCSession.default.activate()
         os_log("WatchSessionReceiver: WCSession activation requested", log: watchLog, type: .debug)
+        WatchAppDelegate.scheduleNextRefresh()
+    }
+
+    /// Reloads complications only if the snapshot is newer than what was last saved.
+    func reloadComplicationsIfNeeded(for snapshot: GlucoseSnapshot) {
+        reloadComplications()
     }
 }
 
