@@ -98,7 +98,7 @@ struct GlucoseView: View {
     @ObservedObject var model: WatchViewModel
 
     var body: some View {
-        if let s = model.snapshot, s.age < 900, !s.isNotLooping {
+        if let s = model.snapshot, s.age < 900 {
             VStack(alignment: .leading, spacing: 6) {
                 // Large BG + trend arrow, single line, auto-scaled to fit 7 chars
                 Text("\(WatchFormat.glucose(s)) \(WatchFormat.trendArrow(s))")
@@ -122,6 +122,12 @@ struct GlucoseView: View {
                     Text("Last update: \(WatchFormat.updateTime(s))")
                         .font(.system(size: 14))
                         .foregroundColor(.white)
+
+                    if s.isNotLooping {
+                        Text("⚠ Loop inactive")
+                            .font(.system(size: 12))
+                            .foregroundColor(.yellow)
+                    }
                 }
             }
             .padding(.horizontal, 4)
