@@ -64,9 +64,17 @@ final class WatchConnectivityManager: NSObject {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(snapshot)
             let payload: [String: Any] = ["snapshot": data]
+
+            // sendMessage: immediate delivery when Watch app is in foreground.
+            if session.isReachable {
+                session.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot sent via sendMessage (reachable)")
+            }
+
+            // transferUserInfo: guaranteed queued delivery for background wakes.
             session.transferUserInfo(payload)
             try? session.updateApplicationContext(payload)
-            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot transferred to Watch")
+            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot queued via transferUserInfo")
         } catch {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: failed to encode snapshot — \(error)")
         }
@@ -86,6 +94,16 @@ extension WatchConnectivityManager: WCSessionDelegate {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: activation failed — \(error)")
         } else {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: activation complete — state \(activationState.rawValue)")
+        }
+    }
+
+    /// When the Watch app comes to the foreground, send the latest snapshot immediately
+    /// so the Watch app has fresh data without waiting for the next BG poll.
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        guard session.isReachable else { return }
+        if let snapshot = GlucoseSnapshotStore.shared.load() {
+            send(snapshot: snapshot)
+            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch became reachable — snapshot pushed")
         }
     }
 

@@ -91,25 +91,37 @@ extension WatchSessionReceiver: WCSessionDelegate {
         }
     }
 
+    /// Handles immediate delivery when Watch app is in foreground (sendMessage path).
+    func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any]
+    ) {
+        process(payload: message, source: "sendMessage")
+    }
+
+    /// Handles queued background delivery (transferUserInfo path).
     func session(
         _ session: WCSession,
         didReceiveUserInfo userInfo: [String: Any]
     ) {
-        guard let data = userInfo["snapshot"] as? Data else {
-            os_log("WatchSessionReceiver: received userInfo with no snapshot key", log: watchLog, type: .debug)
+        process(payload: userInfo, source: "userInfo")
+    }
+
+    // MARK: - Private
+
+    private func process(payload: [String: Any], source: String) {
+        guard let data = payload["snapshot"] as? Data else {
+            os_log("WatchSessionReceiver: %{public}@ — no snapshot key", log: watchLog, type: .debug, source)
             return
         }
-
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(GlucoseSnapshot.self, from: data)
-            os_log("WatchSessionReceiver: snapshot decoded, saving", log: watchLog, type: .debug)
+            os_log("WatchSessionReceiver: %{public}@ snapshot decoded, saving", log: watchLog, type: .debug, source)
             GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
-                os_log("WatchSessionReceiver: snapshot saved, reloading complications", log: watchLog, type: .debug)
+                os_log("WatchSessionReceiver: %{public}@ snapshot saved, reloading complications", log: watchLog, type: .debug, source)
                 self?.reloadComplications()
-                // Complete the WKWatchConnectivityRefreshBackgroundTask now that
-                // the data is on disk and complications are queued for reload.
                 self?.pendingConnectivityTask?.setTaskCompletedWithSnapshot(false)
                 self?.pendingConnectivityTask = nil
                 DispatchQueue.main.async {
@@ -121,11 +133,9 @@ extension WatchSessionReceiver: WCSessionDelegate {
                 }
             }
         } catch {
-            os_log("WatchSessionReceiver: failed to decode snapshot — %{public}@", log: watchLog, type: .error, error.localizedDescription)
+            os_log("WatchSessionReceiver: %{public}@ decode failed — %{public}@", log: watchLog, type: .error, source, error.localizedDescription)
         }
     }
-
-    // MARK: - Private
 
     private func reloadComplications() {
         DispatchQueue.main.async {
