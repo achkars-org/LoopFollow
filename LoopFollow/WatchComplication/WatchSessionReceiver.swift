@@ -128,14 +128,16 @@ extension WatchSessionReceiver: WCSessionDelegate {
     // MARK: - Private
 
     private func reloadComplications() {
-        let server = CLKComplicationServer.sharedInstance()
-        guard let complications = server.activeComplications, !complications.isEmpty else {
-            os_log("WatchSessionReceiver: no active complications to reload", log: watchLog, type: .debug)
-            return
+        DispatchQueue.main.async {
+            let server = CLKComplicationServer.sharedInstance()
+            guard let complications = server.activeComplications, !complications.isEmpty else {
+                os_log("WatchSessionReceiver: no active complications to reload", log: watchLog, type: .debug)
+                return
+            }
+            for complication in complications {
+                server.reloadTimeline(for: complication)
+            }
+            os_log("WatchSessionReceiver: reloaded %d complication(s)", log: watchLog, type: .debug, complications.count)
         }
-        for complication in complications {
-            server.reloadTimeline(for: complication)
-        }
-        os_log("WatchSessionReceiver: reloaded %d complication(s)", log: watchLog, type: .debug, complications.count)
     }
 }
