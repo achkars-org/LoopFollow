@@ -11,6 +11,8 @@ enum ComplicationID {
     static let gaugeCorner = "LoopFollowGaugeCorner"
     /// graphicCorner stacked text only (Complication 2).
     static let stackCorner = "LoopFollowStackCorner"
+    /// graphicCorner debug: last-received time + NEW/SAME indicator.
+    static let debugCorner = "LoopFollowDebugCorner"
 }
 
 // MARK: - Entry builder
@@ -28,9 +30,11 @@ enum ComplicationEntryBuilder {
         case .graphicCircular:
             return graphicCircularTemplate(snapshot: snapshot)
         case .graphicCorner:
-            return identifier == ComplicationID.stackCorner
-                ? graphicCornerStackTemplate(snapshot: snapshot)
-                : graphicCornerGaugeTemplate(snapshot: snapshot)
+            switch identifier {
+            case ComplicationID.stackCorner:  return graphicCornerStackTemplate(snapshot: snapshot)
+            case ComplicationID.debugCorner:  return graphicCornerDebugTemplate(snapshot: snapshot)
+            default:                          return graphicCornerGaugeTemplate(snapshot: snapshot)
+            }
         default:
             return nil
         }
@@ -46,12 +50,18 @@ enum ComplicationEntryBuilder {
                 line2TextProvider: CLKSimpleTextProvider(text: "")
             )
         case .graphicCorner:
-            if identifier == ComplicationID.stackCorner {
+            switch identifier {
+            case ComplicationID.stackCorner:
                 return CLKComplicationTemplateGraphicCornerStackText(
                     innerTextProvider: CLKSimpleTextProvider(text: ""),
                     outerTextProvider: CLKSimpleTextProvider(text: "--")
                 )
-            } else {
+            case ComplicationID.debugCorner:
+                return CLKComplicationTemplateGraphicCornerStackText(
+                    innerTextProvider: CLKSimpleTextProvider(text: "STALE"),
+                    outerTextProvider: CLKSimpleTextProvider(text: "--:--")
+                )
+            default:
                 return staleGaugeTemplate()
             }
         default:
@@ -69,14 +79,20 @@ enum ComplicationEntryBuilder {
                 line2TextProvider: CLKSimpleTextProvider(text: "→")
             )
         case .graphicCorner:
-            if identifier == ComplicationID.stackCorner {
+            switch identifier {
+            case ComplicationID.stackCorner:
                 let outer = CLKSimpleTextProvider(text: "---")
                 outer.tintColor = .green
                 return CLKComplicationTemplateGraphicCornerStackText(
-                    innerTextProvider: CLKSimpleTextProvider(text: "+0  0m"),
+                    innerTextProvider: CLKSimpleTextProvider(text: "→ --"),
                     outerTextProvider: outer
                 )
-            } else {
+            case ComplicationID.debugCorner:
+                return CLKComplicationTemplateGraphicCornerStackText(
+                    innerTextProvider: CLKSimpleTextProvider(text: "DEBUG"),
+                    outerTextProvider: CLKSimpleTextProvider(text: "--:--")
+                )
+            default:
                 let outer = CLKSimpleTextProvider(text: "---")
                 outer.tintColor = .green
                 let gauge = CLKSimpleGaugeProvider(style: .fill, gaugeColor: .green, fillFraction: 0)
@@ -147,7 +163,7 @@ enum ComplicationEntryBuilder {
 
     // MARK: - Graphic Corner — Stacked Text (Complication 2)
     // Outer (top, large): BG value, colored.
-    // Inner (bottom, small): "Δ +3  4m" — delta + minutes ago.
+    // Inner (bottom, small): "→ projected" (falls back to delta if no projection).
     // Stale / isNotLooping: outer = "--", inner = "".
 
     private static func graphicCornerStackTemplate(snapshot: GlucoseSnapshot) -> CLKComplicationTemplate {
@@ -161,11 +177,37 @@ enum ComplicationEntryBuilder {
         let bgText = CLKSimpleTextProvider(text: WatchFormat.glucose(snapshot))
         bgText.tintColor = thresholdColor(for: snapshot)
 
-        let bottomLabel = "\(WatchFormat.delta(snapshot))  \(WatchFormat.minAgo(snapshot))"
+        let bottomLabel = snapshot.projected != nil
+            ? "⛳ \(WatchFormat.projected(snapshot))"
+            : WatchFormat.delta(snapshot)
 
         return CLKComplicationTemplateGraphicCornerStackText(
             innerTextProvider: CLKSimpleTextProvider(text: bottomLabel),
             outerTextProvider: bgText
+        )
+    }
+
+    // MARK: - Graphic Corner — Debug (Complication 3)
+    // Outer (top): HH:mm of the snapshot's updatedAt.
+    // Inner (bottom): "NEW" (green) if updatedAt changed since last build, "SAME" (gray) otherwise.
+
+    private static let debugLastTimestampKey = "debugComplicationLastTimestamp"
+
+    private static func graphicCornerDebugTemplate(snapshot: GlucoseSnapshot) -> CLKComplicationTemplate {
+        let timeText = WatchFormat.updateTime(snapshot)
+
+        let defaults = UserDefaults(suiteName: AppGroupID.current())
+        let lastTimestamp = defaults?.double(forKey: debugLastTimestampKey) ?? 0
+        let currentTimestamp = snapshot.updatedAt.timeIntervalSince1970
+        let isNew = currentTimestamp != lastTimestamp
+        defaults?.set(currentTimestamp, forKey: debugLastTimestampKey)
+
+        let statusProvider = CLKSimpleTextProvider(text: isNew ? "NEW" : "SAME")
+        statusProvider.tintColor = isNew ? .green : .gray
+
+        return CLKComplicationTemplateGraphicCornerStackText(
+            innerTextProvider: statusProvider,
+            outerTextProvider: CLKSimpleTextProvider(text: timeText)
         )
     }
 

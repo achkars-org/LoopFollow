@@ -23,10 +23,16 @@ final class WatchComplicationProvider: NSObject, CLKComplicationDataSource {
                 displayName: "LoopFollow",
                 supportedFamilies: [.graphicCircular, .graphicCorner]
             ),
-            // Complication 2: BG + delta/age stacked text (graphicCorner only)
+            // Complication 2: BG + projected BG stacked text (graphicCorner only)
             CLKComplicationDescriptor(
                 identifier: ComplicationID.stackCorner,
                 displayName: "LoopFollow Text",
+                supportedFamilies: [.graphicCorner]
+            ),
+            // Complication 3: debug — last received time + NEW/SAME indicator
+            CLKComplicationDescriptor(
+                identifier: ComplicationID.debugCorner,
+                displayName: "LoopFollow Debug",
                 supportedFamilies: [.graphicCorner]
             )
         ]
