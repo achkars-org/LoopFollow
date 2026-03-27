@@ -30,6 +30,11 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
             switch task {
             case let refreshTask as WKApplicationRefreshBackgroundTask:
                 handleRefresh(refreshTask)
+            case let connectivityTask as WKWatchConnectivityRefreshBackgroundTask:
+                // Hold the task open — WatchConnectivity will deliver the pending
+                // transferUserInfo to session(_:didReceiveUserInfo:) while the app
+                // is awake. WatchSessionReceiver completes it after saving the snapshot.
+                WatchSessionReceiver.shared.pendingConnectivityTask = connectivityTask
             default:
                 task.setTaskCompletedWithSnapshot(false)
             }

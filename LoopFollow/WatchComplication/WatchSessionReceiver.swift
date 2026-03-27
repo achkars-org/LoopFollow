@@ -5,6 +5,7 @@
 import Foundation
 import WatchConnectivity
 import ClockKit
+import WatchKit
 import os.log
 
 private let watchLog = OSLog(
@@ -19,6 +20,10 @@ final class WatchSessionReceiver: NSObject {
     static let shared = WatchSessionReceiver()
 
     static let snapshotReceivedNotification = Notification.Name("WatchSnapshotReceived")
+
+    /// Held open while WatchConnectivity delivers a pending transferUserInfo in the background.
+    /// Completed after the snapshot is saved to disk.
+    var pendingConnectivityTask: WKWatchConnectivityRefreshBackgroundTask?
 
     // MARK: - Init
 
@@ -104,6 +109,10 @@ extension WatchSessionReceiver: WCSessionDelegate {
             GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
                 os_log("WatchSessionReceiver: snapshot saved, reloading complications", log: watchLog, type: .debug)
                 self?.reloadComplications()
+                // Complete the WKWatchConnectivityRefreshBackgroundTask now that
+                // the data is on disk and complications are queued for reload.
+                self?.pendingConnectivityTask?.setTaskCompletedWithSnapshot(false)
+                self?.pendingConnectivityTask = nil
                 DispatchQueue.main.async {
                     NotificationCenter.default.post(
                         name: WatchSessionReceiver.snapshotReceivedNotification,
