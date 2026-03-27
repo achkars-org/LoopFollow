@@ -25,6 +25,10 @@ struct LoopFollowWatch_Watch_AppApp: App {
 
 final class WatchAppDelegate: NSObject, WKApplicationDelegate {
 
+    func applicationDidFinishLaunching() {
+        WatchAppDelegate.scheduleNextRefresh()
+    }
+
     func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {
         for task in backgroundTasks {
             switch task {
