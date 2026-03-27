@@ -65,14 +65,16 @@ extension WatchSessionReceiver: WCSessionDelegate {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(GlucoseSnapshot.self, from: data)
-            GlucoseSnapshotStore.shared.save(snapshot)
-            os_log("WatchSessionReceiver: bootstrapped snapshot from applicationContext", log: watchLog, type: .debug)
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: WatchSessionReceiver.snapshotReceivedNotification,
-                    object: nil,
-                    userInfo: ["snapshot": snapshot]
-                )
+            GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
+                os_log("WatchSessionReceiver: bootstrapped snapshot from applicationContext", log: watchLog, type: .debug)
+                self?.reloadComplications()
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(
+                        name: WatchSessionReceiver.snapshotReceivedNotification,
+                        object: nil,
+                        userInfo: ["snapshot": snapshot]
+                    )
+                }
             }
         } catch {
             os_log("WatchSessionReceiver: failed to decode applicationContext snapshot — %{public}@", log: watchLog, type: .error, error.localizedDescription)
@@ -89,15 +91,21 @@ extension WatchSessionReceiver: WCSessionDelegate {
         }
 
         do {
-            let snapshot = try JSONDecoder().decode(GlucoseSnapshot.self, from: data)
-            GlucoseSnapshotStore.shared.save(snapshot)
-            os_log("WatchSessionReceiver: snapshot saved, requesting complication reload", log: watchLog, type: .debug)
-            reloadComplications()
-            NotificationCenter.default.post(
-                name: WatchSessionReceiver.snapshotReceivedNotification,
-                object: nil,
-                userInfo: ["snapshot": snapshot]
-            )
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let snapshot = try decoder.decode(GlucoseSnapshot.self, from: data)
+            os_log("WatchSessionReceiver: snapshot decoded, saving", log: watchLog, type: .debug)
+            GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
+                os_log("WatchSessionReceiver: snapshot saved, reloading complications", log: watchLog, type: .debug)
+                self?.reloadComplications()
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(
+                        name: WatchSessionReceiver.snapshotReceivedNotification,
+                        object: nil,
+                        userInfo: ["snapshot": snapshot]
+                    )
+                }
+            }
         } catch {
             os_log("WatchSessionReceiver: failed to decode snapshot — %{public}@", log: watchLog, type: .error, error.localizedDescription)
         }

@@ -60,7 +60,9 @@ final class WatchConnectivityManager: NSObject {
         }
 
         do {
-            let data = try JSONEncoder().encode(snapshot)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(snapshot)
             let payload: [String: Any] = ["snapshot": data]
             session.transferUserInfo(payload)
             try? session.updateApplicationContext(payload)
