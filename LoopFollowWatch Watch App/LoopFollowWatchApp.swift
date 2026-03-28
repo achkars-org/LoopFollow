@@ -3,6 +3,7 @@
 // 2026-03-10
 
 import SwiftUI
+import WatchConnectivity
 import WatchKit
 
 @main
