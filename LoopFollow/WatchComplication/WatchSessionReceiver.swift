@@ -121,12 +121,23 @@ extension WatchSessionReceiver: WCSessionDelegate {
             os_log("WatchSessionReceiver: %{public}@ snapshot decoded, saving", log: watchLog, type: .debug, source)
             GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
                 os_log("WatchSessionReceiver: %{public}@ snapshot saved, reloading complications", log: watchLog, type: .debug, source)
-                self?.reloadComplications()
-                self?.pendingConnectivityTask?.setTaskCompletedWithSnapshot(false)
-                self?.pendingConnectivityTask = nil
                 // ACK to iPhone so it can detect missed deliveries.
                 self?.sendAck(for: snapshot)
+                // Capture and clear the pending task before dispatching to main,
+                // then complete it AFTER reloadTimeline() so watchOS doesn't suspend
+                // the extension before ClockKit processes the reload request.
+                let task = self?.pendingConnectivityTask
+                self?.pendingConnectivityTask = nil
                 DispatchQueue.main.async {
+                    let server = CLKComplicationServer.sharedInstance()
+                    if let complications = server.activeComplications, !complications.isEmpty {
+                        for complication in complications { server.reloadTimeline(for: complication) }
+                        os_log("WatchSessionReceiver: reloaded %d complication(s)", log: watchLog, type: .debug, complications.count)
+                    } else {
+                        os_log("WatchSessionReceiver: no active complications to reload", log: watchLog, type: .debug)
+                    }
+                    // Complete background task only after reloadTimeline() has been called.
+                    task?.setTaskCompletedWithSnapshot(false)
                     NotificationCenter.default.post(
                         name: WatchSessionReceiver.snapshotReceivedNotification,
                         object: nil,
@@ -158,10 +169,14 @@ extension WatchSessionReceiver: WCSessionDelegate {
                 os_log("WatchSessionReceiver: no active complications to reload", log: watchLog, type: .debug)
                 return
             }
-            for complication in complications {
-                server.reloadTimeline(for: complication)
-            }
+            for complication in complications { server.reloadTimeline(for: complication) }
             os_log("WatchSessionReceiver: reloaded %d complication(s)", log: watchLog, type: .debug, complications.count)
         }
     }
+
+    // NOTE: reloadComplications() is safe to call from any thread for foreground paths
+    // (bootstrap, reloadComplicationsIfNeeded). For background task paths (process()),
+    // setTaskCompletedWithSnapshot() must be called INSIDE DispatchQueue.main.async
+    // after reloadTimeline() — otherwise watchOS suspends the extension before ClockKit
+    // receives the reload request.
 }
