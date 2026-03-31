@@ -1,10 +1,10 @@
 // WatchSessionReceiver.swift
-// Philippe Achkar
 // 2026-03-10
 
 import Foundation
 import WatchConnectivity
 import ClockKit
+import WatchKit
 import os.log
 
 private let watchLog = OSLog(
@@ -17,6 +17,10 @@ final class WatchSessionReceiver: NSObject {
     // MARK: - Shared Instance
 
     static let shared = WatchSessionReceiver()
+
+    // MARK: - State
+
+    private var pendingConnectivityTask: WKWatchConnectivityRefreshBackgroundTask?
 
     // MARK: - Init
 
@@ -32,9 +36,94 @@ final class WatchSessionReceiver: NSObject {
             os_log("WatchSessionReceiver: WCSession not supported", log: watchLog, type: .debug)
             return
         }
-        WCSession.default.delegate = self
-        WCSession.default.activate()
+
+        let session = WCSession.default
+        session.delegate = self
+        session.activate()
+
         os_log("WatchSessionReceiver: WCSession activation requested", log: watchLog, type: .debug)
+    }
+
+    // MARK: - Background Task Handling
+
+    func beginHandling(task: WKWatchConnectivityRefreshBackgroundTask) {
+        pendingConnectivityTask = task
+        os_log("WatchSessionReceiver: began background connectivity task", log: watchLog, type: .debug)
+    }
+
+    private func finishPendingTask(snapshotReloaded: Bool) {
+        pendingConnectivityTask?.setTaskCompletedWithSnapshot(snapshotReloaded)
+        pendingConnectivityTask = nil
+
+        os_log(
+            "WatchSessionReceiver: completed background connectivity task snapshotReloaded=%{public}@",
+            log: watchLog,
+            type: .debug,
+            String(snapshotReloaded)
+        )
+    }
+
+    // MARK: - Payload Handling
+
+    private func handleSnapshotPayload(_ payload: [String: Any], source: String) {
+        guard let data = payload["snapshot"] as? Data else {
+            os_log(
+                "WatchSessionReceiver: %{public}@ received with no snapshot key",
+                log: watchLog,
+                type: .debug,
+                source
+            )
+            finishPendingTask(snapshotReloaded: false)
+            return
+        }
+
+        do {
+            let snapshot = try JSONDecoder().decode(GlucoseSnapshot.self, from: data)
+            GlucoseSnapshotStore.shared.save(snapshot)
+
+            os_log(
+                "WatchSessionReceiver: snapshot saved from %{public}@ glucose=%{public}d updatedAt=%{public}@",
+                log: watchLog,
+                type: .debug,
+                source,
+                snapshot.glucose,
+                snapshot.updatedAt as NSDate
+            )
+
+            reloadComplications()
+            finishPendingTask(snapshotReloaded: true)
+        } catch {
+            os_log(
+                "WatchSessionReceiver: failed to decode snapshot from %{public}@ — %{public}@",
+                log: watchLog,
+                type: .error,
+                source,
+                error.localizedDescription
+            )
+            finishPendingTask(snapshotReloaded: false)
+        }
+    }
+
+    // MARK: - Private
+
+    private func reloadComplications() {
+        let server = CLKComplicationServer.sharedInstance()
+
+        guard let complications = server.activeComplications, !complications.isEmpty else {
+            os_log("WatchSessionReceiver: no active complications to reload", log: watchLog, type: .debug)
+            return
+        }
+
+        for complication in complications {
+            server.reloadTimeline(for: complication)
+        }
+
+        os_log(
+            "WatchSessionReceiver: reloaded %d complication(s)",
+            log: watchLog,
+            type: .debug,
+            complications.count
+        )
     }
 }
 
@@ -48,9 +137,19 @@ extension WatchSessionReceiver: WCSessionDelegate {
         error: Error?
     ) {
         if let error = error {
-            os_log("WatchSessionReceiver: activation failed — %{public}@", log: watchLog, type: .error, error.localizedDescription)
+            os_log(
+                "WatchSessionReceiver: activation failed — %{public}@",
+                log: watchLog,
+                type: .error,
+                error.localizedDescription
+            )
         } else {
-            os_log("WatchSessionReceiver: activation complete — state %d", log: watchLog, type: .debug, activationState.rawValue)
+            os_log(
+                "WatchSessionReceiver: activation complete — state %d",
+                log: watchLog,
+                type: .debug,
+                activationState.rawValue
+            )
         }
     }
 
@@ -58,32 +157,20 @@ extension WatchSessionReceiver: WCSessionDelegate {
         _ session: WCSession,
         didReceiveUserInfo userInfo: [String: Any]
     ) {
-        guard let data = userInfo["snapshot"] as? Data else {
-            os_log("WatchSessionReceiver: received userInfo with no snapshot key", log: watchLog, type: .debug)
-            return
-        }
-
-        do {
-            let snapshot = try JSONDecoder().decode(GlucoseSnapshot.self, from: data)
-            GlucoseSnapshotStore.shared.save(snapshot)
-            os_log("WatchSessionReceiver: snapshot saved, requesting complication reload", log: watchLog, type: .debug)
-            reloadComplications()
-        } catch {
-            os_log("WatchSessionReceiver: failed to decode snapshot — %{public}@", log: watchLog, type: .error, error.localizedDescription)
-        }
+        handleSnapshotPayload(userInfo, source: "didReceiveUserInfo")
     }
 
-    // MARK: - Private
+    func session(
+        _ session: WCSession,
+        didReceiveComplicationUserInfo complicationUserInfo: [String: Any] = [:]
+    ) {
+        handleSnapshotPayload(complicationUserInfo, source: "didReceiveComplicationUserInfo")
+    }
 
-    private func reloadComplications() {
-        let server = CLKComplicationServer.sharedInstance()
-        guard let complications = server.activeComplications, !complications.isEmpty else {
-            os_log("WatchSessionReceiver: no active complications to reload", log: watchLog, type: .debug)
-            return
-        }
-        for complication in complications {
-            server.reloadTimeline(for: complication)
-        }
-        os_log("WatchSessionReceiver: reloaded %d complication(s)", log: watchLog, type: .debug, complications.count)
+    func session(
+        _ session: WCSession,
+        didReceiveApplicationContext applicationContext: [String: Any]
+    ) {
+        handleSnapshotPayload(applicationContext, source: "didReceiveApplicationContext")
     }
 }
