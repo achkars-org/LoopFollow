@@ -1,16 +1,3 @@
-//
-//  WatchConnectivityManager.swift
-//  LoopFollow
-//
-//  Created by Philippe Achkar on 2026-03-10.
-//  Copyright © 2026 Jon Fawcett. All rights reserved.
-//
-
-
-// WatchConnectivityManager.swift
-// Philippe Achkar
-// 2026-03-10
-
 import Foundation
 import WatchConnectivity
 
@@ -34,16 +21,19 @@ final class WatchConnectivityManager: NSObject {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: WCSession not supported on this device")
             return
         }
-        WCSession.default.delegate = self
-        WCSession.default.activate()
+
+        let session = WCSession.default
+        session.delegate = self
+        session.activate()
         LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: WCSession activation requested")
     }
 
     // MARK: - Send Snapshot
 
-    /// Sends the latest GlucoseSnapshot to the Watch via transferUserInfo.
-    /// Safe to call from any thread.
-    /// No-ops silently if Watch is not paired or reachable.
+    /// Sends the latest GlucoseSnapshot to the Watch.
+    /// - Uses application context for latest-state sync.
+    /// - Uses complication transfer when available.
+    /// - Falls back to transferUserInfo otherwise.
     func send(snapshot: GlucoseSnapshot) {
         guard WCSession.isSupported() else { return }
 
@@ -67,8 +57,34 @@ final class WatchConnectivityManager: NSObject {
         do {
             let data = try JSONEncoder().encode(snapshot)
             let payload: [String: Any] = ["snapshot": data]
+
+            do {
+                try session.updateApplicationContext(payload)
+                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: application context updated")
+            } catch {
+                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: failed to update application context — \(error)")
+            }
+
+            if session.isComplicationEnabled {
+                let remaining = session.remainingComplicationUserInfoTransfers
+                LogManager.shared.log(
+                    category: .watch,
+                    message: "WatchConnectivityManager: complication enabled, remaining transfers = \(remaining)"
+                )
+
+                if remaining > 0 {
+                    session.transferCurrentComplicationUserInfo(payload)
+                    LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot sent via complication transfer")
+                    return
+                } else {
+                    LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: no remaining complication transfers, falling back to transferUserInfo")
+                }
+            } else {
+                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: complication not enabled, using transferUserInfo")
+            }
+
             session.transferUserInfo(payload)
-            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot transferred to Watch")
+            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot transferred via userInfo")
         } catch {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: failed to encode snapshot — \(error)")
         }
@@ -98,5 +114,12 @@ extension WatchConnectivityManager: WCSessionDelegate {
     func sessionDidDeactivate(_ session: WCSession) {
         LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: session deactivated — reactivating")
         WCSession.default.activate()
+    }
+
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        LogManager.shared.log(
+            category: .watch,
+            message: "WatchConnectivityManager: watch state changed paired=\(session.isPaired) installed=\(session.isWatchAppInstalled) complicationEnabled=\(session.isComplicationEnabled)"
+        )
     }
 }
