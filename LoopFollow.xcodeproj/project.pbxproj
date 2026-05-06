@@ -17,6 +17,7 @@
 		DDF2C0142BEFD468007A20E6 /* blacklisted-versions.json in Resources */ = {isa = PBXBuildFile; fileRef = DDF2C0132BEFD468007A20E6 /* blacklisted-versions.json */; };
 		FC5A5C3D2497B229009C550E /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = FC5A5C3C2497B229009C550E /* Config.xcconfig */; };
 		FCFEEC9E2486E68E00402A7F /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCFEEC9D2486E68E00402A7F /* WebKit.framework */; };
+		37989DBF2F609B0E0004BD8B /* LoopFollowWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 37989DB52F609B0C0004BD8B /* LoopFollowWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,6 +35,13 @@
 			remoteGlobalIDString = FC9788132485969B00A7906C;
 			remoteInfo = LoopFollow;
 		};
+		37989DBD2F609B0E0004BD8B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC97880C2485969B00A7906C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 37989DB42F609B0C0004BD8B;
+			remoteInfo = "LoopFollowWatch Watch App";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -46,6 +54,17 @@
 				37A4BDE82F5B6B4C00EEB289 /* LoopFollowLAExtensionExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		37989DC32F609B0E0004BD8B /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				37989DBF2F609B0E0004BD8B /* LoopFollowWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -68,6 +87,7 @@
 		FC9788142485969B00A7906C /* Loop Follow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Loop Follow.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		FCE537C2249AAB2600F80BF8 /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		FCFEEC9D2486E68E00402A7F /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		37989DB52F609B0C0004BD8B /* LoopFollowWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LoopFollowWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -77,6 +97,15 @@
 				Info.plist,
 			);
 			target = FC9788132485969B00A7906C /* LoopFollow */;
+		};
+		37989DE42F60A6000004BD8B /* Exceptions for "Shared" folder in "LoopFollowWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				GlucoseLiveActivityAttributes.swift,
+				LALivenessMarker.swift,
+				LALivenessStore.swift,
+			);
+			target = 37989DB42F609B0C0004BD8B /* LoopFollowWatch Watch App */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -103,6 +132,7 @@
 		BC0FBFD3754955D028EF6631 /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				37989DE42F60A6000004BD8B /* Exceptions for "Shared" folder in "LoopFollowWatch Watch App" target */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -116,6 +146,17 @@
 			explicitFolders = (
 			);
 			path = Tests;
+			sourceTree = "<group>";
+		};
+		37989DB62F609B0C0004BD8B /* LoopFollowWatch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = "LoopFollowWatch Watch App";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -144,6 +185,13 @@
 				DD50C10A2F60A00000000001 /* SocketIO in Frameworks */,
 				FCFEEC9E2486E68E00402A7F /* WebKit.framework in Frameworks */,
 				3F1335F351590E573D8E6962 /* Pods_LoopFollow.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		37989DB22F609B0C0004BD8B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -196,6 +244,7 @@
 				6A5880E0B811AF443B05AB02 /* Frameworks */,
 				9555FE45F7FAEFA6142D04CA /* LoopFollow */,
 				BC0FBFD3754955D028EF6631 /* Shared */,
+				37989DB62F609B0C0004BD8B /* LoopFollowWatch Watch App */,
 			);
 			sourceTree = "<group>";
 		};
@@ -205,6 +254,7 @@
 				FC9788142485969B00A7906C /* Loop Follow.app */,
 				DDCC3AD62DDE1790006F1C10 /* Tests.xctest */,
 				37A4BDD92F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension.appex */,
+				37989DB52F609B0C0004BD8B /* LoopFollowWatch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -266,11 +316,13 @@
 				04DA71CCA0280FA5FA2DF7A6 /* [CP] Embed Pods Frameworks */,
 				DDB0AF532BB1AA0900AFA48B /* Capture Build Details */,
 				37A4BDED2F5B6B4C00EEB289 /* Embed Foundation Extensions */,
+				37989DC32F609B0E0004BD8B /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				37A4BDE72F5B6B4C00EEB289 /* PBXTargetDependency */,
+				37989DBE2F609B0E0004BD8B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9555FE45F7FAEFA6142D04CA /* LoopFollow */,
@@ -284,6 +336,27 @@
 			productReference = FC9788142485969B00A7906C /* Loop Follow.app */;
 			productType = "com.apple.product-type.application";
 		};
+		37989DB42F609B0C0004BD8B /* LoopFollowWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 37989DC02F609B0E0004BD8B /* Build configuration list for PBXNativeTarget "LoopFollowWatch Watch App" */;
+			buildPhases = (
+				37989DB12F609B0C0004BD8B /* Sources */,
+				37989DB22F609B0C0004BD8B /* Frameworks */,
+				37989DB32F609B0C0004BD8B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				37989DB62F609B0C0004BD8B /* LoopFollowWatch Watch App */,
+				BC0FBFD3754955D028EF6631 /* Shared */,
+			);
+			name = "LoopFollowWatch Watch App";
+			productName = "LoopFollowWatch Watch App";
+			productReference = 37989DB52F609B0C0004BD8B /* LoopFollowWatch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -294,6 +367,9 @@
 				LastUpgradeCheck = 1140;
 				ORGANIZATIONNAME = "Jon Fawcett";
 				TargetAttributes = {
+					37989DB42F609B0C0004BD8B = {
+						CreatedOnToolsVersion = 26.3;
+					};
 					37A4BDD82F5B6B4A00EEB289 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -325,6 +401,7 @@
 				FC9788132485969B00A7906C /* LoopFollow */,
 				DDCC3AD52DDE1790006F1C10 /* Tests */,
 				37A4BDD82F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension */,
+				37989DB42F609B0C0004BD8B /* LoopFollowWatch Watch App */,
 			);
 		};
 /* End PBXProject section */
@@ -352,6 +429,13 @@
 				DDF2C0142BEFD468007A20E6 /* blacklisted-versions.json in Resources */,
 				FC5A5C3D2497B229009C550E /* Config.xcconfig in Resources */,
 				DDCFCAF22B17273200BE5751 /* LoopFollowDisplayNameConfig.xcconfig in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		37989DB32F609B0C0004BD8B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -462,6 +546,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		37989DB12F609B0C0004BD8B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -475,6 +566,11 @@
 			isa = PBXTargetDependency;
 			target = FC9788132485969B00A7906C /* LoopFollow */;
 			targetProxy = DDCC3ADA2DDE1790006F1C10 /* PBXContainerItemProxy */;
+		};
+		37989DBE2F609B0E0004BD8B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 37989DB42F609B0C0004BD8B /* LoopFollowWatch Watch App */;
+			targetProxy = 37989DBD2F609B0E0004BD8B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -813,6 +909,91 @@
 			};
 			name = Release;
 		};
+		37989DC12F609B0E0004BD8B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_COMPLICATION_NAME = LoopFollow;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_ENTITLEMENTS = "LoopFollowWatch Watch App/LoopFollowWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(LF_DEVELOPMENT_TEAM)";
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = LoopFollowWatch;
+				INFOPLIST_KEY_CLKComplicationPrincipalClass = "$(PRODUCT_MODULE_NAME).WatchComplicationProvider";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.$(unique_id).LoopFollow$(app_suffix)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix).watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 9.6;
+			};
+			name = Debug;
+		};
+		37989DC22F609B0E0004BD8B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_COMPLICATION_NAME = LoopFollow;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CODE_SIGN_ENTITLEMENTS = "LoopFollowWatch Watch App/LoopFollowWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(LF_DEVELOPMENT_TEAM)";
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = LoopFollowWatch;
+				INFOPLIST_KEY_CLKComplicationPrincipalClass = "$(PRODUCT_MODULE_NAME).WatchComplicationProvider";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.$(unique_id).LoopFollow$(app_suffix)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix).watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 9.6;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -848,6 +1029,15 @@
 			buildConfigurations = (
 				FC97882E2485969C00A7906C /* Debug */,
 				FC97882F2485969C00A7906C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		37989DC02F609B0E0004BD8B /* Build configuration list for PBXNativeTarget "LoopFollowWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				37989DC12F609B0E0004BD8B /* Debug */,
+				37989DC22F609B0E0004BD8B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
