@@ -1,10 +1,5 @@
-//
-//  ContentView.swift
-//  LoopFollowWatch Watch App
-//
-//  Created by Philippe Achkar on 2026-03-10.
-//  Copyright © 2026 Jon Fawcett. All rights reserved.
-//
+// LoopFollow
+// ContentView.swift
 
 import Combine
 import SwiftUI
@@ -127,7 +122,7 @@ final class WatchViewModel: ObservableObject {
     var pages: [[LiveActivitySlotOption]] {
         guard !selectedSlots.isEmpty else { return [] }
         return stride(from: 0, to: selectedSlots.count, by: 4).map {
-            Array(selectedSlots[$0..<min($0 + 4, selectedSlots.count)])
+            Array(selectedSlots[$0 ..< min($0 + 4, selectedSlots.count)])
         }
     }
 
@@ -236,7 +231,7 @@ struct DataGridPage: View {
             columns: [GridItem(.flexible()), GridItem(.flexible())],
             spacing: 8
         ) {
-            ForEach(0..<4, id: \.self) { i in
+            ForEach(0 ..< 4, id: \.self) { i in
                 if i < slots.count {
                     let option = slots[i]
                     MetricCell(

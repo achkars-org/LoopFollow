@@ -150,7 +150,7 @@ struct WatchOverridePreset: Codable, Identifiable {
     var id: String { name }
     var name: String
     var symbol: String?
-    var durationSeconds: TimeInterval  // 0 = indefinite
+    var durationSeconds: TimeInterval // 0 = indefinite
 }
 
 // MARK: - App Group settings
@@ -266,7 +266,6 @@ enum LAAppGroupSettings {
         }
         return raw.compactMap { LiveActivitySlotOption(rawValue: $0) }
     }
-
 
     // MARK: - Display Name
 
