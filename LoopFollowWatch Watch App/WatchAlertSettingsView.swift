@@ -9,7 +9,7 @@ import SwiftUI
 struct WatchAlertSettingsView: View {
     @StateObject private var settings = WatchAppSettings.shared
 
-    private let snoozeOptions = stride(from: 30, through: 720, by: 30).map { $0 }
+    private let snoozeOptions = Array(stride(from: 30, through: 720, by: 30))
 
     var body: some View {
         List {
@@ -71,7 +71,6 @@ struct WatchAlertSettingsView: View {
     private var appBuild: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
     }
-
 
     private func formattedMinutes(_ mins: Int) -> String {
         mins < 60 ? "\(mins)m" : (mins % 60 == 0 ? "\(mins/60)h" : "\(mins/60)h \(mins%60)m")
