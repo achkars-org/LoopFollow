@@ -9,7 +9,7 @@ import WatchKit
 
 struct WatchOverridePickerView: View {
     @State private var presets: [WatchOverridePreset] = []
-    @State private var selectedPreset: WatchOverridePreset? = nil
+    @State private var selectedPreset: WatchOverridePreset?
     @State private var showConfirm = false
     @State private var isSending = false
     @State private var alertMessage = ""

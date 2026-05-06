@@ -100,8 +100,4 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
             userInfo: nil
         ) { _ in }
     }
-
-    private func scheduleNextRefresh() {
-        WatchAppDelegate.scheduleNextRefresh()
-    }
 }

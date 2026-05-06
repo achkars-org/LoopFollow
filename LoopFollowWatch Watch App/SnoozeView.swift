@@ -65,10 +65,6 @@ struct SnoozeView: View {
             }
             .padding(.horizontal, 4)
         }
-        .onAppear {
-            snoozeMinutes = Double(settings.defaultSnoozeMinutes)
-            snoozeAll     = settings.snoozeAllByDefault
-        }
     }
 
     private var formattedDuration: String {
