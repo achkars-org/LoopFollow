@@ -513,10 +513,10 @@ class MainViewController: UIViewController, UNUserNotificationCenterDelegate {
 
     @objc private func navigateOnLAForeground() {
         let orderedItems = Storage.shared.orderedTabBarItems()
-        if Observable.shared.currentAlarm.value != nil,
-           let snoozerIndex = orderedItems.firstIndex(of: .snoozer)
-        {
-            Observable.shared.selectedTabIndex.value = snoozerIndex
+        if Observable.shared.currentAlarm.value != nil {
+            // When the snoozer lives in the menu rather than as a tab, land on the
+            // Menu tab (tag 4) so it is one tap away instead of falling back to Home.
+            Observable.shared.selectedTabIndex.value = orderedItems.prefix(4).firstIndex(of: .snoozer) ?? 4
         } else {
             Observable.shared.selectedTabIndex.value = 0
         }
