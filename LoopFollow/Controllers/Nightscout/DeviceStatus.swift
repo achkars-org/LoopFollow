@@ -67,7 +67,12 @@ extension MainViewController {
     func updateDeviceStatusDisplay(jsonDeviceStatus: [[String: AnyObject]]) {
         let previousIOBText = Observable.shared.iobText.value
         let previousDeviceWasLoop = Storage.shared.device.value == "Loop"
-        infoManager.clearInfoData(types: [.iob, .cob, .battery, .pump, .pumpBattery, .target, .isf, .carbRatio, .updated, .recBolus, .tdd, .smoothedBG])
+        var typesToClear: [InfoType] = [.iob, .cob, .battery, .pump, .pumpBattery, .target, .isf, .carbRatio, .updated, .recBolus, .smoothedBG]
+        // Loop TDD is computed from treatments (updateLoopTDD), so keep it across device status updates.
+        if !previousDeviceWasLoop {
+            typesToClear.append(.tdd)
+        }
+        infoManager.clearInfoData(types: typesToClear)
 
         // For Loop, clear the current override here - For Trio, it is handled using treatments
         if Storage.shared.device.value == "Loop" {
