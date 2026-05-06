@@ -1,6 +1,5 @@
 // LoopFollow
 // WatchOverridePickerView.swift
-// Override preset picker for Watch remote commands.
 
 import SwiftUI
 import UserNotifications
@@ -81,7 +80,7 @@ struct WatchOverridePickerView: View {
         let payload: [String: Any] = [
             "watchCmd": "override",
             "overrideName": preset.name,
-            "overrideDuration": preset.durationSeconds
+            "overrideDuration": preset.durationSeconds,
         ]
         WCSession.default.sendMessage(payload) { reply in
             DispatchQueue.main.async {
