@@ -210,9 +210,11 @@ enum ComplicationEntryBuilder {
     private static func graphicCornerDebugTemplate(snapshot: GlucoseSnapshot) -> CLKComplicationTemplate {
         let dataTime = WatchFormat.updateTime(snapshot)
         let buildTime = WatchFormat.currentTime()
+        let h = ComplicationRefreshCounter.shared.hourCount
+        let d = ComplicationRefreshCounter.shared.dayCount
 
         return CLKComplicationTemplateGraphicCornerStackText(
-            innerTextProvider: CLKSimpleTextProvider(text: "↺ \(buildTime)"),
+            innerTextProvider: CLKSimpleTextProvider(text: "↺ \(buildTime) \(h)/\(d)"),
             outerTextProvider: CLKSimpleTextProvider(text: dataTime)
         )
     }
