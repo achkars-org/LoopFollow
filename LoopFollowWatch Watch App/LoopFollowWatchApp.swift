@@ -69,9 +69,12 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
                 task.setTaskCompletedWithSnapshot(false)
             }
         } else {
-            if storeSnapshot != nil {
-                WatchSessionReceiver.shared.triggerComplicationReload()
-            }
+            // Candidate for removal: reloading when there is no new data burns ClockKit
+            // budget (counted against the ~50/day limit) without changing what the
+            // complication displays. Commented out to verify budget impact.
+            // if storeSnapshot != nil {
+            //     WatchSessionReceiver.shared.triggerComplicationReload()
+            // }
             WatchAppDelegate.scheduleNextRefresh()
             task.setTaskCompletedWithSnapshot(false)
         }
