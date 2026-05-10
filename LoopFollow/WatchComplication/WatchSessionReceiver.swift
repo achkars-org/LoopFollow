@@ -93,6 +93,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(GlucoseSnapshot.self, from: data)
+            ComplicationRefreshCounter.shared.recordRefresh(snapshotTime: snapshot.updatedAt)
             GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
                 os_log("WatchSessionReceiver: bootstrapped snapshot from applicationContext", log: watchLog, type: .debug)
                 self?.reloadComplications()
@@ -162,6 +163,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
             // Cache in memory immediately — complication provider can use this as a
             // fallback if the App Group file store hasn't flushed yet.
             lastSnapshot = snapshot
+            ComplicationRefreshCounter.shared.recordRefresh(snapshotTime: snapshot.updatedAt)
             WatchAlertManager.shared.checkAndAlert(snapshot: snapshot)
             os_log("WatchSessionReceiver: %{public}@ snapshot decoded g=%d, saving", log: watchLog, type: .debug, source, Int(snapshot.glucose))
             GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
@@ -226,7 +228,6 @@ extension WatchSessionReceiver: WCSessionDelegate {
 
     /// Must be called on the main thread. Used directly when already on main (e.g., from process()).
     private func reloadComplicationsOnMainThread() {
-        ComplicationRefreshCounter.shared.recordRefresh()
         let server = CLKComplicationServer.sharedInstance()
 
         let complications: [CLKComplication]
