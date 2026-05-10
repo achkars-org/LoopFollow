@@ -226,6 +226,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
 
     /// Must be called on the main thread. Used directly when already on main (e.g., from process()).
     private func reloadComplicationsOnMainThread() {
+        ComplicationRefreshCounter.shared.recordRefresh()
         let server = CLKComplicationServer.sharedInstance()
 
         let complications: [CLKComplication]
