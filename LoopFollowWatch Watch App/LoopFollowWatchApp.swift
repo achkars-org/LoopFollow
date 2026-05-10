@@ -69,12 +69,13 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
                 task.setTaskCompletedWithSnapshot(false)
             }
         } else {
-            // Candidate for removal: reloading when there is no new data burns ClockKit
-            // budget (counted against the ~50/day limit) without changing what the
-            // complication displays. Commented out to verify budget impact.
-            // if storeSnapshot != nil {
-            //     WatchSessionReceiver.shared.triggerComplicationReload()
-            // }
+            // Candidate for eventual removal once WCSession delivery is reliable enough
+            // that background-task keep-alive reloads are unnecessary. Until then this
+            // is the fallback path when process() hasn't fired (e.g. WCSession delivery
+            // failed) and the complication would otherwise freeze indefinitely.
+            if storeSnapshot != nil {
+                WatchSessionReceiver.shared.triggerComplicationReload()
+            }
             WatchAppDelegate.scheduleNextRefresh()
             task.setTaskCompletedWithSnapshot(false)
         }
