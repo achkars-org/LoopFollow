@@ -62,6 +62,7 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
         if let ctx = contextSnapshot,
            ctx.updatedAt > (storeSnapshot?.updatedAt ?? .distantPast)
         {
+            ComplicationRefreshCounter.shared.recordRefresh(snapshotTime: ctx.updatedAt)
             WatchAlertManager.shared.checkAndAlert(snapshot: ctx)
             GlucoseSnapshotStore.shared.save(ctx) {
                 WatchSessionReceiver.shared.triggerComplicationReload()
