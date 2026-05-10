@@ -57,6 +57,12 @@ struct WatchAlertSettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
+
+            Section("Diagnostics") {
+                Button("Reset refresh counter") {
+                    ComplicationRefreshCounter.shared.resetCounter()
+                }
+            }
         }
         .navigationTitle("Alert Settings")
     }
