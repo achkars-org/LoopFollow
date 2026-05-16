@@ -76,7 +76,8 @@ final class WatchNightscoutFetcher: NSObject {
         }
 
         let fireDate = nextURLSessionFireDate()
-        WKApplication.shared().scheduleURLSessionRefresh(
+        // scheduleURLSessionRefresh lives on WKExtension, not WKApplication.
+        WKExtension.shared().scheduleURLSessionRefresh(
             withPreferredDate: fireDate,
             userInfo: nil,
             scheduledCompletion: { error in
