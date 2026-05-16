@@ -68,15 +68,19 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
                 WatchSessionReceiver.shared.triggerComplicationReload()
                 // Also poll NightScout — dedup gate prevents a double reload if same reading.
                 WatchNightscoutFetcher.shared.handleRefreshTask {
-                    WatchAppDelegate.scheduleNextRefresh()
-                    task.setTaskCompletedWithSnapshot(false)
+                    DispatchQueue.main.async {
+                        WatchAppDelegate.scheduleNextRefresh()
+                        task.setTaskCompletedWithSnapshot(false)
+                    }
                 }
             }
         } else {
             // No newer applicationContext — poll NightScout directly.
             WatchNightscoutFetcher.shared.handleRefreshTask {
-                WatchAppDelegate.scheduleNextRefresh()
-                task.setTaskCompletedWithSnapshot(false)
+                DispatchQueue.main.async {
+                    WatchAppDelegate.scheduleNextRefresh()
+                    task.setTaskCompletedWithSnapshot(false)
+                }
             }
         }
     }
