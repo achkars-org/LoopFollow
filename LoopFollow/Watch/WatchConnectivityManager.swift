@@ -14,10 +14,9 @@ final class WatchConnectivityManager: NSObject {
 
     /// Timestamp of the last snapshot the Watch ACK'd via sendAck().
     private var lastWatchAckTimestamp: TimeInterval = 0
-    /// Timestamps of last high-priority complication push and last transferUserInfo send.
+    /// Timestamp of the last high-priority complication push.
     /// In-memory only — resets on launch, which is fine since the phone app runs continuously.
     private var lastComplicationPushTime: Date = .distantPast
-    private var lastUserInfoPushTime: Date = .distantPast
     /// Timestamp of the last remote command received from the Watch.
     private var lastWatchCommandDate: Date = .distantPast
     private var cancellables = Set<AnyCancellable>()
@@ -93,9 +92,8 @@ final class WatchConnectivityManager: NSObject {
 
             // Delivery cadence:
             //   Every 30 min → transferCurrentComplicationUserInfo (high-priority wake, 50/day budget)
-            //   Every 10 min → transferUserInfo (queued fallback, no cap)
-            //   Every  5 min → updateApplicationContext only (above)
-            // The complication push resets the transferUserInfo clock so they never overlap.
+            //   Every  5 min → transferUserInfo (queued fallback, no documented cap)
+            // Outstanding transfers are cancelled above so at most one is ever pending.
             let now = Date()
             let transferLog: String
 
@@ -105,14 +103,10 @@ final class WatchConnectivityManager: NSObject {
             {
                 session.transferCurrentComplicationUserInfo(payload)
                 lastComplicationPushTime = now
-                lastUserInfoPushTime = now
                 transferLog = "snapshot sent via transferCurrentComplicationUserInfo"
-            } else if now.timeIntervalSince(lastUserInfoPushTime) >= 600 {
-                session.transferUserInfo(payload)
-                lastUserInfoPushTime = now
-                transferLog = "snapshot sent via transferUserInfo (10-min fallback)"
             } else {
-                transferLog = "snapshot deferred — applicationContext updated only"
+                session.transferUserInfo(payload)
+                transferLog = "snapshot sent via transferUserInfo"
             }
 
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: \(transferLog)")
