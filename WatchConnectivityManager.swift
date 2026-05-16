@@ -14,6 +14,9 @@ final class WatchConnectivityManager: NSObject {
 
     /// Timestamp of the last snapshot the Watch ACK'd via sendAck().
     private var lastWatchAckTimestamp: TimeInterval = 0
+    /// Timestamp of the last transferCurrentComplicationUserInfo send.
+    /// In-memory only — resets on launch, which is fine since the phone app runs continuously.
+    private var lastComplicationPushTime: Date = .distantPast
     /// Timestamp of the last remote command received from the Watch.
     private var lastWatchCommandDate: Date = .distantPast
     private var cancellables = Set<AnyCancellable>()
@@ -81,13 +84,16 @@ final class WatchConnectivityManager: NSObject {
             session.transferUserInfo(payload)
 
             // transferCurrentComplicationUserInfo: high-priority delivery that wakes the Watch
-            // immediately for complication updates. Only sent while Apple's 50/day budget
-            // remains; transferUserInfo above carries every reading when budget is exhausted.
+            // immediately for complication updates. Rate-limited to once per 30 minutes so the
+            // 50/day budget lasts the full day (~48 sends). Apple's own counter provides a
+            // second gate so we never overspend even after an app restart.
             let didPushComplication: Bool
             if session.isComplicationEnabled,
-               session.remainingComplicationUserInfoTransfers > 0
+               session.remainingComplicationUserInfoTransfers > 0,
+               Date().timeIntervalSince(lastComplicationPushTime) >= 1800
             {
                 session.transferCurrentComplicationUserInfo(payload)
+                lastComplicationPushTime = Date()
                 didPushComplication = true
             } else {
                 didPushComplication = false
