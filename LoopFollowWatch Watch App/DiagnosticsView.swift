@@ -1,15 +1,12 @@
 // LoopFollow
 // DiagnosticsView.swift
 
-import Combine
 import SwiftUI
 
 struct DiagnosticsView: View {
     @State private var stats: [ChannelDiagnosticsStore.ChannelStats] = []
     @State private var totalHour = 0
     @State private var totalDay = 0
-
-    private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ScrollView {
@@ -37,7 +34,12 @@ struct DiagnosticsView: View {
             .padding(.horizontal, 8)
         }
         .onAppear { loadStats() }
-        .onReceive(refreshTimer) { _ in loadStats() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                loadStats()
+            }
+        }
     }
 
     private func loadStats() {
