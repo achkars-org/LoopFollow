@@ -1,6 +1,7 @@
 // LoopFollow
 // DiagnosticsView.swift
 
+import Combine
 import SwiftUI
 
 struct DiagnosticsView: View {
