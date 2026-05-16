@@ -14,9 +14,10 @@ final class WatchConnectivityManager: NSObject {
 
     /// Timestamp of the last snapshot the Watch ACK'd via sendAck().
     private var lastWatchAckTimestamp: TimeInterval = 0
-    /// Timestamp of the last transferCurrentComplicationUserInfo send.
+    /// Timestamps of last high-priority complication push and last transferUserInfo send.
     /// In-memory only — resets on launch, which is fine since the phone app runs continuously.
     private var lastComplicationPushTime: Date = .distantPast
+    private var lastUserInfoPushTime: Date = .distantPast
     /// Timestamp of the last remote command received from the Watch.
     private var lastWatchCommandDate: Date = .distantPast
     private var cancellables = Set<AnyCancellable>()
@@ -77,29 +78,10 @@ final class WatchConnectivityManager: NSObject {
                 LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot sent via sendMessage (reachable)")
             }
 
-            // Cancel outstanding transfers before queuing — only the latest snapshot matters.
+            // Cancel any pending transferUserInfo — only the latest snapshot matters.
             session.outstandingUserInfoTransfers.forEach { $0.cancel() }
 
-            // transferUserInfo: guaranteed queued delivery for background wakes.
-            session.transferUserInfo(payload)
-
-            // transferCurrentComplicationUserInfo: high-priority delivery that wakes the Watch
-            // immediately for complication updates. Rate-limited to once per 30 minutes so the
-            // 50/day budget lasts the full day (~48 sends). Apple's own counter provides a
-            // second gate so we never overspend even after an app restart.
-            let didPushComplication: Bool
-            if session.isComplicationEnabled,
-               session.remainingComplicationUserInfoTransfers > 0,
-               Date().timeIntervalSince(lastComplicationPushTime) >= 1800
-            {
-                session.transferCurrentComplicationUserInfo(payload)
-                lastComplicationPushTime = Date()
-                didPushComplication = true
-            } else {
-                didPushComplication = false
-            }
-
-            // applicationContext: latest-state mirror for next launch / scheduled refresh.
+            // applicationContext: always keep latest state for the app refresh path.
             do {
                 try session.updateApplicationContext(payload)
             } catch {
@@ -109,9 +91,30 @@ final class WatchConnectivityManager: NSObject {
                 )
             }
 
-            let transferLog = didPushComplication
-                ? "snapshot queued via transferUserInfo + transferCurrentComplicationUserInfo"
-                : "snapshot queued via transferUserInfo (complication push skipped — rate limited or disabled)"
+            // Delivery cadence:
+            //   Every 30 min → transferCurrentComplicationUserInfo (high-priority wake, 50/day budget)
+            //   Every 10 min → transferUserInfo (queued fallback, no cap)
+            //   Every  5 min → updateApplicationContext only (above)
+            // The complication push resets the transferUserInfo clock so they never overlap.
+            let now = Date()
+            let transferLog: String
+
+            if session.isComplicationEnabled,
+               session.remainingComplicationUserInfoTransfers > 0,
+               now.timeIntervalSince(lastComplicationPushTime) >= 1800
+            {
+                session.transferCurrentComplicationUserInfo(payload)
+                lastComplicationPushTime = now
+                lastUserInfoPushTime = now
+                transferLog = "snapshot sent via transferCurrentComplicationUserInfo"
+            } else if now.timeIntervalSince(lastUserInfoPushTime) >= 600 {
+                session.transferUserInfo(payload)
+                lastUserInfoPushTime = now
+                transferLog = "snapshot sent via transferUserInfo (10-min fallback)"
+            } else {
+                transferLog = "snapshot deferred — applicationContext updated only"
+            }
+
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: \(transferLog)")
         } catch {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: failed to encode snapshot — \(error)")
