@@ -139,7 +139,10 @@ enum LiveActivitySlotDefaults {
 
 /// Lightweight override preset transferred via App Group for Watch remote commands.
 struct WatchOverridePreset: Codable, Identifiable {
-    var id: String { name }
+    var id: String {
+        name
+    }
+
     var name: String
     var symbol: String?
     var durationSeconds: TimeInterval // 0 = indefinite
@@ -165,6 +168,9 @@ enum LAAppGroupSettings {
         static let watchRemoteEnabled = "watch.remoteEnabled"
         static let watchMaxBolus = "watch.maxBolus"
         static let watchMaxCarbs = "watch.maxCarbs"
+        static let watchNightscoutURL = "watch.nightscoutURL"
+        static let watchNightscoutToken = "watch.nightscoutToken"
+        static let lastComplicationPushWindowStart = "watch.lastComplicationPushWindowStart"
     }
 
     private static var defaults: UserDefaults? {
@@ -306,5 +312,37 @@ enum LAAppGroupSettings {
 
     static func watchMaxCarbs() -> Double {
         defaults?.object(forKey: Keys.watchMaxCarbs) as? Double ?? 150.0
+    }
+
+    // MARK: - NightScout URL and Token (Watch URLSession channel)
+
+    static func setWatchNightscoutURL(_ url: String) {
+        defaults?.set(url, forKey: Keys.watchNightscoutURL)
+    }
+
+    /// Returns the NightScout base URL last synced from the phone, or "" if not set.
+    static func watchNightscoutURL() -> String {
+        defaults?.string(forKey: Keys.watchNightscoutURL) ?? ""
+    }
+
+    static func setWatchNightscoutToken(_ token: String) {
+        defaults?.set(token, forKey: Keys.watchNightscoutToken)
+    }
+
+    /// Returns the NightScout API token last synced from the phone, or "" if not set.
+    static func watchNightscoutToken() -> String {
+        defaults?.string(forKey: Keys.watchNightscoutToken) ?? ""
+    }
+
+    // MARK: - Complication push rate limiter
+
+    static func setLastComplicationPushWindowStart(_ t: TimeInterval) {
+        defaults?.set(t, forKey: Keys.lastComplicationPushWindowStart)
+    }
+
+    /// Returns the start of the last 30-minute window in which a complication push was sent,
+    /// or 0 if no push has been sent yet.
+    static func lastComplicationPushWindowStart() -> TimeInterval {
+        defaults?.double(forKey: Keys.lastComplicationPushWindowStart) ?? 0
     }
 }

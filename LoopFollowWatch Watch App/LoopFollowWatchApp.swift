@@ -46,6 +46,12 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
                 // is awake. WatchSessionReceiver completes it after saving the snapshot.
                 WatchSessionReceiver.shared.pendingConnectivityTask = connectivityTask
 
+            case let urlSessionTask as WKURLSessionRefreshBackgroundTask:
+                WatchNightscoutFetcher.shared.handleRefreshTask {
+                    WatchNightscoutFetcher.shared.scheduleURLSessionRefresh()
+                    urlSessionTask.setTaskCompletedWithSnapshot(false)
+                }
+
             default:
                 task.setTaskCompletedWithSnapshot(false)
             }
@@ -64,6 +70,7 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
         {
             WatchAlertManager.shared.checkAndAlert(snapshot: ctx)
             GlucoseSnapshotStore.shared.save(ctx) {
+                ChannelDiagnosticsStore.shared.record(.appRefresh)
                 WatchSessionReceiver.shared.triggerComplicationReload()
                 WatchAppDelegate.scheduleNextRefresh()
                 task.setTaskCompletedWithSnapshot(false)
@@ -97,9 +104,15 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
     }
 
     static func scheduleNextRefresh() {
+        let interval: TimeInterval = isOvernightHour() ? 20 * 60 : 2 * 60
         WKApplication.shared().scheduleBackgroundRefresh(
-            withPreferredDate: Date(timeIntervalSinceNow: 2 * 60),
+            withPreferredDate: Date(timeIntervalSinceNow: interval),
             userInfo: nil
         ) { _ in }
+    }
+
+    private static func isOvernightHour() -> Bool {
+        let hour = Calendar.current.component(.hour, from: Date())
+        return hour < 7
     }
 }

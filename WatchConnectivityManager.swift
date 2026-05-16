@@ -80,6 +80,21 @@ final class WatchConnectivityManager: NSObject {
             // transferUserInfo: guaranteed queued delivery for background wakes.
             session.transferUserInfo(payload)
 
+            // transferCurrentComplicationUserInfo: high-priority delivery that wakes the Watch
+            // for complication updates. Gated on isComplicationEnabled (runtime safety) and
+            // complicationCreditAvailable (30-minute rate limiter).
+            let didPushComplication: Bool
+            if session.isComplicationEnabled, complicationCreditAvailable() {
+                session.transferCurrentComplicationUserInfo(payload)
+                LAAppGroupSettings.setLastComplicationPushWindowStart(
+                    Date().timeIntervalSince1970 -
+                        Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 1800)
+                )
+                didPushComplication = true
+            } else {
+                didPushComplication = false
+            }
+
             // applicationContext: latest-state mirror for next launch / scheduled refresh.
             do {
                 try session.updateApplicationContext(payload)
@@ -90,7 +105,10 @@ final class WatchConnectivityManager: NSObject {
                 )
             }
 
-            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot queued via transferUserInfo")
+            let transferLog = didPushComplication
+                ? "snapshot queued via transferUserInfo + transferCurrentComplicationUserInfo"
+                : "snapshot queued via transferUserInfo (complication push skipped — rate limited or disabled)"
+            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: \(transferLog)")
         } catch {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: failed to encode snapshot — \(error)")
         }
@@ -101,7 +119,7 @@ final class WatchConnectivityManager: NSObject {
 
 extension WatchConnectivityManager: WCSessionDelegate {
     func session(
-        _ session: WCSession,
+        _: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
@@ -161,12 +179,25 @@ extension WatchConnectivityManager: WCSessionDelegate {
         WCSession.default.activate()
     }
 
+    // MARK: - Complication rate limiter
+
+    /// Returns true if a complication push credit is available in the current 30-minute window.
+    /// The window boundary is UTC epoch-aligned (truncated to 1800 seconds).
+    private func complicationCreditAvailable() -> Bool {
+        let now = Date().timeIntervalSince1970
+        let windowStart = now - now.truncatingRemainder(dividingBy: 1800)
+        let last = LAAppGroupSettings.lastComplicationPushWindowStart()
+        return last < windowStart
+    }
+
     // MARK: - App Group sync
 
     private func syncWatchAppGroupSettings() {
         LAAppGroupSettings.setWatchRemoteEnabled(LoopAPNSService().validateSetup())
         LAAppGroupSettings.setWatchMaxBolus(Storage.shared.maxBolus.value.doubleValue(for: .internationalUnit()))
         LAAppGroupSettings.setWatchMaxCarbs(Storage.shared.maxCarbs.value.doubleValue(for: .gram()))
+        LAAppGroupSettings.setWatchNightscoutURL(Storage.shared.url.value)
+        LAAppGroupSettings.setWatchNightscoutToken(Storage.shared.token.value)
     }
 
     /// Notifies the Watch to re-read App Group settings (e.g. after LoopAPNS is configured).

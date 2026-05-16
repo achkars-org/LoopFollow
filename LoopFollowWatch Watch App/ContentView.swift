@@ -48,6 +48,8 @@ struct ContentView: View {
             }
 
             SlotSelectionView(model: model)
+
+            DiagnosticsView()
         }
         .tabViewStyle(.page)
         .onAppear { model.refresh() }
