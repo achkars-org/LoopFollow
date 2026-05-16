@@ -5,7 +5,6 @@
 import CryptoKit
 import Foundation
 import os.log
-import WatchKit
 
 private let fetchLog = OSLog(
     subsystem: Bundle.main.bundleIdentifier ?? "com.loopfollow.watch",
@@ -23,82 +22,6 @@ final class WatchNightscoutFetcher: NSObject {
     static let shared = WatchNightscoutFetcher()
 
     override private init() {}
-
-    // MARK: - Fire date calculation
-
-    /// Returns the next clock-aligned fire date from the set [10, 20, 40, 50] minutes past
-    /// the current hour. If `now` is already at or past 50 minutes, returns 10 minutes into
-    /// the next hour.
-    func nextURLSessionFireDate() -> Date {
-        let fireMinutes = [10, 20, 40, 50]
-        let now = Date()
-        let calendar = Calendar.current
-        let currentMinute = calendar.component(.minute, from: now)
-
-        for minute in fireMinutes where minute > currentMinute {
-            var components = calendar.dateComponents([.year, .month, .day, .hour], from: now)
-            components.minute = minute
-            components.second = 0
-            if let date = calendar.date(from: components) {
-                return date
-            }
-        }
-
-        // All slots in the current hour are past — advance to the first slot in the next hour.
-        var components = calendar.dateComponents([.year, .month, .day, .hour], from: now)
-        components.hour = (components.hour ?? 0) + 1
-        components.minute = fireMinutes[0]
-        components.second = 0
-        return calendar.date(from: components) ?? now.addingTimeInterval(10 * 60)
-    }
-
-    // MARK: - Scheduling
-
-    /// Schedules a `WKURLSessionRefreshBackgroundTask` at the next clock-aligned fire date.
-    /// If the NightScout URL is not configured or is not HTTPS, scheduling is skipped.
-    func scheduleURLSessionRefresh() {
-        let urlString = LAAppGroupSettings.watchNightscoutURL()
-        guard !urlString.isEmpty, URL(string: urlString) != nil else {
-            os_log(
-                "WatchNightscoutFetcher: NightScout URL not configured — URLSession refresh not scheduled",
-                log: fetchLog,
-                type: .info
-            )
-            return
-        }
-        guard isHTTPS(urlString) else {
-            os_log(
-                "WatchNightscoutFetcher: NightScout URL is not HTTPS — URLSession channel disabled",
-                log: fetchLog,
-                type: .info
-            )
-            return
-        }
-
-        let fireDate = nextURLSessionFireDate()
-        // scheduleURLSessionRefresh lives on WKExtension, not WKApplication.
-        WKExtension.shared().scheduleURLSessionRefresh(
-            withPreferredDate: fireDate,
-            userInfo: nil,
-            scheduledCompletion: { error in
-                if let error = error {
-                    os_log(
-                        "WatchNightscoutFetcher: scheduleURLSessionRefresh failed — %{public}@",
-                        log: fetchLog,
-                        type: .error,
-                        error.localizedDescription
-                    )
-                } else {
-                    os_log(
-                        "WatchNightscoutFetcher: URLSession refresh scheduled for %{public}@",
-                        log: fetchLog,
-                        type: .info,
-                        fireDate.description
-                    )
-                }
-            }
-        )
-    }
 
     // MARK: - Fetch handling
 

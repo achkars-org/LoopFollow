@@ -46,12 +46,6 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
                 // is awake. WatchSessionReceiver completes it after saving the snapshot.
                 WatchSessionReceiver.shared.pendingConnectivityTask = connectivityTask
 
-            case let urlSessionTask as WKURLSessionRefreshBackgroundTask:
-                WatchNightscoutFetcher.shared.handleRefreshTask {
-                    WatchNightscoutFetcher.shared.scheduleURLSessionRefresh()
-                    urlSessionTask.setTaskCompletedWithSnapshot(false)
-                }
-
             default:
                 task.setTaskCompletedWithSnapshot(false)
             }
@@ -72,19 +66,18 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
             GlucoseSnapshotStore.shared.save(ctx) {
                 ChannelDiagnosticsStore.shared.record(.appRefresh)
                 WatchSessionReceiver.shared.triggerComplicationReload()
+                // Also poll NightScout — dedup gate prevents a double reload if same reading.
+                WatchNightscoutFetcher.shared.handleRefreshTask {
+                    WatchAppDelegate.scheduleNextRefresh()
+                    task.setTaskCompletedWithSnapshot(false)
+                }
+            }
+        } else {
+            // No newer applicationContext — poll NightScout directly.
+            WatchNightscoutFetcher.shared.handleRefreshTask {
                 WatchAppDelegate.scheduleNextRefresh()
                 task.setTaskCompletedWithSnapshot(false)
             }
-        } else {
-            // Candidate for eventual removal once WCSession delivery is reliable enough
-            // that background-task keep-alive reloads are unnecessary. Until then this
-            // is the fallback path when process() hasn't fired (e.g. WCSession delivery
-            // failed) and the complication would otherwise freeze indefinitely.
-            if storeSnapshot != nil {
-                WatchSessionReceiver.shared.triggerComplicationReload()
-            }
-            WatchAppDelegate.scheduleNextRefresh()
-            task.setTaskCompletedWithSnapshot(false)
         }
     }
 
