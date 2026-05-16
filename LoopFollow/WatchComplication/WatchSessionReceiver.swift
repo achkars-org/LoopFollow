@@ -180,7 +180,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
                 let task = self?.pendingConnectivityTask
                 self?.pendingConnectivityTask = nil
                 DispatchQueue.main.async { [weak self] in
-                    ChannelDiagnosticsStore.shared.record(.wcsession)
+                    ChannelDiagnosticsStore.shared.record(.phonePush)
                     self?.reloadComplicationsOnMainThread()
                     // Complete background task only after reloadTimeline() has been called.
                     task?.setTaskCompletedWithSnapshot(false)

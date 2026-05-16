@@ -9,15 +9,13 @@ final class ChannelDiagnosticsStore {
     private init() {}
 
     enum Channel: String, CaseIterable {
-        case wcsession
-        case urlSession = "urlsession"
-        case appRefresh = "apprefresh"
+        case phonePush = "phonepush"
+        case watchWake = "watchwake"
 
         var displayName: String {
             switch self {
-            case .wcsession: return "WCSession"
-            case .urlSession: return "NightScout"
-            case .appRefresh: return "App Refresh"
+            case .phonePush: return "Phone Push"
+            case .watchWake: return "Watch Wake"
             }
         }
     }

@@ -64,7 +64,7 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
         {
             WatchAlertManager.shared.checkAndAlert(snapshot: ctx)
             GlucoseSnapshotStore.shared.save(ctx) {
-                ChannelDiagnosticsStore.shared.record(.appRefresh)
+                ChannelDiagnosticsStore.shared.record(.watchWake)
                 WatchSessionReceiver.shared.triggerComplicationReload()
                 // Also poll NightScout — dedup gate prevents a double reload if same reading.
                 WatchNightscoutFetcher.shared.handleRefreshTask {

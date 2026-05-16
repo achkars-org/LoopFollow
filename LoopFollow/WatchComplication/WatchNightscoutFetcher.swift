@@ -145,7 +145,7 @@ final class WatchNightscoutFetcher: NSObject {
                 updatedAt.timeIntervalSince1970
             )
             GlucoseSnapshotStore.shared.save(snapshot) {
-                ChannelDiagnosticsStore.shared.record(.urlSession)
+                ChannelDiagnosticsStore.shared.record(.watchWake)
                 WatchSessionReceiver.shared.triggerComplicationReload()
                 completion()
             }
