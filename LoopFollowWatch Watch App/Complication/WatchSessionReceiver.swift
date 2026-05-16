@@ -163,6 +163,12 @@ extension WatchSessionReceiver: WCSessionDelegate {
             // fallback if the App Group file store hasn't flushed yet.
             lastSnapshot = snapshot
             WatchAlertManager.shared.checkAndAlert(snapshot: snapshot)
+            guard ComplicationRefreshCounter.shared.shouldReloadAndRecord(for: snapshot) else {
+                let task = pendingConnectivityTask
+                pendingConnectivityTask = nil
+                DispatchQueue.main.async { task?.setTaskCompletedWithSnapshot(false) }
+                return
+            }
             os_log("WatchSessionReceiver: %{public}@ snapshot decoded g=%d, saving", log: watchLog, type: .debug, source, Int(snapshot.glucose))
             GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
                 os_log("WatchSessionReceiver: %{public}@ snapshot saved, reloading complications", log: watchLog, type: .debug, source)
@@ -174,6 +180,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
                 let task = self?.pendingConnectivityTask
                 self?.pendingConnectivityTask = nil
                 DispatchQueue.main.async { [weak self] in
+                    ChannelDiagnosticsStore.shared.record(.wcsession)
                     self?.reloadComplicationsOnMainThread()
                     // Complete background task only after reloadTimeline() has been called.
                     task?.setTaskCompletedWithSnapshot(false)
@@ -226,7 +233,6 @@ extension WatchSessionReceiver: WCSessionDelegate {
 
     /// Must be called on the main thread. Used directly when already on main (e.g., from process()).
     private func reloadComplicationsOnMainThread() {
-        ComplicationRefreshCounter.shared.recordRefresh()
         let server = CLKComplicationServer.sharedInstance()
 
         let complications: [CLKComplication]

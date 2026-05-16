@@ -8,9 +8,25 @@ final class ComplicationRefreshCounter {
     private init() {}
 
     private let timestampsKey = "complicationRefreshTimestamps"
+    private let lastReloadedSnapshotUpdatedAtKey = "complicationLastReloadedSnapshotUpdatedAt"
 
     private var defaults: UserDefaults? {
         UserDefaults(suiteName: AppGroupID.current())
+    }
+
+    private var lastReloadedSnapshotUpdatedAt: TimeInterval {
+        get { defaults?.double(forKey: lastReloadedSnapshotUpdatedAtKey) ?? 0 }
+        set { defaults?.set(newValue, forKey: lastReloadedSnapshotUpdatedAtKey) }
+    }
+
+    /// Returns true and records a refresh if the snapshot's updatedAt is newer than the last
+    /// reloaded snapshot. Returns false without side effects if the snapshot is a duplicate.
+    func shouldReloadAndRecord(for snapshot: GlucoseSnapshot) -> Bool {
+        let snapshotTime = snapshot.updatedAt.timeIntervalSince1970
+        guard snapshotTime > lastReloadedSnapshotUpdatedAt else { return false }
+        lastReloadedSnapshotUpdatedAt = snapshotTime
+        recordRefresh()
+        return true
     }
 
     func recordRefresh() {
@@ -32,6 +48,11 @@ final class ComplicationRefreshCounter {
 
     var dayCount: Int {
         storedTimestamps().count
+    }
+
+    var timeSinceLastRefresh: TimeInterval {
+        guard let latest = storedTimestamps().max() else { return .infinity }
+        return Date().timeIntervalSince1970 - latest
     }
 
     private func storedTimestamps() -> [Double] {
