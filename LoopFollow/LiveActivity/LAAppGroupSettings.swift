@@ -170,7 +170,6 @@ enum LAAppGroupSettings {
         static let watchMaxCarbs = "watch.maxCarbs"
         static let watchNightscoutURL = "watch.nightscoutURL"
         static let watchNightscoutToken = "watch.nightscoutToken"
-        static let lastComplicationPushWindowStart = "watch.lastComplicationPushWindowStart"
     }
 
     private static var defaults: UserDefaults? {
@@ -334,15 +333,4 @@ enum LAAppGroupSettings {
         defaults?.string(forKey: Keys.watchNightscoutToken) ?? ""
     }
 
-    // MARK: - Complication push rate limiter
-
-    static func setLastComplicationPushWindowStart(_ t: TimeInterval) {
-        defaults?.set(t, forKey: Keys.lastComplicationPushWindowStart)
-    }
-
-    /// Returns the start of the last 30-minute window in which a complication push was sent,
-    /// or 0 if no push has been sent yet.
-    static func lastComplicationPushWindowStart() -> TimeInterval {
-        defaults?.double(forKey: Keys.lastComplicationPushWindowStart) ?? 0
-    }
 }
