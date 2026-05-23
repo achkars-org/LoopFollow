@@ -55,20 +55,21 @@ struct BasalVariabilityGraphView: UIViewRepresentable {
         for (index, point) in data.enumerated() {
             entries.append(BarChartDataEntry(
                 x: Double(index),
-                yValues: [point.veryBelow, point.below, point.atPlanned, point.above, point.veryAbove]
+                yValues: [point.suspended, point.veryBelow, point.below, point.atPlanned, point.above, point.veryAbove]
             ))
             labels.append(point.period.rawValue)
         }
 
         let dataSet = BarChartDataSet(entries: entries, label: "Basal Variability")
         dataSet.colors = [
+            UIColor.systemGray.withAlphaComponent(0.85),    // suspended
             UIColor.systemBlue.withAlphaComponent(0.85),    // veryBelow
             UIColor.systemTeal.withAlphaComponent(0.65),    // below
             UIColor.systemGreen.withAlphaComponent(0.75),   // atPlanned
             UIColor.systemOrange.withAlphaComponent(0.65),  // above
             UIColor.systemRed.withAlphaComponent(0.75),     // veryAbove
         ]
-        dataSet.stackLabels = ["< 50%", "50–75%", "75–125%", "125–150%", "> 150%"]
+        dataSet.stackLabels = ["Suspended", "< 50%", "50–75%", "75–125%", "125–150%", "> 150%"]
         dataSet.drawValuesEnabled = false
 
         let barData = BarChartData(dataSet: dataSet)
