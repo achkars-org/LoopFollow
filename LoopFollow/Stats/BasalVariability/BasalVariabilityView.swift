@@ -56,6 +56,11 @@ struct BasalVariabilityView: View {
                             label: "Very below (< 50%)",
                             percentage: avg.veryBelow
                         )
+                        BasalVariabilityLegendItem(
+                            color: Color(uiColor: .systemGray).opacity(0.85),
+                            label: "Suspended (0 U/hr)",
+                            percentage: avg.suspended
+                        )
                     }
                 }
                 .font(.caption2)

@@ -5,7 +5,8 @@ import Foundation
 
 struct BasalVariabilityDataPoint {
     let period: TIRPeriod
-    let veryBelow: Double   // < 50% of planned
+    let suspended: Double   // 0 U/hr (pump suspended)
+    let veryBelow: Double   // > 0 and < 50% of planned
     let below: Double       // 50–75% of planned
     let atPlanned: Double   // 75–125% of planned (within ±25%)
     let above: Double       // 125–150% of planned
