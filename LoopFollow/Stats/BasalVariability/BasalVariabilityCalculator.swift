@@ -46,7 +46,6 @@ class BasalVariabilityCalculator {
             }
 
             if scheduledRate > 0 {
-                let ratio = actualRate / scheduledRate
                 let hour = calendar.component(.hour, from: date)
 
                 var period: TIRPeriod?
@@ -59,7 +58,9 @@ class BasalVariabilityCalculator {
 
                 if let period = period {
                     if periodSamples[period] == nil { periodSamples[period] = [] }
-                    periodSamples[period]!.append(ratio)
+                    // Use -1.0 as sentinel for suspended (actualRate == 0)
+                    let sample = actualRate == 0 ? -1.0 : actualRate / scheduledRate
+                    periodSamples[period]!.append(sample)
                 }
             }
 
@@ -80,22 +81,24 @@ class BasalVariabilityCalculator {
     }
 
     private static func dataPoint(period: TIRPeriod, ratios: [Double]) -> BasalVariabilityDataPoint {
-        let (vb, b, ap, a, va) = percentages(from: ratios)
-        return BasalVariabilityDataPoint(period: period, veryBelow: vb, below: b, atPlanned: ap, above: a, veryAbove: va)
+        let (s, vb, b, ap, a, va) = percentages(from: ratios)
+        return BasalVariabilityDataPoint(period: period, suspended: s, veryBelow: vb, below: b, atPlanned: ap, above: a, veryAbove: va)
     }
 
-    private static func percentages(from ratios: [Double]) -> (Double, Double, Double, Double, Double) {
-        guard !ratios.isEmpty else { return (0, 0, 0, 0, 0) }
+    private static func percentages(from ratios: [Double]) -> (Double, Double, Double, Double, Double, Double) {
+        guard !ratios.isEmpty else { return (0, 0, 0, 0, 0, 0) }
         let total = Double(ratios.count)
-        var vb = 0, b = 0, ap = 0, a = 0, va = 0
+        var s = 0, vb = 0, b = 0, ap = 0, a = 0, va = 0
         for r in ratios {
-            if r < 0.5 { vb += 1 }
+            if r < 0 { s += 1 }           // -1.0 sentinel = suspended
+            else if r < 0.5 { vb += 1 }
             else if r < 0.75 { b += 1 }
             else if r <= 1.25 { ap += 1 }
             else if r <= 1.5 { a += 1 }
             else { va += 1 }
         }
         return (
+            Double(s) / total * 100,
             Double(vb) / total * 100,
             Double(b) / total * 100,
             Double(ap) / total * 100,

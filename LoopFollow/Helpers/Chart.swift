@@ -69,6 +69,12 @@ final class ChartYMMOLValueFormatter: AxisValueFormatter {
     }
 }
 
+final class BasalDiamondFormatter: ValueFormatter {
+    func stringForValue(_: Double, entry _: ChartDataEntry, dataSetIndex _: Int, viewPortHandler _: ViewPortHandler?) -> String {
+        return "◆"
+    }
+}
+
 class PillMarker: MarkerImage {
     private(set) var color: UIColor
     private(set) var font: UIFont
@@ -100,13 +106,11 @@ class PillMarker: MarkerImage {
         // if you modify labelHeigh you will have to tweak baselineOffset in attrs
         let labelHeight = labelText.size(withAttributes: attrs).height + 4
 
-        // place pill above the marker, centered along x
+        // place pill above the marker, centered along x; fall back to below if it would clip at top
         var rectangle = CGRect(x: point.x, y: point.y, width: labelWidth, height: labelHeight)
         rectangle.origin.x -= rectangle.width / 2.0
-        var spacing: CGFloat = 20
-        if point.y < 300 { spacing = -40 }
-
-        rectangle.origin.y -= rectangle.height + spacing
+        let aboveOriginY = point.y - rectangle.height - 20
+        rectangle.origin.y = aboveOriginY >= 0 ? aboveOriginY : point.y + 10
 
         // rounded rect
         let clipPath = UIBezierPath(roundedRect: rectangle, cornerRadius: 6.0).cgPath
