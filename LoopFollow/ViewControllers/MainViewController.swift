@@ -843,9 +843,11 @@ class MainViewController: UIViewController, ChartViewDelegate, UNUserNotificatio
             let latestBG = bgData[bgData.count - 1].sgv
             if Storage.shared.colorBGText.value {
                 let thresholds = UnitSettingsStore.shared.effectiveThresholds()
-                if Double(latestBG) >= thresholds.high {
+                let normalize = UnitSettingsStore.shared.normalizeForColorComparison
+                let bgValue = normalize(Double(latestBG))
+                if bgValue >= normalize(thresholds.high) {
                     Observable.shared.bgTextColor.value = .yellow
-                } else if Double(latestBG) <= thresholds.low {
+                } else if bgValue <= normalize(thresholds.low) {
                     Observable.shared.bgTextColor.value = .red
                 } else {
                     Observable.shared.bgTextColor.value = .green
