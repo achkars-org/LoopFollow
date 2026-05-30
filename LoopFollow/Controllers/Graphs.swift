@@ -44,6 +44,8 @@ enum GraphDataIndex: Int {
     case tempTarget = 17
     case predictionCone = 18
     case yesterday = 19
+    case basalMarkers = 20
+    case overrideMarkers = 21
 }
 
 extension GraphDataIndex {
@@ -69,6 +71,8 @@ extension GraphDataIndex {
         case .tempTarget: return "Temp Target"
         case .predictionCone: return "Prediction Cone"
         case .yesterday: return "Yesterday"
+        case .basalMarkers: return "Basal Markers"
+        case .overrideMarkers: return "Override Markers"
         }
     }
 }
@@ -333,7 +337,7 @@ extension MainViewController {
         lineBasal.fillAlpha = 0.5
         lineBasal.drawCirclesEnabled = false
         lineBasal.axisDependency = YAxis.AxisDependency.left
-        lineBasal.highlightEnabled = true
+        lineBasal.highlightEnabled = false
         lineBasal.drawValuesEnabled = false
         lineBasal.fillFormatter = basalFillFormatter()
 
@@ -649,6 +653,34 @@ extension MainViewController {
         lineYesterday.highlightEnabled = false
         lineYesterday.axisDependency = YAxis.AxisDependency.right
         data.append(lineYesterday)
+
+        // Dataset 20: Basal segment midpoint markers (one ◆ per rate segment)
+        let lineBasalMarkers = LineChartDataSet(entries: [ChartDataEntry](), label: "")
+        lineBasalMarkers.setDrawHighlightIndicators(false)
+        lineBasalMarkers.lineWidth = 0
+        lineBasalMarkers.drawFilledEnabled = false
+        lineBasalMarkers.drawCirclesEnabled = false
+        lineBasalMarkers.axisDependency = YAxis.AxisDependency.left
+        lineBasalMarkers.highlightEnabled = true
+        lineBasalMarkers.drawValuesEnabled = true
+        lineBasalMarkers.valueFormatter = BasalDiamondFormatter()
+        lineBasalMarkers.valueTextColor = NSUIColor.systemGray
+        lineBasalMarkers.valueFont = UIFont.systemFont(ofSize: 9)
+        data.append(lineBasalMarkers) // Dataset 20
+
+        // Dataset 21: Override midpoint markers (one green ◆ per override)
+        let lineOverrideMarkers = LineChartDataSet(entries: [ChartDataEntry](), label: "")
+        lineOverrideMarkers.setDrawHighlightIndicators(false)
+        lineOverrideMarkers.lineWidth = 0
+        lineOverrideMarkers.drawFilledEnabled = false
+        lineOverrideMarkers.drawCirclesEnabled = false
+        lineOverrideMarkers.axisDependency = YAxis.AxisDependency.right
+        lineOverrideMarkers.highlightEnabled = true
+        lineOverrideMarkers.drawValuesEnabled = true
+        lineOverrideMarkers.valueFormatter = BasalDiamondFormatter()
+        lineOverrideMarkers.valueTextColor = NSUIColor.systemGreen
+        lineOverrideMarkers.valueFont = UIFont.systemFont(ofSize: 9)
+        data.append(lineOverrideMarkers) // Dataset 21
 
         data.setValueFont(UIFont.systemFont(ofSize: 12))
 
@@ -1025,34 +1057,73 @@ extension MainViewController {
     }
 
     func updateBasalGraph() {
-        var dataIndex = 2
+        let dataIndex = GraphDataIndex.basal.rawValue
+        let markersIndex = GraphDataIndex.basalMarkers.rawValue
         BGChart.lineData?.dataSets[dataIndex].clear()
         BGChartFull.lineData?.dataSets[dataIndex].clear()
+        BGChart.lineData?.dataSets[markersIndex].clear()
+        BGChartFull.lineData?.dataSets[markersIndex].clear()
         var maxBasal = Storage.shared.minBasalScale.value
         var maxBasalSmall = 0.0
+
+        let basalDateFormatter = DateFormatter()
+        if dateTimeUtils.is24Hour() {
+            basalDateFormatter.setLocalizedDateFormatFromTemplate("HH:mm")
+        } else {
+            basalDateFormatter.setLocalizedDateFormatFromTemplate("hh:mm")
+        }
+        if Storage.shared.graphTimeZoneEnabled.value,
+           let tz = TimeZone(identifier: Storage.shared.graphTimeZoneIdentifier.value)
+        {
+            basalDateFormatter.timeZone = tz
+        }
+
+        // Fill dataset — all raw step-function entries (no label text)
         for i in 0 ..< basalData.count {
-            let value = ChartDataEntry(x: Double(basalData[i].date), y: Double(basalData[i].basalRate), data: formatPillText(line1: String(basalData[i].basalRate), time: basalData[i].date))
-            BGChart.data?.dataSets[dataIndex].addEntry(value)
+            let rate = basalData[i].basalRate
+            let entry = ChartDataEntry(x: Double(basalData[i].date), y: Double(rate))
+            BGChart.data?.dataSets[dataIndex].addEntry(entry)
             if Storage.shared.smallGraphTreatments.value {
-                BGChartFull.data?.dataSets[dataIndex].addEntry(value)
+                BGChartFull.data?.dataSets[dataIndex].addEntry(entry)
             }
-            if basalData[i].basalRate > maxBasal {
-                maxBasal = basalData[i].basalRate
+            if rate > maxBasal { maxBasal = rate }
+            if rate > maxBasalSmall { maxBasalSmall = rate }
+        }
+
+        // Marker dataset — one ◆ per rate segment, placed at the time midpoint
+        var i = 0
+        while i < basalData.count {
+            let currentRate = basalData[i].basalRate
+            let segStartTime = basalData[i].date
+            var j = i
+            while j < basalData.count - 1, basalData[j + 1].basalRate == currentRate {
+                j += 1
             }
-            if basalData[i].basalRate > maxBasalSmall {
-                maxBasalSmall = basalData[i].basalRate
+            let segEndTime = basalData[j].date
+            let midTime = (segStartTime + segEndTime) / 2
+            let rateStr = Localizer.formatToLocalizedString(currentRate, maxFractionDigits: 2, minFractionDigits: 0) + " U/hr"
+            let startStr = basalDateFormatter.string(from: Date(timeIntervalSince1970: segStartTime))
+            let endStr = basalDateFormatter.string(from: Date(timeIntervalSince1970: segEndTime))
+            let pillText = rateStr + "\r\n" + (segStartTime < segEndTime ? "\(startStr) → \(endStr)" : startStr)
+            let markerEntry = ChartDataEntry(x: midTime, y: Double(currentRate), data: pillText)
+            BGChart.data?.dataSets[markersIndex].addEntry(markerEntry)
+            if Storage.shared.smallGraphTreatments.value {
+                BGChartFull.data?.dataSets[markersIndex].addEntry(markerEntry)
             }
+            i = j + 1
         }
 
         BGChart.leftAxis.axisMaximum = maxBasal
         BGChartFull.leftAxis.axisMaximum = maxBasalSmall
 
         BGChart.data?.dataSets[dataIndex].notifyDataSetChanged()
+        BGChart.data?.dataSets[markersIndex].notifyDataSetChanged()
         BGChart.data?.notifyDataChanged()
         BGChart.notifyDataSetChanged()
 
         if Storage.shared.smallGraphTreatments.value {
             BGChartFull.data?.dataSets[dataIndex].notifyDataSetChanged()
+            BGChartFull.data?.dataSets[markersIndex].notifyDataSetChanged()
             BGChartFull.data?.notifyDataChanged()
             BGChartFull.notifyDataSetChanged()
         }
@@ -1717,6 +1788,34 @@ extension MainViewController {
         lineConeSmall.axisDependency = YAxis.AxisDependency.right
         data.append(lineConeSmall)
 
+        // Dataset 19: Yesterday placeholder (not shown on small chart)
+        let lineYesterdaySmall = LineChartDataSet(entries: [ChartDataEntry](), label: "")
+        lineYesterdaySmall.lineWidth = 0
+        lineYesterdaySmall.drawCirclesEnabled = false
+        lineYesterdaySmall.drawValuesEnabled = false
+        lineYesterdaySmall.highlightEnabled = false
+        lineYesterdaySmall.axisDependency = YAxis.AxisDependency.right
+        data.append(lineYesterdaySmall) // Dataset 19
+
+        // Dataset 20 & 21: Marker placeholders (not interactive on small chart)
+        let lineBasalMarkersSmall = LineChartDataSet(entries: [ChartDataEntry](), label: "")
+        lineBasalMarkersSmall.lineWidth = 0
+        lineBasalMarkersSmall.drawFilledEnabled = false
+        lineBasalMarkersSmall.drawCirclesEnabled = false
+        lineBasalMarkersSmall.highlightEnabled = false
+        lineBasalMarkersSmall.drawValuesEnabled = false
+        lineBasalMarkersSmall.axisDependency = YAxis.AxisDependency.left
+        data.append(lineBasalMarkersSmall) // Dataset 20
+
+        let lineOverrideMarkersSmall = LineChartDataSet(entries: [ChartDataEntry](), label: "")
+        lineOverrideMarkersSmall.lineWidth = 0
+        lineOverrideMarkersSmall.drawFilledEnabled = false
+        lineOverrideMarkersSmall.drawCirclesEnabled = false
+        lineOverrideMarkersSmall.highlightEnabled = false
+        lineOverrideMarkersSmall.drawValuesEnabled = false
+        lineOverrideMarkersSmall.axisDependency = YAxis.AxisDependency.right
+        data.append(lineOverrideMarkersSmall) // Dataset 21
+
         BGChartFull.highlightPerDragEnabled = true
         BGChartFull.leftAxis.enabled = false
         BGChartFull.leftAxis.axisMaximum = maxBasal
@@ -1738,6 +1837,7 @@ extension MainViewController {
 
     func updateOverrideGraph() {
         var dataIndex = 6
+        let markersIndex = GraphDataIndex.overrideMarkers.rawValue
         var yTop = Double(calculateMaxBgGraphValue() - 5)
         var yBottom = Double(calculateMaxBgGraphValue() - 25)
         var chart = BGChart.lineData!.dataSets[dataIndex] as! LineChartDataSet
@@ -1747,7 +1847,21 @@ extension MainViewController {
         // Refresh the fill color in case the backend (Loop vs Trio) changed.
         chart.fillColor = TreatmentGraphColors.override
         smallChart.fillColor = TreatmentGraphColors.override
+        BGChart.lineData?.dataSets[markersIndex].clear()
+        BGChartFull.lineData?.dataSets[markersIndex].clear()
         let thisData = overrideGraphData
+
+        let overrideDateFormatter = DateFormatter()
+        if dateTimeUtils.is24Hour() {
+            overrideDateFormatter.setLocalizedDateFormatFromTemplate("HH:mm")
+        } else {
+            overrideDateFormatter.setLocalizedDateFormatFromTemplate("hh:mm")
+        }
+        if Storage.shared.graphTimeZoneEnabled.value,
+           let tz = TimeZone(identifier: Storage.shared.graphTimeZoneIdentifier.value)
+        {
+            overrideDateFormatter.timeZone = tz
+        }
 
         var colors = [NSUIColor]()
         for i in 0 ..< thisData.count {
@@ -1761,6 +1875,9 @@ extension MainViewController {
             if thisItem.enteredBy.count > 0 {
                 labelText += "\r\nEntered By: " + thisItem.enteredBy
             }
+            let startStr = overrideDateFormatter.string(from: Date(timeIntervalSince1970: thisItem.date))
+            let endStr = overrideDateFormatter.string(from: Date(timeIntervalSince1970: thisItem.endDate))
+            labelText += "\r\n" + startStr + " → " + endStr
 
             // Start Dot
             // Shift dots 30 seconds to create an empty 0 space between consecutive temps
@@ -1789,13 +1906,24 @@ extension MainViewController {
             if Storage.shared.smallGraphTreatments.value {
                 BGChartFull.data?.dataSets[dataIndex].addEntry(postEndDot)
             }
+
+            // Single green ◆ marker at the horizontal midpoint of the override band
+            let midTime = (thisItem.date + thisItem.endDate) / 2
+            let markerY = yBottom + (yTop - yBottom) / 2
+            let markerEntry = ChartDataEntry(x: midTime, y: markerY, data: labelText)
+            BGChart.data?.dataSets[markersIndex].addEntry(markerEntry)
+            if Storage.shared.smallGraphTreatments.value {
+                BGChartFull.data?.dataSets[markersIndex].addEntry(markerEntry)
+            }
         }
 
         BGChart.data?.dataSets[dataIndex].notifyDataSetChanged()
+        BGChart.data?.dataSets[markersIndex].notifyDataSetChanged()
         BGChart.data?.notifyDataChanged()
         BGChart.notifyDataSetChanged()
         if Storage.shared.smallGraphTreatments.value {
             BGChartFull.data?.dataSets[dataIndex].notifyDataSetChanged()
+            BGChartFull.data?.dataSets[markersIndex].notifyDataSetChanged()
             BGChartFull.data?.notifyDataChanged()
             BGChartFull.notifyDataSetChanged()
         }
