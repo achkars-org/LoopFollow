@@ -128,6 +128,9 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
     /// True when LoopFollow detects the loop has not reported in 15+ minutes (Nightscout only).
     let isNotLooping: Bool
 
+    /// Unix epoch seconds of the last successful Loop run (nil if never received).
+    let loopLastRunAt: TimeInterval?
+
     // MARK: - Renewal
 
     /// True when the Live Activity is within renewalWarning seconds of its renewal deadline.
@@ -168,6 +171,7 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
         maxBgMgdl: Double? = nil,
         unit: Unit,
         isNotLooping: Bool,
+        loopLastRunAt: TimeInterval? = nil,
         showRenewalOverlay: Bool = false,
     ) {
         self.glucose = glucose
@@ -201,6 +205,7 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
         self.maxBgMgdl = maxBgMgdl
         self.unit = unit
         self.isNotLooping = isNotLooping
+        self.loopLastRunAt = loopLastRunAt
         self.showRenewalOverlay = showRenewalOverlay
     }
 
@@ -209,6 +214,12 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
     /// Age of reading in seconds.
     var age: TimeInterval {
         Date().timeIntervalSince(updatedAt)
+    }
+
+    /// Delta expressed as mg/dL per minute.
+    /// `delta` is a 5-minute total, so divide by 5.0.
+    var deltaRate: Double? {
+        return delta / 5.0
     }
 
     /// Returns a copy of this snapshot with `showRenewalOverlay` set to the given value.
@@ -247,6 +258,7 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
             maxBgMgdl: maxBgMgdl,
             unit: unit,
             isNotLooping: isNotLooping,
+            loopLastRunAt: loopLastRunAt,
             showRenewalOverlay: value,
         )
     }
@@ -286,6 +298,7 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
         try container.encodeIfPresent(maxBgMgdl, forKey: .maxBgMgdl)
         try container.encode(unit, forKey: .unit)
         try container.encode(isNotLooping, forKey: .isNotLooping)
+        try container.encodeIfPresent(loopLastRunAt, forKey: .loopLastRunAt)
         try container.encode(showRenewalOverlay, forKey: .showRenewalOverlay)
     }
 
@@ -322,6 +335,7 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
         maxBgMgdl = try container.decodeIfPresent(Double.self, forKey: .maxBgMgdl)
         unit = try container.decode(Unit.self, forKey: .unit)
         isNotLooping = try container.decodeIfPresent(Bool.self, forKey: .isNotLooping) ?? false
+        loopLastRunAt = try container.decodeIfPresent(Double.self, forKey: .loopLastRunAt)
         showRenewalOverlay = try container.decodeIfPresent(Bool.self, forKey: .showRenewalOverlay) ?? false
     }
 
@@ -332,7 +346,7 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
         case recBolus, battery, pumpBattery, basalRate, pumpReservoirU
         case autosens, tdd, targetLowMgdl, targetHighMgdl, isfMgdlPerU, carbRatio, carbsToday
         case profileName, sageInsertTime, cageInsertTime, iageInsertTime, minBgMgdl, maxBgMgdl
-        case unit, isNotLooping, showRenewalOverlay
+        case unit, isNotLooping, loopLastRunAt, showRenewalOverlay
     }
 }
 
