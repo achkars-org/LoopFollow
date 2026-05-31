@@ -99,6 +99,13 @@ platform :ios do
       targets: ["LoopFollowLAExtensionExtension"]
     )
 
+    update_code_signing_settings(
+      path: "#{GITHUB_WORKSPACE}/LoopFollow.xcodeproj",
+      profile_name: mapping["com.#{TEAMID}.LoopFollow.watchkitapp"],
+      code_sign_identity: "iPhone Distribution",
+      targets: ["LoopFollowWatch Watch App"]
+    )
+
     gym(
       export_method: "app-store",
       scheme: "LoopFollow",
@@ -165,6 +172,10 @@ platform :ios do
     ])
 
     configure_bundle_id("LoopFollow Live Activity Extension", LA_IDENTIFIER, [
+      Spaceship::ConnectAPI::BundleIdCapability::Type::APP_GROUPS
+    ])
+
+    configure_bundle_id("LoopFollow Watch App", "com.#{TEAMID}.LoopFollow.watchkitapp", [
       Spaceship::ConnectAPI::BundleIdCapability::Type::APP_GROUPS
     ])
 
