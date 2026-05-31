@@ -31,6 +31,7 @@ class LogManager {
         case deviceStatus = "Device Status"
         case remote = "Remote"
         case websocket = "WebSocket"
+        case watch = "Watch"
         case telemetry = "Telemetry"
     }
 
