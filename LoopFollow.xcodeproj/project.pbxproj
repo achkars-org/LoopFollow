@@ -521,7 +521,6 @@
 				37989DDD2F60A2020004BD8B /* GlucoseConversion.swift in Sources */,
 				37989DDF2F60A3000004BD8B /* ComplicationRefreshCounter.swift in Sources */,
 				37989DE12F60A4010004BD8B /* WatchNightscoutFetcher.swift in Sources */,
-				37989DE32F60A5020004BD8D /* ChannelDiagnosticsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
