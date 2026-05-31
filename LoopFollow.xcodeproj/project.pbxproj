@@ -43,7 +43,6 @@
 		37989DD62F60A15E0004BD8B /* WatchSessionReceiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DD52F60A15E0004BD8B /* WatchSessionReceiver.swift */; };
 		37989DDF2F60A3000004BD8B /* ComplicationRefreshCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DDE2F60A3000004BD8B /* ComplicationRefreshCounter.swift */; };
 		37989DE12F60A4010004BD8B /* WatchNightscoutFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DE02F60A4000004BD8B /* WatchNightscoutFetcher.swift */; };
-		37989DE32F60A5020004BD8D /* ChannelDiagnosticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37989DE22F60A5010004BD8C /* ChannelDiagnosticsStore.swift */; };
 		37A4BDDB2F5B6B4A00EEB289 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37A4BDDA2F5B6B4A00EEB289 /* WidgetKit.framework */; };
 		37A4BDDD2F5B6B4A00EEB289 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37A4BDDC2F5B6B4A00EEB289 /* SwiftUI.framework */; };
 		37A4BDE82F5B6B4C00EEB289 /* LoopFollowLAExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 37A4BDD92F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -543,7 +542,6 @@
 		37989DD52F60A15E0004BD8B /* WatchSessionReceiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionReceiver.swift; sourceTree = "<group>"; };
 		37989DDE2F60A3000004BD8B /* ComplicationRefreshCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComplicationRefreshCounter.swift; sourceTree = "<group>"; };
 		37989DE02F60A4000004BD8B /* WatchNightscoutFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchNightscoutFetcher.swift; sourceTree = "<group>"; };
-		37989DE22F60A5010004BD8C /* ChannelDiagnosticsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelDiagnosticsStore.swift; sourceTree = "<group>"; };
 		37A4BDD92F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LoopFollowLAExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		37A4BDDA2F5B6B4A00EEB289 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = /System/Library/Frameworks/WidgetKit.framework; sourceTree = "<absolute>"; };
 		37A4BDDC2F5B6B4A00EEB289 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = /System/Library/Frameworks/SwiftUI.framework; sourceTree = "<absolute>"; };
@@ -1043,7 +1041,6 @@
 				37989DDB2F60A2000004BD8B /* WatchFormat.swift */,
 				37989DDE2F60A3000004BD8B /* ComplicationRefreshCounter.swift */,
 				37989DE02F60A4000004BD8B /* WatchNightscoutFetcher.swift */,
-				37989DE22F60A5010004BD8C /* ChannelDiagnosticsStore.swift */,
 			);
 			path = WatchComplication;
 			sourceTree = "<group>";
@@ -2272,7 +2269,6 @@
 				37989DDD2F60A2020004BD8B /* GlucoseConversion.swift in Sources */,
 				37989DDF2F60A3000004BD8B /* ComplicationRefreshCounter.swift in Sources */,
 				37989DE12F60A4010004BD8B /* WatchNightscoutFetcher.swift in Sources */,
-				37989DE32F60A5020004BD8D /* ChannelDiagnosticsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
