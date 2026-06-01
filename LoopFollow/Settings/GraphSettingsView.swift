@@ -13,6 +13,8 @@ struct GraphSettingsView: View {
     @ObservedObject private var show90MinLine = Storage.shared.show90MinLine
     @ObservedObject private var showMidnightLines = Storage.shared.showMidnightLines
     @ObservedObject private var showYesterdayLine = Storage.shared.showYesterdayLine
+    @ObservedObject private var showBasalMarkers = Storage.shared.showBasalMarkers
+    @ObservedObject private var showOverrideMarkers = Storage.shared.showOverrideMarkers
     @ObservedObject private var smallGraphTreatments = Storage.shared.smallGraphTreatments
 
     @ObservedObject private var smallGraphHeight = Storage.shared.smallGraphHeight
@@ -50,6 +52,12 @@ struct GraphSettingsView: View {
 
                 Toggle("Show Midnight Lines", isOn: $showMidnightLines.value)
                     .onChange(of: showMidnightLines.value) { _ in markDirty() }
+
+                Toggle("Show Override Labels", isOn: $showOverrideMarkers.value)
+                    .onChange(of: showOverrideMarkers.value) { _ in markDirty() }
+
+                Toggle("Show Basal Rate Labels", isOn: $showBasalMarkers.value)
+                    .onChange(of: showBasalMarkers.value) { _ in markDirty() }
             }
 
             // ── Treatments ───────────────────────────────────────────────
