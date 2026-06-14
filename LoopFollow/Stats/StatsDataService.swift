@@ -82,22 +82,35 @@ class StatsDataService {
                     self.dataFetcher.fetchTreatmentsData(days: self.daysToAnalyze) {
                         DispatchQueue.main.async {
                             onProgress()
-                            completion()
                         }
+                        self.fetchPredictionDataAndFinish(completion: completion)
                     }
                 } else {
-                    completion()
+                    self.fetchPredictionDataAndFinish(completion: completion)
                 }
             }
         } else if !hasEnoughTreatmentData {
             dataFetcher.fetchTreatmentsData(days: daysToAnalyze) {
                 DispatchQueue.main.async {
                     onProgress()
-                    completion()
                 }
+                self.fetchPredictionDataAndFinish(completion: completion)
             }
         } else {
-            completion()
+            fetchPredictionDataAndFinish(completion: completion)
+        }
+    }
+
+    private func fetchPredictionDataAndFinish(completion: @escaping () -> Void) {
+        guard Storage.shared.device.value == "Loop",
+              getStatsPredictionSnapshots().isEmpty
+        else {
+            DispatchQueue.main.async { completion() }
+            return
+        }
+
+        dataFetcher.fetchDeviceStatusData(days: daysToAnalyze) {
+            DispatchQueue.main.async { completion() }
         }
     }
 
@@ -134,6 +147,13 @@ class StatsDataService {
         let startTime = startDate.timeIntervalSince1970
         let endTime = endDate.timeIntervalSince1970
         return mainVC.statsBasalData.filter { $0.date >= startTime && $0.date <= endTime }
+    }
+
+    func getStatsPredictionSnapshots() -> [PredictionSnapshot] {
+        guard let mainVC = mainViewController else { return [] }
+        let startTime = startDate.timeIntervalSince1970
+        let endTime = endDate.timeIntervalSince1970
+        return mainVC.statsPredictionSnapshots.filter { $0.runTime >= startTime && $0.runTime <= endTime }
     }
 
     func getBasalProfile() -> [MainViewController.basalProfileStruct] {

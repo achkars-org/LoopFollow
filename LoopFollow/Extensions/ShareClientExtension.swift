@@ -56,6 +56,17 @@ private var TrendTable: [String] = [
     "RATE OUT OF RANGE", // 9
 ]
 
+struct PredictionSnapshot {
+    let runTime: TimeInterval
+    let values: [Double]
+
+    func predictedValue(at time: TimeInterval) -> Double? {
+        let index = Int((time - runTime) / 300) - 1
+        guard index >= 0, index < values.count else { return nil }
+        return values[index]
+    }
+}
+
 // TODO: probably better to make this an inherited class rather than an extension
 public extension ShareClient {
     func fetchData(_ entries: Int, callback: @escaping (ShareError?, [ShareGlucoseData]?) -> Void) {

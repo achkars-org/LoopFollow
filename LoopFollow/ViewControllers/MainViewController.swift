@@ -87,6 +87,7 @@ class MainViewController: UIViewController, ChartViewDelegate, UNUserNotificatio
     var statsSMBData: [bolusGraphStruct] = []
     var statsCarbData: [carbGraphStruct] = []
     var statsBasalData: [basalGraphStruct] = []
+    var statsPredictionSnapshots: [PredictionSnapshot] = []
     var overrideGraphData: [DataStructs.overrideStruct] = []
     var tempTargetGraphData: [DataStructs.tempTargetStruct] = []
     var predictionData: [ShareGlucoseData] = []
