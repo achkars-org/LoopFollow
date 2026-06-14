@@ -88,6 +88,56 @@ class StatsDataFetcher {
         }
     }
 
+    func fetchDeviceStatusData(days: Int, completion: @escaping () -> Void) {
+        guard let mainVC = mainViewController, IsNightscoutEnabled() else {
+            completion()
+            return
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = TimeZone(abbreviation: "UTC")
+        let startDate = dataService?.startDate ?? Date().addingTimeInterval(-Double(days) * 86400)
+
+        let count = min(days * 300, 5000)
+        let parameters: [String: String] = [
+            "find[created_at][$gte]": formatter.string(from: startDate),
+            "count": "\(count)",
+        ]
+
+        NightscoutUtils.executeDynamicRequest(eventType: .deviceStatus, parameters: parameters) { result in
+            switch result {
+            case let .success(data):
+                guard let entries = data as? [[String: AnyObject]] else {
+                    DispatchQueue.main.async { completion() }
+                    return
+                }
+                var snapshots: [PredictionSnapshot] = []
+                for entry in entries {
+                    guard let loop = entry["loop"] as? [String: AnyObject],
+                          let predicted = loop["predicted"] as? [String: AnyObject],
+                          let values = predicted["values"] as? [Double],
+                          let createdAt = entry["created_at"] as? String,
+                          let date = NightscoutUtils.parseDate(createdAt)
+                    else { continue }
+                    snapshots.append(PredictionSnapshot(runTime: date.timeIntervalSince1970, values: values))
+                }
+                let cutoff = startDate.timeIntervalSince1970
+                DispatchQueue.main.async {
+                    mainVC.statsPredictionSnapshots.removeAll { $0.runTime < cutoff }
+                    let existing = Set(mainVC.statsPredictionSnapshots.map { Int($0.runTime) })
+                    for snap in snapshots where !existing.contains(Int(snap.runTime)) {
+                        mainVC.statsPredictionSnapshots.append(snap)
+                    }
+                    completion()
+                }
+            case let .failure(error):
+                LogManager.shared.log(category: .nightscout, message: "Failed to fetch stats device status: \(error)")
+                DispatchQueue.main.async { completion() }
+            }
+        }
+    }
+
     private func ensureBasalProfileLoaded(mainVC: MainViewController, completion: @escaping () -> Void) {
         if !mainVC.basalProfile.isEmpty {
             completion()

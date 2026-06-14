@@ -88,6 +88,10 @@ struct AggregatedStatsView: View {
                     .padding(.horizontal)
                     .opacity(isLoadingData ? 0.4 : 1.0)
 
+                PredictionDeltaView(viewModel: viewModel.predictionDeltaStats)
+                    .padding(.horizontal)
+                    .opacity(isLoadingData ? 0.4 : 1.0)
+
                 TIRView(viewModel: viewModel.tirStats)
                     .padding(.horizontal)
                     .opacity(isLoadingData ? 0.4 : 1.0)
