@@ -20,6 +20,7 @@ struct GraphSettingsView: View {
     @ObservedObject private var smallGraphHeight = Storage.shared.smallGraphHeight
     @ObservedObject private var predictionToLoad = Storage.shared.predictionToLoad
     @ObservedObject private var predictionDisplayType = Storage.shared.predictionDisplayType
+    @ObservedObject private var units = Storage.shared.units
     @ObservedObject private var minBasalScale = Storage.shared.minBasalScale
     @ObservedObject private var minBGScale = Storage.shared.minBGScale
     @ObservedObject private var downloadDays = Storage.shared.downloadDays
@@ -135,6 +136,8 @@ struct GraphSettingsView: View {
                         format: { "\(Int($0)) d" }
                     )
                 }
+
+
             }
         }
         .preferredColorScheme(Storage.shared.appearanceMode.value.colorScheme)
