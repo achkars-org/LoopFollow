@@ -130,6 +130,8 @@ class Storage {
     var show90MinLine = StorageValue<Bool>(key: "show90MinLine", defaultValue: false)
     var showMidnightLines = StorageValue<Bool>(key: "showMidnightMarkers", defaultValue: false)
     var showYesterdayLine = StorageValue<Bool>(key: "showYesterdayLine", defaultValue: false)
+    var showBasalMarkers = StorageValue<Bool>(key: "showBasalMarkers", defaultValue: false)
+    var showOverrideMarkers = StorageValue<Bool>(key: "showOverrideMarkers", defaultValue: true)
     var smallGraphTreatments = StorageValue<Bool>(key: "smallGraphTreatments", defaultValue: true)
 
     var smallGraphHeight = StorageValue<Int>(key: "smallGraphHeight", defaultValue: 40)

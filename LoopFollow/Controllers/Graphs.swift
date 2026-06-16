@@ -661,8 +661,8 @@ extension MainViewController {
         lineBasalMarkers.drawFilledEnabled = false
         lineBasalMarkers.drawCirclesEnabled = false
         lineBasalMarkers.axisDependency = YAxis.AxisDependency.left
-        lineBasalMarkers.highlightEnabled = true
-        lineBasalMarkers.drawValuesEnabled = true
+        lineBasalMarkers.highlightEnabled = Storage.shared.showBasalMarkers.value
+        lineBasalMarkers.drawValuesEnabled = Storage.shared.showBasalMarkers.value
         lineBasalMarkers.valueFormatter = BasalDiamondFormatter()
         lineBasalMarkers.valueTextColor = NSUIColor.systemGray
         lineBasalMarkers.valueFont = UIFont.systemFont(ofSize: 9)
@@ -675,8 +675,8 @@ extension MainViewController {
         lineOverrideMarkers.drawFilledEnabled = false
         lineOverrideMarkers.drawCirclesEnabled = false
         lineOverrideMarkers.axisDependency = YAxis.AxisDependency.right
-        lineOverrideMarkers.highlightEnabled = true
-        lineOverrideMarkers.drawValuesEnabled = true
+        lineOverrideMarkers.highlightEnabled = Storage.shared.showOverrideMarkers.value
+        lineOverrideMarkers.drawValuesEnabled = Storage.shared.showOverrideMarkers.value
         lineOverrideMarkers.valueFormatter = BasalDiamondFormatter()
         lineOverrideMarkers.valueTextColor = NSUIColor.systemGreen
         lineOverrideMarkers.valueFont = UIFont.systemFont(ofSize: 9)
@@ -868,6 +868,17 @@ extension MainViewController {
 
         // Re-create vertical markers in case their settings changed
         createVerticalLines()
+
+        let basalMarkersIndex = GraphDataIndex.basalMarkers.rawValue
+        let overrideMarkersIndex = GraphDataIndex.overrideMarkers.rawValue
+        if let basalDS = BGChart.lineData?.dataSets[basalMarkersIndex] as? LineChartDataSet {
+            basalDS.drawValuesEnabled = Storage.shared.showBasalMarkers.value
+            basalDS.highlightEnabled = Storage.shared.showBasalMarkers.value
+        }
+        if let overrideDS = BGChart.lineData?.dataSets[overrideMarkersIndex] as? LineChartDataSet {
+            overrideDS.drawValuesEnabled = Storage.shared.showOverrideMarkers.value
+            overrideDS.highlightEnabled = Storage.shared.showOverrideMarkers.value
+        }
 
         BGChart.data?.dataSets[dataIndex].notifyDataSetChanged()
         BGChart.data?.notifyDataChanged()
