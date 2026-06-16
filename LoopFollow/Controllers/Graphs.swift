@@ -866,6 +866,9 @@ extension MainViewController {
 
         topBG = Storage.shared.minBGScale.value
         let thresholds = graphRangeThresholds()
+        let normalize = UnitSettingsStore.shared.normalizeForColorComparison
+        let normalizedLow = normalize(thresholds.low)
+        let normalizedHigh = normalize(thresholds.high)
         for i in 0 ..< entries.count {
             // Clamp the plotted y-value to the same bounds the header text uses
             // (HIGH/LOW), so the graph stays consistent with the main display.
@@ -878,9 +881,10 @@ extension MainViewController {
             mainChart.append(value)
             smallChart.append(value)
 
-            if Double(entries[i].sgv) >= thresholds.high {
+            let bgValue = normalize(Double(entries[i].sgv))
+            if bgValue >= normalizedHigh {
                 colors.append(NSUIColor.systemYellow)
-            } else if Double(entries[i].sgv) <= thresholds.low {
+            } else if bgValue <= normalizedLow {
                 colors.append(NSUIColor.systemRed)
             } else {
                 colors.append(NSUIColor.systemGreen)
