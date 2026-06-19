@@ -99,6 +99,10 @@ class Storage {
     // Live Activity extended InfoType data
     var lastBasal = StorageValue<String>(key: "lastBasal", defaultValue: "")
     var lastPumpReservoirU = StorageValue<Double?>(key: "lastPumpReservoirU", defaultValue: nil)
+    var lastPumpReservoirTime = StorageValue<TimeInterval>(key: "lastPumpReservoirTime", defaultValue: 0)
+    var lastPumpRecordTime = StorageValue<TimeInterval>(key: "lastPumpRecordTime", defaultValue: 0)
+    var lastLoopRecordTime = StorageValue<TimeInterval>(key: "lastLoopRecordTime", defaultValue: 0)
+    var lastUploaderRecordTime = StorageValue<TimeInterval>(key: "lastUploaderRecordTime", defaultValue: 0)
     var lastAutosens = StorageValue<Double?>(key: "lastAutosens", defaultValue: nil)
     var lastTdd = StorageValue<Double?>(key: "lastTdd", defaultValue: nil)
     var lastTargetLowMgdl = StorageValue<Double?>(key: "lastTargetLowMgdl", defaultValue: nil)

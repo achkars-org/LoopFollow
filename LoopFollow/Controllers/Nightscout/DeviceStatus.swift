@@ -93,6 +93,8 @@ extension MainViewController {
         Observable.shared.previousAlertLastLoopTime.value = Observable.shared.alertLastLoopTime.value
 
         if let lastPumpRecord = lastDeviceStatus?["pump"] as! [String: AnyObject]? {
+            Storage.shared.lastPumpRecordTime.value = Date().timeIntervalSince1970
+
             if let bolusIncrement = lastPumpRecord["bolusIncrement"] as? Double, bolusIncrement > 0 {
                 Storage.shared.bolusIncrement.value = HKQuantity(unit: .internationalUnit(), doubleValue: bolusIncrement)
                 Storage.shared.bolusIncrementDetected.value = true
@@ -116,11 +118,16 @@ extension MainViewController {
                     latestPumpVolume = reservoirData
                     infoManager.updateInfoData(type: .pump, value: String(format: "%.0f", reservoirData) + "U", numericValue: reservoirData)
                     Storage.shared.lastPumpReservoirU.value = reservoirData
+                    Storage.shared.lastPumpReservoirTime.value = Date().timeIntervalSince1970
+                } else if let lastKnown = Storage.shared.lastPumpReservoirU.value,
+                          (Date().timeIntervalSince1970 - Storage.shared.lastPumpReservoirTime.value) < 15 * 60
+                {
+                    latestPumpVolume = lastKnown
+                    infoManager.updateInfoData(type: .pump, value: String(format: "%.0f", lastKnown) + "U")
                 } else {
                     // Pumps that only report "50+" get treated as exactly 50, both
                     // for the volume alarm and for the info row's coloring.
                     latestPumpVolume = 50.0
-                    infoManager.updateInfoData(type: .pump, value: "50+U", numericValue: 50.0)
                     Storage.shared.lastPumpReservoirU.value = nil
                 }
             }
@@ -131,6 +138,10 @@ extension MainViewController {
             {
                 infoManager.updateInfoData(type: .pumpBattery, value: String(format: "%.0f", pumpBatteryPercent) + "%", numericValue: pumpBatteryPercent)
                 Observable.shared.pumpBatteryLevel.value = pumpBatteryPercent
+            } else if let lastKnown = Observable.shared.pumpBatteryLevel.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastPumpRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .pumpBattery, value: String(format: "%.0f", lastKnown) + "%")
             }
 
             if let uploader = lastDeviceStatus?["uploader"] as? [String: AnyObject],
@@ -146,6 +157,7 @@ extension MainViewController {
                 infoManager.updateInfoData(type: .battery, value: batteryText, numericValue: upbat)
                 Observable.shared.deviceBatteryLevel.value = upbat
                 Observable.shared.deviceBatteryIsCharging.value = isCharging
+                Storage.shared.lastUploaderRecordTime.value = Date().timeIntervalSince1970
 
                 let timestamp = uploader["timestamp"] as? Date ?? Date()
                 let currentBattery = DataStructs.batteryStruct(batteryLevel: upbat, timestamp: timestamp)
@@ -155,6 +167,10 @@ extension MainViewController {
                 if deviceBatteryData.count > 30 {
                     deviceBatteryData.removeFirst()
                 }
+            } else if let lastKnown = Observable.shared.deviceBatteryLevel.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastUploaderRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .battery, value: String(format: "%.0f", lastKnown) + "%")
             }
         }
 

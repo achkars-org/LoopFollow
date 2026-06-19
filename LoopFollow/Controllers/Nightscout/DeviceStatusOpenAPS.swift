@@ -7,6 +7,7 @@ import HealthKit
 extension MainViewController {
     func DeviceStatusOpenAPS(formatter: ISO8601DateFormatter, lastDeviceStatus: [String: AnyObject]?, lastLoopRecord: [String: AnyObject]) {
         Storage.shared.device.value = lastDeviceStatus?["device"] as? String ?? ""
+        Storage.shared.lastLoopRecordTime.value = Date().timeIntervalSince1970
         if lastLoopRecord["failureReason"] != nil {
             Observable.shared.loopStatusText.value = "X"
             latestLoopStatusString = "X"
@@ -76,12 +77,18 @@ extension MainViewController {
                 infoManager.updateInfoData(type: .iob, value: iobMetric)
                 latestIOB = iobMetric
                 Observable.shared.iobText.value = iobMetric.formattedValue()
+            } else if let lastKnown = Storage.shared.lastIOB.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastLoopRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .iob, value: InsulinMetric(value: lastKnown))
             }
 
             // COB
+            var cobSet = false
             if let cobMetric = CarbMetric(from: enactedOrSuggested, key: "COB") {
                 infoManager.updateInfoData(type: .cob, value: cobMetric)
                 latestCOB = cobMetric
+                cobSet = true
             } else if let reasonString = enactedOrSuggested["reason"] as? String {
                 // Fallback: Extract COB from reason string
                 let cobPattern = "COB: (\\d+(?:\\.\\d+)?)"
@@ -94,6 +101,7 @@ extension MainViewController {
                         if let fallbackCobMetric = CarbMetric(from: tempDict, key: "COB") {
                             infoManager.updateInfoData(type: .cob, value: fallbackCobMetric)
                             latestCOB = fallbackCobMetric
+                            cobSet = true
                         } else {
                             print("Failed to create CarbMetric from extracted COB value: \(cobValue)")
                         }
@@ -104,18 +112,32 @@ extension MainViewController {
                     print("COB pattern not found in reason string.")
                 }
             }
+            if !cobSet,
+               let lastKnown = Storage.shared.lastCOB.value,
+               (Date().timeIntervalSince1970 - Storage.shared.lastLoopRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .cob, value: CarbMetric(value: lastKnown))
+            }
 
             // Autosens
             if let sens = enactedOrSuggested["sensitivityRatio"] as? Double {
                 let formattedSens = String(format: "%.0f", sens * 100.0) + "%"
                 infoManager.updateInfoData(type: .autosens, value: formattedSens)
                 Storage.shared.lastAutosens.value = sens
+            } else if let lastKnown = Storage.shared.lastAutosens.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastLoopRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .autosens, value: String(format: "%.0f", lastKnown * 100.0) + "%")
             }
 
             // Recommended Bolus
             if let rec = lastLoopRecord["recommendedBolus"] as? Double {
                 infoManager.updateInfoData(type: .recBolus, value: InsulinFormatter.shared.string(rec))
                 Observable.shared.deviceRecBolus.value = rec
+            } else if let lastKnown = Observable.shared.deviceRecBolus.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastLoopRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .recBolus, value: InsulinFormatter.shared.string(lastKnown))
             } else {
                 infoManager.clearInfoData(type: .recBolus)
                 Observable.shared.deviceRecBolus.value = nil
@@ -167,6 +189,10 @@ extension MainViewController {
             {
                 infoManager.updateInfoData(type: .tdd, value: tddMetric)
                 Storage.shared.lastTdd.value = tddMetric.value
+            } else if let lastKnown = Storage.shared.lastTdd.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastLoopRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .tdd, value: InsulinMetric(value: lastKnown))
             }
 
             let predBGsData: [String: AnyObject]? = {

@@ -8,6 +8,7 @@ import SwiftUI
 extension MainViewController {
     func DeviceStatusLoop(formatter: ISO8601DateFormatter, lastLoopRecord: [String: AnyObject]) {
         Storage.shared.device.value = "Loop"
+        Storage.shared.lastLoopRecordTime.value = Date().timeIntervalSince1970
 
         if Storage.shared.remoteType.value == .trc {
             Storage.shared.remoteType.value = .none
@@ -56,12 +57,20 @@ extension MainViewController {
                 infoManager.updateInfoData(type: .iob, value: insulinMetric)
                 latestIOB = insulinMetric
                 Observable.shared.iobText.value = insulinMetric.formattedValue()
+            } else if let lastKnown = Storage.shared.lastIOB.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastLoopRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .iob, value: InsulinMetric(value: lastKnown))
             }
 
             // COB
             if let cobMetric = CarbMetric(from: lastLoopRecord["cob"], key: "cob") {
                 infoManager.updateInfoData(type: .cob, value: cobMetric)
                 latestCOB = cobMetric
+            } else if let lastKnown = Storage.shared.lastCOB.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastLoopRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .cob, value: CarbMetric(value: lastKnown))
             }
 
             if let predictdata = lastLoopRecord["predicted"] as? [String: AnyObject] {
@@ -103,6 +112,10 @@ extension MainViewController {
             if let recBolus = lastLoopRecord["recommendedBolus"] as? Double {
                 infoManager.updateInfoData(type: .recBolus, value: InsulinFormatter.shared.string(recBolus), numericValue: recBolus)
                 Observable.shared.deviceRecBolus.value = recBolus
+            } else if let lastKnown = Observable.shared.deviceRecBolus.value,
+                      (Date().timeIntervalSince1970 - Storage.shared.lastLoopRecordTime.value) < 15 * 60
+            {
+                infoManager.updateInfoData(type: .recBolus, value: InsulinFormatter.shared.string(lastKnown), numericValue: lastKnown)
             } else {
                 infoManager.clearInfoData(type: .recBolus)
                 Observable.shared.deviceRecBolus.value = nil
