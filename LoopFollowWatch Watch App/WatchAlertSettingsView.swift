@@ -120,7 +120,7 @@ private struct CooldownPickerView: View {
     @ObservedObject var settings: WatchAppSettings
 
     // Available cooldown values in seconds: 1–5 min (fine), 10–60 min (coarse)
-    private let options: [TimeInterval] = [1,2,3,4,5,10,15,20,30,45,60].map { Double($0) * 60 }
+    private let options: [TimeInterval] = [1, 2, 3, 4, 5, 10, 15, 20, 30, 45, 60].map { Double($0) * 60 }
 
     var body: some View {
         List(options, id: \.self) { secs in

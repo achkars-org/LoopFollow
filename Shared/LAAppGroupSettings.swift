@@ -344,5 +344,4 @@ enum LAAppGroupSettings {
     static func watchNightscoutToken() -> String {
         defaults?.string(forKey: Keys.watchNightscoutToken) ?? ""
     }
-
 }

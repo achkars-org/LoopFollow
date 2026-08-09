@@ -1,5 +1,6 @@
 // LoopFollow
 // RateLimiterTests.swift
+
 //
 // Tests for the phone-side rate-limiter logic introduced in Step 2:
 // WatchConnectivityManager.complicationCreditAvailable().
@@ -45,11 +46,12 @@ private func complicationCreditAvailable(
 }
 
 // MARK: - Window-boundary constants
+
 // windowA and windowB are exact multiples of 1800:
 //   windowA = 944444 * 1800 = 1_699_999_200
 //   windowB = windowA + 1800 = 1_700_001_000
 private let windowA: TimeInterval = 1_699_999_200
-private let windowB: TimeInterval = 1_699_999_200 + 1800   // = 1_700_001_000
+private let windowB: TimeInterval = 1_699_999_200 + 1800 // = 1_700_001_000
 
 // MARK: - Tests
 
@@ -61,7 +63,7 @@ struct RateLimiterTests {
     @Test("credit available when no push has ever been made (lastWindowStart = 0)")
     func creditAvailableOnFirstUse() {
         // Any now > 1800 produces windowStart > 0, so lastWindowStart=0 < windowStart.
-        let now = windowB + 60   // 60 s into windowB
+        let now = windowB + 60 // 60 s into windowB
         #expect(complicationCreditAvailable(now: now, lastWindowStart: 0))
     }
 
@@ -124,8 +126,8 @@ struct RateLimiterTests {
 
     @Test("two timestamps 1799 seconds apart share the same window")
     func twoTimestampsInSameWindowSameWindowStart() {
-        let t1 = windowB + 1       // 1 s into windowB
-        let t2 = windowB + 1799    // last second of windowB
+        let t1 = windowB + 1 // 1 s into windowB
+        let t2 = windowB + 1799 // last second of windowB
 
         let ws1 = t1 - t1.truncatingRemainder(dividingBy: 1800)
         let ws2 = t2 - t2.truncatingRemainder(dividingBy: 1800)
@@ -135,8 +137,8 @@ struct RateLimiterTests {
 
     @Test("two timestamps exactly 1800 seconds apart are in different windows")
     func twoTimestamps1800SecondsApartAreDifferentWindows() {
-        let t1 = windowB          // start of windowB
-        let t2 = windowB + 1800   // start of windowC (next window)
+        let t1 = windowB // start of windowB
+        let t2 = windowB + 1800 // start of windowC (next window)
 
         let ws1 = t1 - t1.truncatingRemainder(dividingBy: 1800)
         let ws2 = t2 - t2.truncatingRemainder(dividingBy: 1800)
@@ -151,8 +153,8 @@ struct RateLimiterTests {
     @Test("readings 2 seconds apart straddling a window boundary get separate credits")
     func stradingWindowBoundaryCreatesSeparateCredits() {
         // t1 is 1 s before windowB, t2 is 1 s after windowB
-        let t1 = windowB - 1   // still in windowA
-        let t2 = windowB + 1   // in windowB
+        let t1 = windowB - 1 // still in windowA
+        let t2 = windowB + 1 // in windowB
 
         let ws1 = t1 - t1.truncatingRemainder(dividingBy: 1800)
         let ws2 = t2 - t2.truncatingRemainder(dividingBy: 1800)

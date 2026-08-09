@@ -1,5 +1,6 @@
 // LoopFollow
 // OvernightHourTests.swift
+
 //
 // Tests for the isOvernightHour() helper introduced in Step 5:
 // WatchAppDelegate.isOvernightHour().
@@ -126,7 +127,7 @@ struct OvernightHourTests {
 
     @Test("overnight hours use 20-minute refresh interval")
     func overnightIntervalIs20Minutes() {
-        for hour in 0...6 {
+        for hour in 0 ... 6 {
             #expect(refreshInterval(hour: hour) == 20 * 60,
                     "Expected 20-minute interval for hour \(hour)")
         }
@@ -134,7 +135,7 @@ struct OvernightHourTests {
 
     @Test("daytime hours use 2-minute refresh interval")
     func daytimeIntervalIs2Minutes() {
-        for hour in 7...23 {
+        for hour in 7 ... 23 {
             #expect(refreshInterval(hour: hour) == 2 * 60,
                     "Expected 2-minute interval for hour \(hour)")
         }
@@ -142,7 +143,7 @@ struct OvernightHourTests {
 
     @Test("interval changes at exactly hour 7 boundary")
     func intervalBoundaryAtHour7() {
-        #expect(refreshInterval(hour: 6) == 20 * 60)   // last overnight
-        #expect(refreshInterval(hour: 7) == 2 * 60)    // first daytime
+        #expect(refreshInterval(hour: 6) == 20 * 60) // last overnight
+        #expect(refreshInterval(hour: 7) == 2 * 60) // first daytime
     }
 }

@@ -1,5 +1,6 @@
 // LoopFollow
 // BudgetManagementTests.swift
+
 //
 // Tests for the deduplication gate, rate limiter, URLSession fire-date
 // calculation, and overnight scheduling helper introduced in Steps 1–5.

@@ -1,5 +1,6 @@
 // LoopFollow
 // StalenessGuardTests.swift
+
 //
 // Tests for the staleness-guard logic introduced in handleRefresh()'s else-branch.
 //
