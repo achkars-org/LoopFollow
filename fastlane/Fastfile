@@ -43,6 +43,7 @@ end
 APP_SUFFIX = loopfollow_app_suffix
 APP_IDENTIFIER = "com.#{TEAMID}.LoopFollow#{APP_SUFFIX}"
 LA_IDENTIFIER = "#{APP_IDENTIFIER}.LoopFollowLAExtension"
+WATCH_IDENTIFIER = "#{APP_IDENTIFIER}.watchkitapp"
 
 platform :ios do
   desc "Build Loop Follow"
@@ -77,7 +78,8 @@ platform :ios do
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
       app_identifier: [
         APP_IDENTIFIER,
-        LA_IDENTIFIER
+        LA_IDENTIFIER,
+        WATCH_IDENTIFIER
       ]
     )
 
@@ -101,7 +103,7 @@ platform :ios do
 
     update_code_signing_settings(
       path: "#{GITHUB_WORKSPACE}/LoopFollow.xcodeproj",
-      profile_name: mapping["com.#{TEAMID}.LoopFollow.watchkitapp"],
+      profile_name: mapping[WATCH_IDENTIFIER],
       code_sign_identity: "iPhone Distribution",
       targets: ["LoopFollowWatch Watch App"]
     )
@@ -116,7 +118,8 @@ platform :ios do
       export_options: {
         provisioningProfiles: {
           APP_IDENTIFIER => mapping[APP_IDENTIFIER],
-          LA_IDENTIFIER => mapping[LA_IDENTIFIER]
+          LA_IDENTIFIER => mapping[LA_IDENTIFIER],
+          WATCH_IDENTIFIER => mapping[WATCH_IDENTIFIER]
         }
       }
     )
@@ -175,7 +178,7 @@ platform :ios do
       Spaceship::ConnectAPI::BundleIdCapability::Type::APP_GROUPS
     ])
 
-    configure_bundle_id("LoopFollow Watch App", "com.#{TEAMID}.LoopFollow.watchkitapp", [
+    configure_bundle_id("LoopFollow Watch App", WATCH_IDENTIFIER, [
       Spaceship::ConnectAPI::BundleIdCapability::Type::APP_GROUPS
     ])
 
@@ -199,7 +202,8 @@ platform :ios do
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
       app_identifier: [
         APP_IDENTIFIER,
-        LA_IDENTIFIER
+        LA_IDENTIFIER,
+        WATCH_IDENTIFIER
       ]
     )
   end
