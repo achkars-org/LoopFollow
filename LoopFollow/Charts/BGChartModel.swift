@@ -215,6 +215,33 @@ final class BGChartModel: ObservableObject {
         pillTimeFormatter.string(from: date)
     }
 
+    /// Composes the text drawn directly on an override band from the user's
+    /// chosen components (name / insulin percentage / BG target), in that
+    /// order. Falls back to the name if every component is switched off, so
+    /// the band is never left unlabeled.
+    private func overrideBandLabel(displayName: String, override: DataStructs.overrideStruct) -> String {
+        var parts: [String] = []
+
+        if Storage.shared.overrideLabelShowName.value {
+            parts.append(displayName)
+        }
+
+        if Storage.shared.overrideLabelShowPercentage.value {
+            parts.append("\(Int((override.insulNeedsScaleFactor * 100).rounded()))%")
+        }
+
+        if Storage.shared.overrideLabelShowTarget.value {
+            let range = override.correctionRange
+            if range.count == 2, range[0] != 0 || range[1] != 0 {
+                let low = Localizer.toDisplayUnits(String(range[0]))
+                let high = Localizer.toDisplayUnits(String(range[1]))
+                parts.append(range[0] == range[1] ? low : "\(low)-\(high)")
+            }
+        }
+
+        return parts.isEmpty ? displayName : parts.joined(separator: " • ")
+    }
+
     /// Nightscout remote-command error notes embed a JSON payload after
     /// the human-readable message ("Error text {\"bolus-entry\": 1.5, ...}").
     /// Returns the message plus a compact summary of the payload, or nil when
@@ -543,7 +570,7 @@ final class BGChartModel: ObservableObject {
                 end: Date(timeIntervalSince1970: $0.endDate),
                 yBottom: yBottom,
                 yTop: yTop,
-                label: displayName,
+                label: overrideBandLabel(displayName: displayName, override: $0),
                 pillText: "Override\n\(displayName)\n\(pillTimeString(for: Date(timeIntervalSince1970: $0.date)))"
             )
         }

@@ -131,6 +131,11 @@ class Storage {
     var showYesterdayLine = StorageValue<Bool>(key: "showYesterdayLine", defaultValue: false)
     var smallGraphTreatments = StorageValue<Bool>(key: "smallGraphTreatments", defaultValue: true)
 
+    // Override band label composition
+    var overrideLabelShowName = StorageValue<Bool>(key: "overrideLabelShowName", defaultValue: true)
+    var overrideLabelShowPercentage = StorageValue<Bool>(key: "overrideLabelShowPercentage", defaultValue: false)
+    var overrideLabelShowTarget = StorageValue<Bool>(key: "overrideLabelShowTarget", defaultValue: false)
+
     var smallGraphHeight = StorageValue<Int>(key: "smallGraphHeight", defaultValue: 40)
     var predictionToLoad = StorageValue<Double>(key: "predictionToLoad", defaultValue: 1.0)
     var predictionDisplayType = StorageValue<PredictionDisplayType>(key: "predictionDisplayType", defaultValue: .cone)

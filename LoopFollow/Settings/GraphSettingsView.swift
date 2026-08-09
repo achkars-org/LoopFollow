@@ -14,6 +14,9 @@ struct GraphSettingsView: View {
     @ObservedObject private var showMidnightLines = Storage.shared.showMidnightLines
     @ObservedObject private var showYesterdayLine = Storage.shared.showYesterdayLine
     @ObservedObject private var smallGraphTreatments = Storage.shared.smallGraphTreatments
+    @ObservedObject private var overrideLabelShowName = Storage.shared.overrideLabelShowName
+    @ObservedObject private var overrideLabelShowPercentage = Storage.shared.overrideLabelShowPercentage
+    @ObservedObject private var overrideLabelShowTarget = Storage.shared.overrideLabelShowTarget
 
     @ObservedObject private var smallGraphHeight = Storage.shared.smallGraphHeight
     @ObservedObject private var predictionToLoad = Storage.shared.predictionToLoad
@@ -62,6 +65,18 @@ struct GraphSettingsView: View {
                     Toggle("Treatments on Small Graph",
                            isOn: $smallGraphTreatments.value)
                         .onChange(of: smallGraphTreatments.value) { _ in markDirty() }
+                }
+            }
+
+            // ── Overrides ────────────────────────────────────────────────
+            if nightscoutEnabled {
+                Section("Override Band Label") {
+                    Toggle("Show Name", isOn: $overrideLabelShowName.value)
+                        .onChange(of: overrideLabelShowName.value) { _ in markDirty() }
+                    Toggle("Show Percentage", isOn: $overrideLabelShowPercentage.value)
+                        .onChange(of: overrideLabelShowPercentage.value) { _ in markDirty() }
+                    Toggle("Show BG Target", isOn: $overrideLabelShowTarget.value)
+                        .onChange(of: overrideLabelShowTarget.value) { _ in markDirty() }
                 }
             }
 
