@@ -22,7 +22,11 @@ When the user says "ready", execute these steps to create a clean upstream PR br
 1. `git fetch origin dev` — get the latest upstream dev
 2. `git checkout -b pr/<feature-name> origin/dev` — create a clean branch rooted at upstream's dev
 3. `git cherry-pick <commit-sha>` — apply only the relevant fix commit(s)
-4. `git push origin pr/<feature-name>` — push and open the PR from this branch
+4. Run the SwiftFormat lint check (see `## SwiftFormat` below) against every file touched by
+   the cherry-picked commit(s). Fix any violations found — touching only those files/lines,
+   nothing else in the repo — then amend the cherry-picked commit (or add a fixup commit) so
+   the branch is lint-clean before it's pushed. Do not open the PR with unresolved violations.
+5. `git push origin pr/<feature-name>` — push and open the PR from this branch
 
 ## Upstream PR standards (loopandlearn/LoopFollow)
 - **One concern per PR** — one bug fix, one feature, or one improvement. Split unrelated changes into separate PRs.
