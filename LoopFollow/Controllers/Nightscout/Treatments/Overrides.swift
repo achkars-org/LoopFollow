@@ -62,6 +62,15 @@ extension MainViewController {
 
             end = min(end, maxEndDate)
 
+            // Loop cancels overrides locally without retroactively shortening the
+            // duration on the already-uploaded Nightscout treatment, so the most
+            // recent entry can still claim to be active long after it was turned
+            // off. Clamp it to now once Loop's live device status disagrees.
+            if i == sorted.count - 1, Storage.shared.device.value == "Loop", !isLoopOverrideActive {
+                end = min(end, now)
+                trueEnd = trueEnd.map { min($0, now) }
+            }
+
             if end - start < 300 { continue } // skip short overrides
 
             let dot = DataStructs.overrideStruct(

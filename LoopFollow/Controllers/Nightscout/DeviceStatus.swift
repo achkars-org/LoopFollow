@@ -178,6 +178,8 @@ extension MainViewController {
             if let lastOverride = lastDeviceStatus?["override"] as? [String: AnyObject],
                let isActive = lastOverride["active"] as? Bool, isActive
             {
+                isLoopOverrideActive = true
+
                 if let lastCorrection = lastOverride["currentCorrectionRange"] as? [String: AnyObject],
                    let minValue = lastCorrection["minValue"] as? Double,
                    let maxValue = lastCorrection["maxValue"] as? Double
@@ -195,6 +197,7 @@ extension MainViewController {
 
                 infoManager.updateInfoData(type: .override, value: oText)
             } else {
+                isLoopOverrideActive = false
                 infoManager.clearInfoData(type: .override)
             }
         }

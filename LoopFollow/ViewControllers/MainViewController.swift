@@ -54,6 +54,10 @@ class MainViewController: UIViewController, UNUserNotificationCenterDelegate {
     // Variables for BG Charts
     var firstGraphLoad: Bool = true
     var currentOverride = 1.0
+    /// Live "override active" flag from Loop's device status. Used to clamp the
+    /// graphed override band when Loop cancels an override early without
+    /// retroactively shortening the duration on the uploaded Nightscout treatment.
+    var isLoopOverrideActive = true
 
     var currentSage: sageData?
     var currentCage: cageData?
