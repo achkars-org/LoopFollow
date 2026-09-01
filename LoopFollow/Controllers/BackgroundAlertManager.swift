@@ -64,19 +64,22 @@ class BackgroundAlertManager {
     func scheduleBackgroundAlert(force: Bool = false) {
         guard isAlertScheduled, Storage.shared.backgroundRefreshType.value != .none else { return }
 
-        // Throttle execution if not forced: only run once every 10 seconds.
-        if !force {
-            let now = Date()
-            if let lastDate = lastScheduleDate, now.timeIntervalSince(lastDate) < 10 {
-                return
-            }
-            lastScheduleDate = now
+        // Throttle execution if not forced: only run once every 10 seconds. A forced
+        // run stamps the date too, so the next tick doesn't immediately repeat the
+        // remove-and-re-add it just performed.
+        let now = Date()
+        if !force, let lastDate = lastScheduleDate, now.timeIntervalSince(lastDate) < 10 {
+            return
         }
+        lastScheduleDate = now
 
         removeDeliveredNotifications()
 
         let isBluetoothActive = Storage.shared.backgroundRefreshType.value.isBluetooth
-        let expectedHeartbeat = BLEManager.shared.expectedHeartbeatInterval()
+        // Only query BLEManager for a Bluetooth mode — touching it otherwise would
+        // initialize CoreBluetooth and trigger the permission prompt for users
+        // (e.g. Silent Tune) who never opted into Bluetooth.
+        let expectedHeartbeat = isBluetoothActive ? BLEManager.shared.expectedHeartbeatInterval() : nil
 
         // Define alerts
         let alerts: [BackgroundAlert] = [

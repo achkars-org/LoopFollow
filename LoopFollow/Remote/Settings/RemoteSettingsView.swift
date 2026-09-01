@@ -4,7 +4,6 @@
 import AVFoundation
 import HealthKit
 import SwiftUI
-import UIKit
 
 struct RemoteSettingsView: View {
     @ObservedObject var viewModel: RemoteSettingsViewModel
@@ -64,16 +63,6 @@ struct RemoteSettingsView: View {
                     label: "Trio Remote Control",
                     isEnabled: viewModel.isTrioDevice
                 )
-
-                remoteTypeRow(
-                    type: .nightscout,
-                    label: "Nightscout",
-                    isEnabled: viewModel.isTrioDevice
-                )
-
-                Text("Nightscout should be used for Trio 0.2.x.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
             }
 
             // MARK: - Import/Export Settings Section
@@ -131,7 +120,7 @@ struct RemoteSettingsView: View {
 
             // MARK: - User Information Section
 
-            if viewModel.remoteType != .none && viewModel.remoteType != .loopAPNS {
+            if viewModel.remoteType == .trc {
                 Section(header: Text("User Information")) {
                     HStack {
                         Text("User")
