@@ -5,6 +5,7 @@
 #if !targetEnvironment(macCatalyst)
 
 @preconcurrency import ActivityKit
+import Combine
 import Foundation
 import os
 import UIKit
@@ -42,6 +43,16 @@ final class LiveActivityManager {
         )
         startPushToStartTokenObservation()
         startActivityUpdatesObservation()
+
+        Publishers.Merge(
+            Storage.shared.lowLine.$value.map { _ in () },
+            Storage.shared.highLine.$value.map { _ in () }
+        )
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] _ in
+            self?.handleThresholdChange()
+        }
+        .store(in: &cancellables)
     }
 
     // MARK: - Push-to-start observation
@@ -207,6 +218,43 @@ final class LiveActivityManager {
             await activity.update(content)
             LogManager.shared.log(category: .general, message: "[LA] resign-active flush sent seq=\(nextSeq)", isDebug: true)
             // Also send APNs so the extension receives the latest token-based update.
+            if let token = pushToken {
+                await APNSClient.shared.sendLiveActivityUpdate(pushToken: token, state: state)
+            }
+        }
+    }
+
+    @MainActor
+    private func handleThresholdChange() {
+        LAAppGroupSettings.setThresholds(
+            lowMgdl: Storage.shared.lowLine.value,
+            highMgdl: Storage.shared.highLine.value,
+        )
+
+        guard Storage.shared.laEnabled.value, let activity = current else { return }
+
+        let provider = StorageCurrentGlucoseStateProvider()
+        guard let snapshot = GlucoseSnapshotBuilder.build(from: provider) else { return }
+
+        GlucoseSnapshotStore.shared.save(snapshot)
+
+        seq += 1
+        let nextSeq = seq
+        let state = GlucoseLiveActivityAttributes.ContentState(
+            snapshot: snapshot,
+            seq: nextSeq,
+            reason: "threshold-changed",
+            producedAt: Date(),
+        )
+        let content = ActivityContent(
+            state: state,
+            staleDate: Date(timeIntervalSince1970: Storage.shared.laRenewBy.value),
+            relevanceScore: 100.0,
+        )
+
+        Task {
+            await activity.update(content)
+            LogManager.shared.log(category: .general, message: "[LA] threshold-changed flush sent seq=\(nextSeq)", isDebug: true)
             if let token = pushToken {
                 await APNSClient.shared.sendLiveActivityUpdate(pushToken: token, state: state)
             }
@@ -430,6 +478,7 @@ final class LiveActivityManager {
     /// and arrives within a few seconds of the first request.
     private static let pushToStartTokenRetryDelay: TimeInterval = 10
 
+    private var cancellables = Set<AnyCancellable>()
     private(set) var current: Activity<GlucoseLiveActivityAttributes>?
     private var stateObserverTask: Task<Void, Never>?
     private var updateTask: Task<Void, Never>?
