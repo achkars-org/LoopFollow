@@ -49,7 +49,9 @@ enum AppGroupID {
         "group.\(baseBundleID)"
     }
 
-    private static func stripLikelyExtensionSuffixes(from bundleID: String) -> String {
+    /// Strips extension suffixes repeatedly and case-insensitively, so nested bundle IDs
+    /// such as `<app>.watchkitapp.widgets` resolve to the app's group.
+    static func stripLikelyExtensionSuffixes(from bundleID: String) -> String {
         let knownSuffixes = [
             ".LiveActivity",
             ".LiveActivityExtension",
@@ -67,12 +69,10 @@ enum AppGroupID {
             ".IntentsExtension",
         ]
 
-        for suffix in knownSuffixes {
-            if bundleID.hasSuffix(suffix) {
-                return String(bundleID.dropLast(suffix.count))
-            }
+        var result = bundleID
+        while let suffix = knownSuffixes.first(where: { result.lowercased().hasSuffix($0.lowercased()) }) {
+            result = String(result.dropLast(suffix.count))
         }
-
-        return bundleID
+        return result
     }
 }

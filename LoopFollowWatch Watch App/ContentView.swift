@@ -54,7 +54,11 @@ struct ContentView: View {
             DiagnosticsView()
         }
         .tabViewStyle(.page)
-        .onAppear { model.refresh() }
+        .onAppear {
+            model.refresh()
+            // Foreground reloads do not count against the complication budget.
+            WatchSessionReceiver.shared.reloadComplications()
+        }
     }
 }
 
@@ -170,7 +174,7 @@ struct GlucoseView: View {
                         .font(.system(size: 56, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.4)
                         .lineLimit(1)
-                        .foregroundColor(ComplicationEntryBuilder.thresholdColor(for: s).swiftUIColor)
+                        .foregroundColor(GlucoseColor.color(forMgdl: s.glucose))
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     VStack(alignment: .leading, spacing: 3) {
@@ -316,8 +320,4 @@ struct SlotSelectionView: View {
         }
         .navigationTitle("Data")
     }
-}
-
-private extension UIColor {
-    var swiftUIColor: Color { Color(self) }
 }

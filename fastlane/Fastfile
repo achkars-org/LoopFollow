@@ -44,6 +44,7 @@ APP_SUFFIX = loopfollow_app_suffix
 APP_IDENTIFIER = "com.#{TEAMID}.LoopFollow#{APP_SUFFIX}"
 LA_IDENTIFIER = "#{APP_IDENTIFIER}.LoopFollowLAExtension"
 WATCH_IDENTIFIER = "#{APP_IDENTIFIER}.watchkitapp"
+WATCH_WIDGETS_IDENTIFIER = "#{WATCH_IDENTIFIER}.widgets"
 
 platform :ios do
   desc "Build Loop Follow"
@@ -79,7 +80,8 @@ platform :ios do
       app_identifier: [
         APP_IDENTIFIER,
         LA_IDENTIFIER,
-        WATCH_IDENTIFIER
+        WATCH_IDENTIFIER,
+        WATCH_WIDGETS_IDENTIFIER
       ]
     )
 
@@ -108,6 +110,13 @@ platform :ios do
       targets: ["LoopFollowWatch Watch App"]
     )
 
+    update_code_signing_settings(
+      path: "#{GITHUB_WORKSPACE}/LoopFollow.xcodeproj",
+      profile_name: mapping[WATCH_WIDGETS_IDENTIFIER],
+      code_sign_identity: "iPhone Distribution",
+      targets: ["LoopFollowWatchWidgetsExtension"]
+    )
+
     gym(
       export_method: "app-store",
       scheme: "LoopFollow",
@@ -119,7 +128,8 @@ platform :ios do
         provisioningProfiles: {
           APP_IDENTIFIER => mapping[APP_IDENTIFIER],
           LA_IDENTIFIER => mapping[LA_IDENTIFIER],
-          WATCH_IDENTIFIER => mapping[WATCH_IDENTIFIER]
+          WATCH_IDENTIFIER => mapping[WATCH_IDENTIFIER],
+          WATCH_WIDGETS_IDENTIFIER => mapping[WATCH_WIDGETS_IDENTIFIER]
         }
       }
     )
@@ -178,7 +188,13 @@ platform :ios do
       Spaceship::ConnectAPI::BundleIdCapability::Type::APP_GROUPS
     ])
 
-    configure_bundle_id("LoopFollow Watch App", WATCH_IDENTIFIER, [])
+    configure_bundle_id("LoopFollow Watch App", WATCH_IDENTIFIER, [
+      Spaceship::ConnectAPI::BundleIdCapability::Type::APP_GROUPS
+    ])
+
+    configure_bundle_id("LoopFollow Watch Complications", WATCH_WIDGETS_IDENTIFIER, [
+      Spaceship::ConnectAPI::BundleIdCapability::Type::APP_GROUPS
+    ])
 
   end
 
@@ -201,7 +217,8 @@ platform :ios do
       app_identifier: [
         APP_IDENTIFIER,
         LA_IDENTIFIER,
-        WATCH_IDENTIFIER
+        WATCH_IDENTIFIER,
+        WATCH_WIDGETS_IDENTIFIER
       ]
     )
   end

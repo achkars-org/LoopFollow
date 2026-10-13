@@ -1,12 +1,12 @@
 // LoopFollow
 // WatchSessionReceiver.swift
 
-import ClockKit
 import Foundation
 import os.log
 import UserNotifications
 import WatchConnectivity
 import WatchKit
+import WidgetKit
 
 private let watchLog = OSLog(
     subsystem: Bundle.main.bundleIdentifier ?? "com.loopfollow.watch",
@@ -24,24 +24,6 @@ final class WatchSessionReceiver: NSObject {
     /// Held open while WatchConnectivity delivers a pending transferUserInfo in the background.
     /// Completed after the snapshot is saved to disk.
     var pendingConnectivityTask: WKWatchConnectivityRefreshBackgroundTask?
-
-    /// In-memory cache of the last received snapshot. Used by WatchComplicationProvider as a
-    /// fallback when GlucoseSnapshotStore.load() returns nil (e.g. file write race or first launch).
-    /// Always reflects the most recently delivered snapshot regardless of file-store state.
-    private(set) var lastSnapshot: GlucoseSnapshot?
-
-    /// Cache of CLKComplication objects keyed by "<identifier>-<family.rawValue>".
-    /// Populated when ClockKit calls getCurrentTimelineEntry (complication is on an active face)
-    /// or when activeComplications is non-nil. Used as a fallback when activeComplications
-    /// returns nil/empty during background execution — a known watchOS 9+ limitation.
-    private var cachedComplications: [String: CLKComplication] = [:]
-
-    /// Called by WatchComplicationProvider whenever ClockKit passes a CLKComplication to us.
-    /// Must be called on the main thread (ClockKit callbacks are main-thread).
-    func cacheComplication(_ complication: CLKComplication) {
-        let key = "\(complication.identifier)-\(complication.family.rawValue)"
-        cachedComplications[key] = complication
-    }
 
     // MARK: - Init
 
@@ -204,9 +186,6 @@ extension WatchSessionReceiver: WCSessionDelegate {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(GlucoseSnapshot.self, from: data)
-            // Cache in memory immediately — complication provider can use this as a
-            // fallback if the App Group file store hasn't flushed yet.
-            lastSnapshot = snapshot
             WatchAlertManager.shared.checkAndAlert(snapshot: snapshot)
             guard ComplicationRefreshCounter.shared.shouldReloadAndRecord(for: snapshot) else {
                 let task = pendingConnectivityTask
@@ -220,8 +199,8 @@ extension WatchSessionReceiver: WCSessionDelegate {
                 // ACK to iPhone so it can detect missed deliveries.
                 self?.sendAck(for: snapshot)
                 // Capture and clear the pending task before dispatching to main,
-                // then complete it AFTER reloadTimeline() so watchOS doesn't suspend
-                // the extension before ClockKit processes the reload request.
+                // then complete it after the timeline reload is requested so watchOS
+                // doesn't suspend the app before WidgetKit receives it.
                 let task = self?.pendingConnectivityTask
                 self?.pendingConnectivityTask = nil
                 DispatchQueue.main.async { [weak self] in
@@ -271,40 +250,17 @@ extension WatchSessionReceiver: WCSessionDelegate {
         os_log("WatchSessionReceiver: ACK sent for snapshot at %f", log: watchLog, type: .debug, snapshot.updatedAt.timeIntervalSince1970)
     }
 
-    /// Reloads all known complications. May be called from any thread.
+    /// Asks WidgetKit to rebuild the complication timelines from the App Group store.
+    /// May be called from any thread.
     func reloadComplications() {
         DispatchQueue.main.async { self.reloadComplicationsOnMainThread() }
     }
 
-    /// Must be called on the main thread. Used directly when already on main (e.g., from process()).
     private func reloadComplicationsOnMainThread() {
-        let server = CLKComplicationServer.sharedInstance()
-
-        let complications: [CLKComplication]
-        if let active = server.activeComplications, !active.isEmpty {
-            // Update the cache whenever activeComplications is non-nil.
-            active.forEach { self.cacheComplication($0) }
-            complications = active
-            os_log("WatchSessionReceiver: reloading %d active complication(s)", log: watchLog, type: .info, complications.count)
-        } else if !cachedComplications.isEmpty {
-            // activeComplications is nil/empty — common during background execution on watchOS 9+.
-            // Use the cached CLKComplication objects from the last call where activeComplications was valid.
-            complications = Array(cachedComplications.values)
-            os_log("WatchSessionReceiver: activeComplications nil/empty — using %d cached complication(s)", log: watchLog, type: .info, complications.count)
-        } else {
-            os_log("WatchSessionReceiver: no active or cached complications — reloadTimeline skipped", log: watchLog, type: .error)
-            return
-        }
-
-        for complication in complications {
-            server.reloadTimeline(for: complication)
-        }
-        os_log("WatchSessionReceiver: reloadTimeline called for %d complication(s)", log: watchLog, type: .info, complications.count)
+        WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.glucose)
+        #if DEBUG
+            WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.debug)
+        #endif
+        os_log("WatchSessionReceiver: complication timelines reload requested", log: watchLog, type: .info)
     }
-
-    // NOTE: reloadComplications() is safe to call from any thread for foreground paths
-    // (bootstrap, reloadComplicationsIfNeeded). For background task paths (process()),
-    // setTaskCompletedWithSnapshot() must be called INSIDE DispatchQueue.main.async
-    // after reloadTimeline() — otherwise watchOS suspends the extension before ClockKit
-    // receives the reload request.
 }
