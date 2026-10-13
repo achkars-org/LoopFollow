@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var model = WatchViewModel()
     @State private var showSettings = false
     @State private var showRemote = false
+    @State private var deepLink: WatchDeepLink?
 
     var body: some View {
         TabView {
@@ -54,10 +55,32 @@ struct ContentView: View {
             DiagnosticsView()
         }
         .tabViewStyle(.page)
+        .sheet(item: $deepLink) { link in
+            NavigationStack { remoteView(for: link) }
+        }
+        .onOpenURL { url in
+            // Shortcut complications land on their remote screen; without remote
+            // commands configured they simply open the app.
+            guard let link = WatchDeepLink(url: url), LAAppGroupSettings.isWatchRemoteEnabled() else { return }
+            showRemote = false
+            showSettings = false
+            deepLink = link
+        }
         .onAppear {
             model.refresh()
             // Foreground reloads do not count against the complication budget.
             WatchSessionReceiver.shared.reloadComplications()
+        }
+    }
+}
+
+extension ContentView {
+    @ViewBuilder
+    private func remoteView(for link: WatchDeepLink) -> some View {
+        switch link {
+        case .bolus: WatchBolusCommandView(snapshot: model.snapshot)
+        case .meal: WatchMealCommandView()
+        case .override: WatchOverridePickerView()
         }
     }
 }

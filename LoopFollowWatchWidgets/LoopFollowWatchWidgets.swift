@@ -20,6 +20,9 @@ struct GlucoseComplicationWidget: Widget {
 struct LoopFollowWatchWidgets: WidgetBundle {
     var body: some Widget {
         GlucoseComplicationWidget()
+        BolusShortcutWidget()
+        MealShortcutWidget()
+        OverrideShortcutWidget()
         #if DEBUG
             DebugComplicationWidget()
         #endif
