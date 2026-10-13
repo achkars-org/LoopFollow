@@ -111,11 +111,20 @@ extension WatchSessionReceiver: WCSessionDelegate {
         }
     }
 
+    /// Persists the iPhone's 24-hour stats summary carried in a payload.
+    func applyStats(from payload: [String: Any]) {
+        guard let data = payload[WatchStatsSummary.payloadKey] as? Data,
+              let stats = try? WatchStatsSummary.decoded(from: data)
+        else { return }
+        stats.save()
+    }
+
     /// Loads a snapshot from the last received applicationContext so the Watch app
     /// has data immediately on launch without waiting for the next transferUserInfo.
     private func bootstrapFromApplicationContext(_ session: WCSession) {
         applySettings(from: session.receivedApplicationContext)
         applyHistory(from: session.receivedApplicationContext)
+        applyStats(from: session.receivedApplicationContext)
         guard let data = session.receivedApplicationContext["snapshot"] as? Data else { return }
         do {
             let decoder = JSONDecoder()
@@ -162,6 +171,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
     private func process(payload: [String: Any], source: String) {
         applySettings(from: payload)
         applyHistory(from: payload)
+        applyStats(from: payload)
 
         if let _ = payload["watchLoopReturn"] {
             let title = payload["title"] as? String ?? "Loop Confirmed ✓"

@@ -76,22 +76,27 @@ final class WatchConnectivityManager: NSObject {
         if let snapshot, let data = try? encode(snapshot) {
             payload["snapshot"] = data
         }
-        if let data = try? currentHistory()?.encoded() {
+        let readings = currentReadings()
+        let now = Date()
+        if !readings.isEmpty, let data = try? WatchGlucoseHistory.make(from: readings, now: now).encoded() {
             payload[WatchGlucoseHistory.payloadKey] = data
+        }
+        if let stats = WatchStatsSummary.make(
+            from: readings,
+            lowMgdl: settings.lowMgdl,
+            highMgdl: settings.highMgdl,
+            now: now
+        ), let data = try? stats.encoded() {
+            payload[WatchStatsSummary.payloadKey] = data
         }
         return payload
     }
 
-    /// Recent readings for the Watch graph. `bgData` is owned by the main thread; off
-    /// main the key is simply omitted and the Watch keeps the history it already has.
-    private func currentHistory() -> WatchGlucoseHistory? {
-        guard Thread.isMainThread, let readings = MainViewController.shared?.bgData, !readings.isEmpty else {
-            return nil
-        }
-        return WatchGlucoseHistory.make(
-            from: readings.map { WatchGlucoseHistory.Point(date: $0.date, mgdl: $0.sgv) },
-            now: Date()
-        )
+    /// Readings for the Watch graph and stats. `bgData` is owned by the main thread; off
+    /// main the keys are simply omitted and the Watch keeps what it already has.
+    private func currentReadings() -> [WatchGlucoseHistory.Point] {
+        guard Thread.isMainThread, let readings = MainViewController.shared?.bgData else { return [] }
+        return readings.map { WatchGlucoseHistory.Point(date: $0.date, mgdl: $0.sgv) }
     }
 
     // MARK: - Send Settings
