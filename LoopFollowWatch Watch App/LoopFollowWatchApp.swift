@@ -101,15 +101,15 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
     }
 
     static func scheduleNextRefresh() {
-        let interval: TimeInterval = isOvernightHour() ? 20 * 60 : 2 * 60
+        let now = Date()
+        let interval = WatchRefreshPolicy.nextRefreshDelay(
+            lastReadingAt: GlucoseSnapshotStore.shared.load()?.updatedAt,
+            now: now,
+            hour: Calendar.current.component(.hour, from: now)
+        )
         WKApplication.shared().scheduleBackgroundRefresh(
-            withPreferredDate: Date(timeIntervalSinceNow: interval),
+            withPreferredDate: now.addingTimeInterval(interval),
             userInfo: nil
         ) { _ in }
-    }
-
-    private static func isOvernightHour() -> Bool {
-        let hour = Calendar.current.component(.hour, from: Date())
-        return hour < 7
     }
 }

@@ -98,8 +98,11 @@ final class WatchConnectivityManager: NSObject {
             let transferLog: String
 
             if session.isComplicationEnabled,
-               session.remainingComplicationUserInfoTransfers > 0,
-               now.timeIntervalSince(lastComplicationPushTime) >= 1800
+               WatchRefreshPolicy.isComplicationPushDue(
+                   now: now,
+                   lastPush: lastComplicationPushTime,
+                   remainingTransfers: session.remainingComplicationUserInfoTransfers
+               )
             {
                 session.transferCurrentComplicationUserInfo(payload)
                 lastComplicationPushTime = now

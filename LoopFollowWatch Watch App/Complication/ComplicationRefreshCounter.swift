@@ -23,7 +23,9 @@ final class ComplicationRefreshCounter {
     /// reloaded snapshot. Returns false without side effects if the snapshot is a duplicate.
     func shouldReloadAndRecord(for snapshot: GlucoseSnapshot) -> Bool {
         let snapshotTime = snapshot.updatedAt.timeIntervalSince1970
-        guard snapshotTime > lastReloadedSnapshotUpdatedAt else { return false }
+        guard WatchRefreshPolicy.isNewReading(updatedAt: snapshotTime, lastReloadedAt: lastReloadedSnapshotUpdatedAt) else {
+            return false
+        }
         lastReloadedSnapshotUpdatedAt = snapshotTime
         recordRefresh()
         return true
