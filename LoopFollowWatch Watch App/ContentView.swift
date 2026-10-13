@@ -46,6 +46,8 @@ struct ContentView: View {
                     NavigationStack { WatchAlertSettingsView() }
                 }
 
+            GlucoseChartView(points: model.history, unit: model.snapshot?.unit ?? .mgdl)
+
             ForEach(model.pages.indices, id: \.self) { idx in
                 DataGridPage(slots: model.pages[idx], snapshot: model.snapshot)
             }
@@ -96,6 +98,7 @@ final class WatchViewModel: ObservableObject {
     @Published var snoozeUntil: Date?
     @Published var hasActiveAlert = false
     @Published var remoteEnabled = LAAppGroupSettings.isWatchRemoteEnabled()
+    @Published var history: [WatchGlucoseHistory.Point] = WatchGlucoseHistory.load()?.points ?? []
 
     private var timer: Timer?
     private var notificationObserver: Any?
@@ -152,12 +155,14 @@ final class WatchViewModel: ObservableObject {
         snoozeUntil = WatchAlertManager.shared.globalSnoozeExpiryDate
         hasActiveAlert = snapshot.map { WatchAlertManager.shared.hasActiveAlert(for: $0) } ?? false
         remoteEnabled = LAAppGroupSettings.isWatchRemoteEnabled()
+        history = WatchGlucoseHistory.load()?.points ?? []
     }
 
     func update(snapshot: GlucoseSnapshot) {
         self.snapshot = snapshot
         selectedSlots = LAAppGroupSettings.watchSelectedSlots()
         hasActiveAlert = WatchAlertManager.shared.hasActiveAlert(for: snapshot)
+        history = WatchGlucoseHistory.load()?.points ?? []
     }
 
     /// Slots grouped into pages of 4 for the swipable grid tabs.
