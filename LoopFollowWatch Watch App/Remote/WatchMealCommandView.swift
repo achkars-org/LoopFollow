@@ -77,9 +77,10 @@ struct WatchMealCommandView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(isSending || carbsGrams <= 0)
-                .confirmationDialog("Send \(carbsGrams)g carbs?", isPresented: $showConfirm, titleVisibility: .visible) {
-                    Button("Send") { sendCarbs() }
-                    Button("Cancel", role: .cancel) {}
+                .sheet(isPresented: $showConfirm) {
+                    CrownConfirmView(title: "Send \(carbsGrams)g?", detail: "Turn the crown to confirm") {
+                        sendCarbs()
+                    }
                 }
 
                 if isSending {

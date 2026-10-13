@@ -19,7 +19,20 @@ struct WatchBolusCommandView: View {
     private var maxBolus: Double { max(0.05, LAAppGroupSettings.watchMaxBolus()) }
     private let step = 0.05
 
-    private var recBolus: Double? { snapshot?.recBolus }
+    /// The loop's recommendation, less any Watch bolus the loop has not seen yet.
+    private var recBolus: Double? {
+        snapshot.flatMap { Self.adjustedRecommendation(for: $0) }
+    }
+
+    private static func adjustedRecommendation(for snapshot: GlucoseSnapshot) -> Double? {
+        guard let rec = snapshot.recBolus else { return nil }
+        return WatchPendingBolus.adjustedRecommendation(
+            rec,
+            pending: WatchPendingBolus.load(),
+            loopRanAt: snapshot.loopLastRunAt.map { Date(timeIntervalSince1970: $0) },
+            now: Date()
+        )
+    }
 
     private var recBolusAge: Int? {
         guard let t = snapshot?.loopLastRunAt else { return nil }
@@ -30,7 +43,7 @@ struct WatchBolusCommandView: View {
     init(snapshot: GlucoseSnapshot?) {
         self.snapshot = snapshot
         let maxB = max(0.05, LAAppGroupSettings.watchMaxBolus())
-        let rec = snapshot?.recBolus ?? 0
+        let rec = snapshot.flatMap { Self.adjustedRecommendation(for: $0) } ?? 0
         _bolusUnits = State(initialValue: rec > 0 ? min(rec, maxB).rounded(toPlaces: 2) : 0.05)
     }
 
@@ -93,9 +106,13 @@ struct WatchBolusCommandView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
                 .disabled(isSending || bolusUnits <= 0)
-                .confirmationDialog("Send \(String(format: "%.2f", bolusUnits))U insulin?", isPresented: $showConfirm, titleVisibility: .visible) {
-                    Button("Authenticate & Send", role: .destructive) { authenticateAndSend() }
-                    Button("Cancel", role: .cancel) {}
+                .sheet(isPresented: $showConfirm) {
+                    CrownConfirmView(
+                        title: "Send \(String(format: "%.2f", bolusUnits))U?",
+                        detail: "Turn the crown to confirm"
+                    ) {
+                        authenticateAndSend()
+                    }
                 }
 
                 if isSending {
@@ -117,8 +134,10 @@ struct WatchBolusCommandView: View {
     private func authenticateAndSend() {
         let context = LAContext()
         var authError: NSError?
+        // Fail closed: without a passcode there is no way to confirm who is sending insulin.
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError) else {
-            sendBolus()
+            alertMessage = "Set a passcode on your Apple Watch to send a bolus."
+            showAlert = true
             return
         }
         context.evaluatePolicy(
@@ -152,6 +171,7 @@ struct WatchBolusCommandView: View {
                     alertMessage = "OTP code already used. Wait up to 30 seconds and try again."
                     showAlert = true
                 } else if ok {
+                    WatchPendingBolus(units: units, sentAt: Date()).save()
                     scheduleSuccessNotification(units: units)
                     alertMessage = "Bolus sent! (\(String(format: "%.2f", units))U)"
                     showAlert = true
