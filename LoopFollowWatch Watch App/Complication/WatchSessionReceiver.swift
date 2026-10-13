@@ -115,10 +115,25 @@ extension WatchSessionReceiver: WCSessionDelegate {
         }
     }
 
+    /// Persists BG history carried in a payload for the graph and complications.
+    func applyHistory(from payload: [String: Any]) {
+        guard let data = payload[WatchGlucoseHistory.payloadKey] as? Data else { return }
+        do {
+            let incoming = try WatchGlucoseHistory.decoded(from: data)
+            // An old applicationContext must not replace readings the Watch fetched itself.
+            let storedLatest = WatchGlucoseHistory.load()?.points.last?.date ?? 0
+            guard (incoming.points.last?.date ?? 0) >= storedLatest else { return }
+            incoming.save()
+        } catch {
+            os_log("WatchSessionReceiver: history decode failed — %{public}@", log: watchLog, type: .error, error.localizedDescription)
+        }
+    }
+
     /// Loads a snapshot from the last received applicationContext so the Watch app
     /// has data immediately on launch without waiting for the next transferUserInfo.
     private func bootstrapFromApplicationContext(_ session: WCSession) {
         applySettings(from: session.receivedApplicationContext)
+        applyHistory(from: session.receivedApplicationContext)
         guard let data = session.receivedApplicationContext["snapshot"] as? Data else { return }
         do {
             let decoder = JSONDecoder()
@@ -164,6 +179,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
 
     private func process(payload: [String: Any], source: String) {
         applySettings(from: payload)
+        applyHistory(from: payload)
 
         if let _ = payload["watchLoopReturn"] {
             let title = payload["title"] as? String ?? "Loop Confirmed ✓"

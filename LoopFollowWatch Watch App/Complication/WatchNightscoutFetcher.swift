@@ -113,9 +113,19 @@ final class WatchNightscoutFetcher: NSObject {
 
             let updatedAt = Date(timeIntervalSince1970: entry.date / 1000)
             let unit = resolveUnit()
+            let history = WatchGlucoseHistory.load() ?? WatchGlucoseHistory(points: [])
+            // Delta against the previous reading, if it is roughly one CGM interval back.
+            let previous = history.points.last { $0.date < updatedAt.timeIntervalSince1970 }
+            let delta = previous.flatMap { point -> Double? in
+                guard updatedAt.timeIntervalSince1970 - point.date <= 2 * WatchRefreshPolicy.readingInterval else { return nil }
+                return Double(entry.sgv - point.mgdl)
+            } ?? 0
+            history
+                .appending(.init(date: updatedAt.timeIntervalSince1970, mgdl: entry.sgv), now: Date())
+                .save()
             let snapshot = GlucoseSnapshot(
                 glucose: Double(entry.sgv),
-                delta: 0,
+                delta: delta,
                 trend: trendFromDirection(entry.direction),
                 updatedAt: updatedAt,
                 iob: nil,

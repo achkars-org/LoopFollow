@@ -76,7 +76,22 @@ final class WatchConnectivityManager: NSObject {
         if let snapshot, let data = try? encode(snapshot) {
             payload["snapshot"] = data
         }
+        if let data = try? currentHistory()?.encoded() {
+            payload[WatchGlucoseHistory.payloadKey] = data
+        }
         return payload
+    }
+
+    /// Recent readings for the Watch graph. `bgData` is owned by the main thread; off
+    /// main the key is simply omitted and the Watch keeps the history it already has.
+    private func currentHistory() -> WatchGlucoseHistory? {
+        guard Thread.isMainThread, let readings = MainViewController.shared?.bgData, !readings.isEmpty else {
+            return nil
+        }
+        return WatchGlucoseHistory.make(
+            from: readings.map { WatchGlucoseHistory.Point(date: $0.date, mgdl: $0.sgv) },
+            now: Date()
+        )
     }
 
     // MARK: - Send Settings
@@ -235,11 +250,13 @@ extension WatchConnectivityManager: WCSessionDelegate {
 
     func sessionReachabilityDidChange(_ session: WCSession) {
         guard session.isReachable else { return }
-        if let snapshot = GlucoseSnapshotStore.shared.load() {
-            send(snapshot: snapshot)
-            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch became reachable — snapshot pushed")
-        } else {
-            pushSettings()
+        DispatchQueue.main.async {
+            if let snapshot = GlucoseSnapshotStore.shared.load() {
+                self.send(snapshot: snapshot)
+                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch became reachable — snapshot pushed")
+            } else {
+                self.pushSettings()
+            }
         }
     }
 
