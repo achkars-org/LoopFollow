@@ -10,6 +10,13 @@ struct WatchAlertSettingsView: View {
 
     var body: some View {
         List {
+            Section("Display") {
+                Toggle("Dynamic BG color", isOn: Binding(
+                    get: { settings.dynamicBGColor },
+                    set: { settings.dynamicBGColor = $0 }
+                ))
+            }
+
             Section("Snooze Defaults") {
                 Toggle("Snooze all by default", isOn: Binding(
                     get: { settings.snoozeAllByDefault },

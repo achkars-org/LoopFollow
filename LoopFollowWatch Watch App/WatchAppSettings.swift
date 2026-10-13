@@ -32,6 +32,18 @@ final class WatchAppSettings: ObservableObject {
         set { Self.defaults.set(newValue, forKey: Key.defaultSnoozeMinutes); objectWillChange.send() }
     }
 
+    // MARK: - Display
+
+    /// Colors BG on a continuous hue ramp; also applies to complications.
+    var dynamicBGColor: Bool {
+        get { GlucoseColor.isDynamic }
+        set {
+            GlucoseColor.isDynamic = newValue
+            objectWillChange.send()
+            WatchSessionReceiver.shared.reloadComplications()
+        }
+    }
+
     // MARK: - Cooldowns
 
     /// Default cooldowns in seconds. Used when no persisted value exists.
