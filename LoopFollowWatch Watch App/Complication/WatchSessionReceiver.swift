@@ -187,6 +187,9 @@ extension WatchSessionReceiver: WCSessionDelegate {
 
         guard let data = payload["snapshot"] as? Data else {
             os_log("WatchSessionReceiver: %{public}@ — no snapshot key", log: watchLog, type: .debug, source)
+            // A settings-only delivery still ends a background wake, but a reply to our own
+            // request is not the transfer that wake is waiting for.
+            guard source != "settingsReply" else { return }
             let task = pendingConnectivityTask
             pendingConnectivityTask = nil
             DispatchQueue.main.async { task?.setTaskCompletedWithSnapshot(false) }

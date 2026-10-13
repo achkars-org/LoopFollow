@@ -65,7 +65,8 @@ final class WatchConnectivityManager: NSObject {
 
     /// Every payload carries the current settings, so whichever channel reaches the
     /// Watch first also brings it up to date. `updateApplicationContext` replaces the
-    /// whole context, which is another reason both must always travel together.
+    /// whole context, which is another reason everything must always travel together.
+    /// Call on the main thread.
     private func makePayload(snapshot: GlucoseSnapshot?) -> [String: Any] {
         var payload: [String: Any] = [:]
         let settings = currentSettings()
@@ -126,8 +127,8 @@ final class WatchConnectivityManager: NSObject {
 
     // MARK: - Send Snapshot
 
-    /// Sends the latest GlucoseSnapshot to the Watch via transferUserInfo.
-    /// Safe to call from any thread.
+    /// Sends the latest GlucoseSnapshot, with settings, history and stats, to the Watch.
+    /// Call on the main thread so the payload includes the BG readings.
     /// No-ops silently if Watch is not paired or reachable.
     func send(snapshot: GlucoseSnapshot) {
         guard WCSession.isSupported() else { return }
@@ -216,7 +217,8 @@ extension WatchConnectivityManager: WCSessionDelegate {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: activation failed — \(error)")
         } else {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: activation complete — state \(activationState.rawValue)")
-            pushSettings()
+            // Payloads are built on main, where the BG readings live.
+            DispatchQueue.main.async { self.pushSettings() }
         }
     }
 
@@ -237,8 +239,10 @@ extension WatchConnectivityManager: WCSessionDelegate {
         replyHandler: @escaping ([String: Any]) -> Void
     ) {
         if message["watchRequestSettings"] != nil {
-            replyHandler(makePayload(snapshot: GlucoseSnapshotStore.shared.load()))
-            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: answered Watch settings request")
+            DispatchQueue.main.async {
+                replyHandler(self.makePayload(snapshot: GlucoseSnapshotStore.shared.load()))
+                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: answered Watch settings request")
+            }
             return
         }
         LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: received Watch command — \(message["watchCmd"] as? String ?? "unknown")")
