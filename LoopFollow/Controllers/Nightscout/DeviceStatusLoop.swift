@@ -14,9 +14,9 @@ extension MainViewController {
         let oneDayAgo = now - (24 * 60 * 60)
 
         let bolusIn24h = bolusData.filter { $0.date >= oneDayAgo }
-        let smbIn24h   = smbData.filter { $0.date >= oneDayAgo }
+        let smbIn24h = smbData.filter { $0.date >= oneDayAgo }
         let bolusUnits = bolusIn24h.reduce(0.0) { $0 + $1.value }
-        let smbUnits   = smbIn24h.reduce(0.0) { $0 + $1.value }
+        let smbUnits = smbIn24h.reduce(0.0) { $0 + $1.value }
         let bolusTotal = bolusUnits + smbUnits
 
         var basalTotal = 0.0
@@ -31,7 +31,7 @@ extension MainViewController {
         var lastIntegratedEnd = basalWindowStart
         for i in basalData.indices.dropLast() {
             let segStart = max(basalData[i].date, oneDayAgo)
-            let segEnd   = min(basalData[i + 1].date, now)
+            let segEnd = min(basalData[i + 1].date, now)
             guard segEnd > segStart, segStart >= lastIntegratedEnd else { continue }
             basalTotal += basalData[i].basalRate * (segEnd - segStart) / 3600.0
             lastIntegratedEnd = segEnd

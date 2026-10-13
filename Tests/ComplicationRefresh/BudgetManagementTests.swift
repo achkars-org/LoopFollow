@@ -1,15 +1,5 @@
 // LoopFollow
 // BudgetManagementTests.swift
-//
-// Tests for the deduplication gate, rate limiter, URLSession fire-date
-// calculation, and overnight scheduling helper introduced in Steps 1–5.
-//
-// NOTE ON SCOPE:
-// ComplicationRefreshCounter, WatchNightscoutFetcher, and WatchAppDelegate
-// are Watch-target types. The "Tests" target uses @testable import LoopFollow
-// (the iOS app target), so those types are not directly accessible here.
-// Pure helper logic is mirrored as local functions — the same pattern used
-// in StalenessGuardTests.swift.
 
 import Testing
 

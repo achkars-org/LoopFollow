@@ -1,6 +1,5 @@
 // LoopFollow
 // WatchNightscoutFetcher.swift
-// Watch target only.
 
 import CryptoKit
 import Foundation

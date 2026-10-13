@@ -12,7 +12,7 @@ struct SnoozeView: View {
     @State private var snoozeAll: Bool
 
     private let step: Double = 30
-    private let range: ClosedRange<Double> = 30...720 // 30 min – 12 hr
+    private let range: ClosedRange<Double> = 30 ... 720 // 30 min – 12 hr
 
     init(isPresented: Binding<Bool>, alertType: WatchAlertType?) {
         _isPresented = isPresented

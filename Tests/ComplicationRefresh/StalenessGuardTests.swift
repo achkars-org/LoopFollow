@@ -1,14 +1,5 @@
 // LoopFollow
 // StalenessGuardTests.swift
-//
-// Tests for the staleness-guard logic introduced in handleRefresh()'s else-branch.
-//
-// NOTE ON SCOPE:
-// ComplicationRefreshCounter is compiled into the "LoopFollowWatch Watch App" target only.
-// The "Tests" target uses @testable import LoopFollow (the iOS app target), so
-// ComplicationRefreshCounter is NOT accessible here.  Instead we test the guard
-// predicate as a pure Boolean expression — the same logic that lives inside
-// handleRefresh() — without calling any Watch or App Group API.
 
 import Testing
 

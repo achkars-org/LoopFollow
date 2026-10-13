@@ -1,25 +1,5 @@
 // LoopFollow
 // OvernightHourTests.swift
-//
-// Tests for the isOvernightHour() helper introduced in Step 5:
-// WatchAppDelegate.isOvernightHour().
-//
-// NOTE ON SCOPE:
-// WatchAppDelegate is compiled into the Watch target only.
-// The "Tests" target uses @testable import LoopFollow (the iOS app target), so
-// WatchAppDelegate is NOT accessible here. Instead we test the predicate as a
-// pure Boolean expression — mirroring exactly the logic from the spec — without
-// calling WKApplication or Calendar.current.
-//
-// The predicate mirrors:
-//   private static func isOvernightHour() -> Bool {
-//       let hour = Calendar.current.component(.hour, from: Date())
-//       return hour < 7
-//   }
-//
-// Spec invariant #9: uses *local* Calendar, not UTC. The 7 AM boundary is the
-// user's local 7 AM. Here we test the predicate directly with injected hour
-// values to avoid any dependency on the test host's timezone.
 
 import Testing
 
@@ -126,7 +106,7 @@ struct OvernightHourTests {
 
     @Test("overnight hours use 20-minute refresh interval")
     func overnightIntervalIs20Minutes() {
-        for hour in 0...6 {
+        for hour in 0 ... 6 {
             #expect(refreshInterval(hour: hour) == 20 * 60,
                     "Expected 20-minute interval for hour \(hour)")
         }
@@ -134,7 +114,7 @@ struct OvernightHourTests {
 
     @Test("daytime hours use 2-minute refresh interval")
     func daytimeIntervalIs2Minutes() {
-        for hour in 7...23 {
+        for hour in 7 ... 23 {
             #expect(refreshInterval(hour: hour) == 2 * 60,
                     "Expected 2-minute interval for hour \(hour)")
         }
@@ -142,7 +122,7 @@ struct OvernightHourTests {
 
     @Test("interval changes at exactly hour 7 boundary")
     func intervalBoundaryAtHour7() {
-        #expect(refreshInterval(hour: 6) == 20 * 60)   // last overnight
-        #expect(refreshInterval(hour: 7) == 2 * 60)    // first daytime
+        #expect(refreshInterval(hour: 6) == 20 * 60) // last overnight
+        #expect(refreshInterval(hour: 7) == 2 * 60) // first daytime
     }
 }

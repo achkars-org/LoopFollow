@@ -1,23 +1,5 @@
 // LoopFollow
 // URLSessionFireDateTests.swift
-//
-// Tests for the pure date-arithmetic logic in
-// WatchNightscoutFetcher.nextURLSessionFireDate().
-//
-// NOTE ON SCOPE:
-// WatchNightscoutFetcher is compiled into the Watch target only.
-// The "Tests" target uses @testable import LoopFollow (the iOS app target), so
-// WatchNightscoutFetcher is NOT accessible here. Instead we test the next-slot
-// predicate as a pure function — mirroring exactly the logic that lives inside
-// nextURLSessionFireDate() — without calling any Watch or System API.
-//
-// The fire-slot schedule per the spec is [10, 20, 40, 50] minutes past the hour.
-// nextURLSessionFireDate() returns the next slot strictly after `now`.
-//
-// Example — if it is 08:15 the next slot is :20 (5 min away).
-//           if it is 08:20 the next slot is :40 (20 min away).
-//           if it is 08:45 the next slot is :50 (5 min away).
-//           if it is 08:55 the next slot is :10 of 09:xx (15 min away).
 
 import Foundation
 import Testing
@@ -70,7 +52,7 @@ struct URLSessionFireDateTests {
 
     @Test("next slot is :10 when now is 5 minutes into the hour (:05)")
     func nextSlotIsAt10WhenAt05() {
-        let hourBoundary: TimeInterval = 1_699_992_000   // round hour (verify: 1_699_992_000 % 3600 == 0)
+        let hourBoundary: TimeInterval = 1_699_992_000 // round hour (verify: 1_699_992_000 % 3600 == 0)
         let now = hourBoundary + 5 * 60
         let result = nextFireDate(now: now)
         #expect(result.timeIntervalSince1970 == hourBoundary + 10 * 60)
@@ -83,7 +65,7 @@ struct URLSessionFireDateTests {
     @Test("next slot is :20 when now is exactly at the :10 slot")
     func nextSlotIsAt20WhenExactlyAt10() {
         let hourBoundary: TimeInterval = 1_699_992_000
-        let now = hourBoundary + 10 * 60  // exactly at :10 slot
+        let now = hourBoundary + 10 * 60 // exactly at :10 slot
         let result = nextFireDate(now: now)
         // :10 is NOT strictly after itself → next is :20
         #expect(result.timeIntervalSince1970 == hourBoundary + 20 * 60)
@@ -173,9 +155,9 @@ struct URLSessionFireDateTests {
     func fireDateIsAlwaysInFuture() {
         // Test a sample of `now` values spread across an hour
         let hourBoundary: TimeInterval = 1_699_992_000
-        let samples: [TimeInterval] = [0, 1, 5*60, 9*60+59, 10*60, 15*60, 19*60+59, 20*60,
-                                        30*60, 39*60+59, 40*60, 45*60, 49*60+59, 50*60,
-                                        55*60, 59*60+59].map { hourBoundary + $0 }
+        let samples: [TimeInterval] = [0, 1, 5 * 60, 9 * 60 + 59, 10 * 60, 15 * 60, 19 * 60 + 59, 20 * 60,
+                                       30 * 60, 39 * 60 + 59, 40 * 60, 45 * 60, 49 * 60 + 59, 50 * 60,
+                                       55 * 60, 59 * 60 + 59].map { hourBoundary + $0 }
         for now in samples {
             let fire = nextFireDate(now: now)
             #expect(fire.timeIntervalSince1970 > now,

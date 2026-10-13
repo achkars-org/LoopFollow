@@ -1,5 +1,6 @@
 // LoopFollow
 // DeduplicationGateTests.swift
+
 //
 // Tests for the deduplication-gate logic introduced in Step 1:
 // ComplicationRefreshCounter.shouldReloadAndRecord(for:).
@@ -60,7 +61,7 @@ struct DeduplicationGateTests {
     @Test("passes gate when snapshot timestamp is strictly newer than last recorded")
     func passesWhenNewerSnapshot() {
         let earlier: TimeInterval = 1_700_000_000
-        let later: TimeInterval = 1_700_000_300   // 5 min newer
+        let later: TimeInterval = 1_700_000_300 // 5 min newer
         let (shouldReload, _) = deduplicationGate(snapshotTimestamp: later, lastRecordedTimestamp: earlier)
         #expect(shouldReload)
     }
@@ -81,10 +82,10 @@ struct DeduplicationGateTests {
         let ts: TimeInterval = 1_700_000_000
         // Simulate first call storing the timestamp
         let (first, updated) = deduplicationGate(snapshotTimestamp: ts, lastRecordedTimestamp: 0)
-        #expect(first)     // first call passes
+        #expect(first) // first call passes
         // Simulate second call with same timestamp
         let (second, _) = deduplicationGate(snapshotTimestamp: ts, lastRecordedTimestamp: updated)
-        #expect(!second)   // second call is blocked
+        #expect(!second) // second call is blocked
     }
 
     @Test("blocks gate when snapshot timestamp is older than last recorded")
@@ -99,7 +100,7 @@ struct DeduplicationGateTests {
     func doesNotUpdateLastRecordedOnBlock() {
         let ts: TimeInterval = 1_700_000_000
         let (_, updated) = deduplicationGate(snapshotTimestamp: ts, lastRecordedTimestamp: ts)
-        #expect(updated == ts)   // unchanged
+        #expect(updated == ts) // unchanged
     }
 
     // -------------------------------------------------------------------------

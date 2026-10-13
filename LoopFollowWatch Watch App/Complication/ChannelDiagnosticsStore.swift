@@ -1,6 +1,5 @@
 // LoopFollow
 // ChannelDiagnosticsStore.swift
-// Watch target only.
 
 import Foundation
 
