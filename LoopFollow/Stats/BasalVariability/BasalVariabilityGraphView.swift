@@ -3,80 +3,79 @@
 
 import Charts
 import SwiftUI
-import UIKit
 
-struct BasalVariabilityGraphView: UIViewRepresentable {
+struct BasalVariabilityGraphView: View {
     let data: [BasalVariabilityDataPoint]
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    private enum Band: String, CaseIterable, Plottable {
+        case suspended = "Suspended"
+        case veryBelow = "< 50%"
+        case below = "50–75%"
+        case atPlanned = "75–125%"
+        case above = "125–150%"
+        case veryAbove = "> 150%"
 
-    func makeUIView(context _: Context) -> UIView {
-        let container = NonInteractiveContainerView()
-        container.backgroundColor = .systemBackground
-
-        let chartView = BarChartView()
-        chartView.backgroundColor = .systemBackground
-        chartView.rightAxis.enabled = false
-        chartView.leftAxis.enabled = true
-        chartView.xAxis.labelPosition = .bottom
-        chartView.xAxis.granularity = 1.0
-        chartView.leftAxis.axisMinimum = 0.0
-        chartView.leftAxis.axisMaximum = 100.0
-        chartView.leftAxis.valueFormatter = PercentageAxisValueFormatter()
-        chartView.leftAxis.labelCount = 5
-        chartView.leftAxis.drawGridLinesEnabled = true
-        chartView.leftAxis.gridLineDashLengths = [5, 5]
-        chartView.rightAxis.drawGridLinesEnabled = false
-        chartView.xAxis.drawGridLinesEnabled = false
-        chartView.legend.enabled = false
-        chartView.chartDescription.enabled = false
-        chartView.isUserInteractionEnabled = false
-
-        container.addSubview(chartView)
-        chartView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            chartView.topAnchor.constraint(equalTo: container.topAnchor),
-            chartView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            chartView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            chartView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-        return container
+        var color: Color {
+            switch self {
+            case .suspended: return Color(uiColor: .systemGray).opacity(0.85)
+            case .veryBelow: return .blue.opacity(0.85)
+            case .below: return Color(uiColor: .systemTeal).opacity(0.65)
+            case .atPlanned: return .green.opacity(0.75)
+            case .above: return .orange.opacity(0.65)
+            case .veryAbove: return .red.opacity(0.75)
+            }
+        }
     }
 
-    class Coordinator {}
+    private struct Slice: Identifiable {
+        let period: TIRPeriod
+        let band: Band
+        let value: Double
+        var id: String { "\(period.rawValue)-\(band.rawValue)" }
+    }
 
-    func updateUIView(_ containerView: UIView, context _: Context) {
-        guard let chartView = containerView.subviews.first as? BarChartView else { return }
-        guard !data.isEmpty else { return }
-
-        var entries: [BarChartDataEntry] = []
-        var labels: [String] = []
-
-        for (index, point) in data.enumerated() {
-            entries.append(BarChartDataEntry(
-                x: Double(index),
-                yValues: [point.suspended, point.veryBelow, point.below, point.atPlanned, point.above, point.veryAbove]
-            ))
-            labels.append(point.period.rawValue)
+    private var slices: [Slice] {
+        data.flatMap { point in
+            [
+                Slice(period: point.period, band: .suspended, value: point.suspended),
+                Slice(period: point.period, band: .veryBelow, value: point.veryBelow),
+                Slice(period: point.period, band: .below, value: point.below),
+                Slice(period: point.period, band: .atPlanned, value: point.atPlanned),
+                Slice(period: point.period, band: .above, value: point.above),
+                Slice(period: point.period, band: .veryAbove, value: point.veryAbove),
+            ]
         }
+    }
 
-        let dataSet = BarChartDataSet(entries: entries, label: "Basal Variability")
-        dataSet.colors = [
-            UIColor.systemGray.withAlphaComponent(0.85),    // suspended
-            UIColor.systemBlue.withAlphaComponent(0.85),    // veryBelow
-            UIColor.systemTeal.withAlphaComponent(0.65),    // below
-            UIColor.systemGreen.withAlphaComponent(0.75),   // atPlanned
-            UIColor.systemOrange.withAlphaComponent(0.65),  // above
-            UIColor.systemRed.withAlphaComponent(0.75),     // veryAbove
-        ]
-        dataSet.stackLabels = ["Suspended", "< 50%", "50–75%", "75–125%", "125–150%", "> 150%"]
-        dataSet.drawValuesEnabled = false
-
-        let barData = BarChartData(dataSet: dataSet)
-        barData.barWidth = 0.6
-        chartView.data = barData
-        chartView.xAxis.valueFormatter = IndexAxisValueFormatter(values: labels)
-        chartView.xAxis.labelCount = labels.count
-        chartView.notifyDataSetChanged()
+    var body: some View {
+        Chart(slices) { slice in
+            BarMark(
+                x: .value("period", slice.period.rawValue),
+                y: .value("pct", slice.value),
+                width: .ratio(0.6)
+            )
+            .foregroundStyle(by: .value("band", slice.band))
+        }
+        .chartForegroundStyleScale(domain: Band.allCases, range: Band.allCases.map(\.color))
+        .chartLegend(.hidden)
+        .chartYScale(domain: 0 ... 102)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0, 25, 50, 75, 100]) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [5, 5]))
+                AxisTick()
+                AxisValueLabel {
+                    if let pct = value.as(Int.self) {
+                        Text("\(pct)%")
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(position: .bottom) { _ in
+                AxisValueLabel()
+            }
+        }
+        .allowsHitTesting(false)
+        .background(Color(.systemBackground))
     }
 }
