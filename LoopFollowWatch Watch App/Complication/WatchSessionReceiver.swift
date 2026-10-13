@@ -82,12 +82,43 @@ extension WatchSessionReceiver: WCSessionDelegate {
         } else {
             os_log("WatchSessionReceiver: activation complete — state %d", log: watchLog, type: .debug, activationState.rawValue)
             bootstrapFromApplicationContext(session)
+            requestSettings(session)
+        }
+    }
+
+    /// Asks the phone for current settings so a fresh install does not wait for the
+    /// next reading. The reply has the same shape as any other payload.
+    private func requestSettings(_ session: WCSession) {
+        guard session.isReachable else { return }
+        session.sendMessage(["watchRequestSettings": true], replyHandler: { [weak self] reply in
+            self?.process(payload: reply, source: "settingsReply")
+        }, errorHandler: { error in
+            os_log("WatchSessionReceiver: settings request failed — %{public}@", log: watchLog, type: .info, error.localizedDescription)
+        })
+    }
+
+    /// Persists phone-owned settings carried in a payload into this device's App Group.
+    /// - Returns: true when the payload contained settings.
+    @discardableResult
+    func applySettings(from payload: [String: Any]) -> Bool {
+        guard let data = payload[WatchSettings.payloadKey] as? Data else { return false }
+        do {
+            let settings = try WatchSettings.decoded(from: data)
+            settings.applyToAppGroup()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: WatchSessionReceiver.settingsRefreshedNotification, object: nil)
+            }
+            return true
+        } catch {
+            os_log("WatchSessionReceiver: settings decode failed — %{public}@", log: watchLog, type: .error, error.localizedDescription)
+            return false
         }
     }
 
     /// Loads a snapshot from the last received applicationContext so the Watch app
     /// has data immediately on launch without waiting for the next transferUserInfo.
     private func bootstrapFromApplicationContext(_ session: WCSession) {
+        applySettings(from: session.receivedApplicationContext)
         guard let data = session.receivedApplicationContext["snapshot"] as? Data else { return }
         do {
             let decoder = JSONDecoder()
@@ -132,6 +163,8 @@ extension WatchSessionReceiver: WCSessionDelegate {
     // MARK: - Private
 
     private func process(payload: [String: Any], source: String) {
+        applySettings(from: payload)
+
         if let _ = payload["watchLoopReturn"] {
             let title = payload["title"] as? String ?? "Loop Confirmed ✓"
             let body = payload["body"] as? String ?? "Command processed by Loop"
@@ -144,15 +177,11 @@ extension WatchSessionReceiver: WCSessionDelegate {
             return
         }
 
-        if payload["watchSettingsRefresh"] != nil {
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: WatchSessionReceiver.settingsRefreshedNotification, object: nil)
-            }
-            os_log("WatchSessionReceiver: settings refresh received", log: watchLog, type: .debug)
-            return
-        }
         guard let data = payload["snapshot"] as? Data else {
             os_log("WatchSessionReceiver: %{public}@ — no snapshot key", log: watchLog, type: .debug, source)
+            let task = pendingConnectivityTask
+            pendingConnectivityTask = nil
+            DispatchQueue.main.async { task?.setTaskCompletedWithSnapshot(false) }
             return
         }
         do {

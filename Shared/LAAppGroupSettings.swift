@@ -146,7 +146,7 @@ enum LiveActivitySlotDefaults {
 // MARK: - Watch remote preset
 
 /// Lightweight override preset transferred via App Group for Watch remote commands.
-struct WatchOverridePreset: Codable, Identifiable {
+struct WatchOverridePreset: Codable, Equatable, Identifiable {
     var id: String {
         name
     }

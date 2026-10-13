@@ -26,13 +26,15 @@ struct ContentView: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel("Settings")
 
-                        Button { showRemote = true } label: {
-                            Image(systemName: "antenna.radiowaves.left.and.right")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.secondary)
+                        if model.remoteEnabled {
+                            Button { showRemote = true } label: {
+                                Image(systemName: "antenna.radiowaves.left.and.right")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Remote Commands")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Remote Commands")
                     }
                     .padding([.top, .trailing], 4)
                 }
@@ -66,10 +68,12 @@ final class WatchViewModel: ObservableObject {
     @Published var isSnoozed = false
     @Published var snoozeUntil: Date?
     @Published var hasActiveAlert = false
+    @Published var remoteEnabled = LAAppGroupSettings.isWatchRemoteEnabled()
 
     private var timer: Timer?
     private var notificationObserver: Any?
     private var snoozeSheetObserver: Any?
+    private var settingsObserver: Any?
 
     init() {
         snapshot = GlucoseSnapshotStore.shared.load()
@@ -87,6 +91,13 @@ final class WatchViewModel: ObservableObject {
                 self?.refresh()
             }
         }
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: WatchSessionReceiver.settingsRefreshedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.refresh()
+        }
         snoozeSheetObserver = NotificationCenter.default.addObserver(
             forName: .showSnoozeSheet,
             object: nil,
@@ -102,6 +113,7 @@ final class WatchViewModel: ObservableObject {
         timer?.invalidate()
         if let obs = notificationObserver { NotificationCenter.default.removeObserver(obs) }
         if let obs = snoozeSheetObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = settingsObserver { NotificationCenter.default.removeObserver(obs) }
     }
 
     func refresh() {
@@ -112,6 +124,7 @@ final class WatchViewModel: ObservableObject {
         isSnoozed = WatchAlertManager.shared.isGloballySnoozed
         snoozeUntil = WatchAlertManager.shared.globalSnoozeExpiryDate
         hasActiveAlert = snapshot.map { WatchAlertManager.shared.hasActiveAlert(for: $0) } ?? false
+        remoteEnabled = LAAppGroupSettings.isWatchRemoteEnabled()
     }
 
     func update(snapshot: GlucoseSnapshot) {

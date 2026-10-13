@@ -55,14 +55,19 @@ enum WatchAlertType: String, CaseIterable {
 
 // MARK: - Thresholds
 
-// TODO: Wire to LAAppGroupSettings or App Group shared container to mirror iPhone settings.
-
 private struct WatchThresholds {
-    var low: Double = 70
-    var urgentLow: Double = 55
-    var high: Double = 180
+    var low: Double
+    var urgentLow: Double
+    var high: Double
     var dropRate: Double = 2.0 // mg/dL per minute
     var riseRate: Double = 2.0
+
+    /// Low/high follow the iPhone's BG lines, synced into the Watch App Group.
+    /// Urgent low stays at 55 mg/dL unless the low line is set below that.
+    static func current() -> WatchThresholds {
+        let lines = LAAppGroupSettings.thresholdsMgdl()
+        return WatchThresholds(low: lines.low, urgentLow: min(55, lines.low), high: lines.high)
+    }
 }
 
 // MARK: - Manager
@@ -71,7 +76,7 @@ final class WatchAlertManager: NSObject {
     static let shared = WatchAlertManager()
     override private init() { super.init() }
 
-    private let thresholds = WatchThresholds()
+    private var thresholds: WatchThresholds { WatchThresholds.current() }
     private let settings = WatchAppSettings.shared
     private let alertQueue = DispatchQueue(label: "com.loopfollow.watch.alertManager")
 

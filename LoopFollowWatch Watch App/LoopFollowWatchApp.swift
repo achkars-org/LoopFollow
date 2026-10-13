@@ -56,6 +56,7 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
         // receivedApplicationContext always holds the last value the iPhone sent —
         // no active Bluetooth or WKWatchConnectivityRefreshBackgroundTask needed.
         // If it's newer than what's in the file store, persist it and reload complications.
+        WatchSessionReceiver.shared.applySettings(from: WCSession.default.receivedApplicationContext)
         let contextSnapshot = Self.decodeContextSnapshot()
         let storeSnapshot = GlucoseSnapshotStore.shared.load()
 

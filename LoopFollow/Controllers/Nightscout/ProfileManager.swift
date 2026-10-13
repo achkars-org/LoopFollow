@@ -129,6 +129,9 @@ final class ProfileManager {
             }
         }
         LAAppGroupSettings.setWatchOverridePresets(watchPresets)
+        DispatchQueue.main.async {
+            WatchConnectivityManager.shared.pushSettingsIfChanged()
+        }
 
         Storage.shared.deviceToken.value = profileData.deviceToken ?? profileData.loopSettings?.deviceToken ?? ""
 

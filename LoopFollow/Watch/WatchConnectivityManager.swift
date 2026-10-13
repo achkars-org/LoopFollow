@@ -19,6 +19,8 @@ final class WatchConnectivityManager: NSObject {
     private var lastComplicationPushTime: Date = .distantPast
     /// Timestamp of the last remote command received from the Watch.
     private var lastWatchCommandDate: Date = .distantPast
+    /// Settings most recently handed to WatchConnectivity, used to skip redundant pushes.
+    private var lastSentSettings: WatchSettings?
     private var cancellables = Set<AnyCancellable>()
 
     override private init() {
@@ -35,8 +37,71 @@ final class WatchConnectivityManager: NSObject {
         }
         WCSession.default.delegate = self
         WCSession.default.activate()
-        observeLoopAPNSSettings()
+        observeWatchSettings()
         LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: WCSession activation requested")
+    }
+
+    // MARK: - Payload
+
+    /// Builds the settings the Watch needs from the phone's own storage.
+    func currentSettings() -> WatchSettings {
+        WatchSettings(
+            lowMgdl: Storage.shared.lowLine.value,
+            highMgdl: Storage.shared.highLine.value,
+            remoteEnabled: LoopAPNSService().validateSetup(),
+            maxBolus: Storage.shared.maxBolus.value.doubleValue(for: .internationalUnit()),
+            maxCarbs: Storage.shared.maxCarbs.value.doubleValue(for: .gram()),
+            overridePresets: LAAppGroupSettings.watchOverridePresets(),
+            nightscoutURL: Storage.shared.url.value,
+            nightscoutToken: Storage.shared.token.value
+        )
+    }
+
+    private func encode(_ snapshot: GlucoseSnapshot) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return try encoder.encode(snapshot)
+    }
+
+    /// Every payload carries the current settings, so whichever channel reaches the
+    /// Watch first also brings it up to date. `updateApplicationContext` replaces the
+    /// whole context, which is another reason both must always travel together.
+    private func makePayload(snapshot: GlucoseSnapshot?) -> [String: Any] {
+        var payload: [String: Any] = [:]
+        let settings = currentSettings()
+        if let data = try? settings.encoded() {
+            payload[WatchSettings.payloadKey] = data
+            lastSentSettings = settings
+        }
+        if let snapshot, let data = try? encode(snapshot) {
+            payload["snapshot"] = data
+        }
+        return payload
+    }
+
+    // MARK: - Send Settings
+
+    /// Pushes settings when they differ from what was last handed to WatchConnectivity.
+    func pushSettingsIfChanged() {
+        guard currentSettings() != lastSentSettings else { return }
+        pushSettings()
+    }
+
+    private func pushSettings() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isPaired else { return }
+
+        let payload = makePayload(snapshot: GlucoseSnapshotStore.shared.load())
+        do {
+            try session.updateApplicationContext(payload)
+        } catch {
+            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: failed to update applicationContext with settings — \(error)")
+        }
+        if session.isReachable, let settings = payload[WatchSettings.payloadKey] {
+            session.sendMessage([WatchSettings.payloadKey: settings], replyHandler: nil, errorHandler: nil)
+        }
+        LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: settings pushed to Watch")
     }
 
     // MARK: - Send Snapshot
@@ -60,10 +125,10 @@ final class WatchConnectivityManager: NSObject {
         }
 
         do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(snapshot)
-            let payload: [String: Any] = ["snapshot": data]
+            let payload = makePayload(snapshot: snapshot)
+            guard payload["snapshot"] != nil else {
+                throw CocoaError(.coderInvalidValue)
+            }
 
             // Warn if Watch hasn't ACK'd this or a recent snapshot.
             let behindBy = snapshot.updatedAt.timeIntervalSince1970 - lastWatchAckTimestamp
@@ -131,8 +196,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: activation failed — \(error)")
         } else {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: activation complete — state \(activationState.rawValue)")
-            syncWatchAppGroupSettings()
-            notifyWatchSettingsChanged()
+            pushSettings()
         }
     }
 
@@ -152,6 +216,11 @@ extension WatchConnectivityManager: WCSessionDelegate {
         didReceiveMessage message: [String: Any],
         replyHandler: @escaping ([String: Any]) -> Void
     ) {
+        if message["watchRequestSettings"] != nil {
+            replyHandler(makePayload(snapshot: GlucoseSnapshotStore.shared.load()))
+            LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: answered Watch settings request")
+            return
+        }
         LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: received Watch command — \(message["watchCmd"] as? String ?? "unknown")")
         lastWatchCommandDate = Date()
         WatchCommandDispatcher.shared.handle(message: message, replyHandler: replyHandler)
@@ -166,11 +235,11 @@ extension WatchConnectivityManager: WCSessionDelegate {
 
     func sessionReachabilityDidChange(_ session: WCSession) {
         guard session.isReachable else { return }
-        syncWatchAppGroupSettings()
-        notifyWatchSettingsChanged()
         if let snapshot = GlucoseSnapshotStore.shared.load() {
             send(snapshot: snapshot)
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch became reachable — snapshot pushed")
+        } else {
+            pushSettings()
         }
     }
 
@@ -181,24 +250,6 @@ extension WatchConnectivityManager: WCSessionDelegate {
     func sessionDidDeactivate(_: WCSession) {
         LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: session deactivated — reactivating")
         WCSession.default.activate()
-    }
-
-    // MARK: - App Group sync
-
-    private func syncWatchAppGroupSettings() {
-        LAAppGroupSettings.setWatchRemoteEnabled(LoopAPNSService().validateSetup())
-        LAAppGroupSettings.setWatchMaxBolus(Storage.shared.maxBolus.value.doubleValue(for: .internationalUnit()))
-        LAAppGroupSettings.setWatchMaxCarbs(Storage.shared.maxCarbs.value.doubleValue(for: .gram()))
-        LAAppGroupSettings.setWatchNightscoutURL(Storage.shared.url.value)
-        LAAppGroupSettings.setWatchNightscoutToken(Storage.shared.token.value)
-    }
-
-    /// Notifies the Watch to re-read App Group settings (e.g. after LoopAPNS is configured).
-    private func notifyWatchSettingsChanged() {
-        let session = WCSession.default
-        guard session.activationState == .activated, session.isPaired, session.isReachable else { return }
-        session.sendMessage(["watchSettingsRefresh": true], replyHandler: nil, errorHandler: nil)
-        LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: settings refresh sent to Watch")
     }
 
     /// Forwards a Loop command return notification to the Watch as a local notification trigger.
@@ -249,17 +300,22 @@ extension WatchConnectivityManager: WCSessionDelegate {
         LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: forwarded Loop return to Watch — \(title)")
     }
 
-    /// Observes LoopAPNS-relevant storage values and syncs to App Group whenever they change.
-    private func observeLoopAPNSSettings() {
+    /// Observes the storage values behind `WatchSettings` and pushes them when they change.
+    private func observeWatchSettings() {
         Publishers.MergeMany(
             Storage.shared.deviceToken.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             Storage.shared.loopAPNSQrCodeURL.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
-            Storage.shared.remoteApnsKey.$value.dropFirst().map { _ in () }.eraseToAnyPublisher()
+            Storage.shared.remoteApnsKey.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            Storage.shared.url.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            Storage.shared.token.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            Storage.shared.lowLine.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            Storage.shared.highLine.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            Storage.shared.maxBolus.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            Storage.shared.maxCarbs.$value.dropFirst().map { _ in () }.eraseToAnyPublisher()
         )
         .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
         .sink { [weak self] in
-            self?.syncWatchAppGroupSettings()
-            self?.notifyWatchSettingsChanged()
+            self?.pushSettingsIfChanged()
         }
         .store(in: &cancellables)
     }
