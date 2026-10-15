@@ -1054,6 +1054,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = "$(LOOP_FOLLOW_MARKETING_VERSION)";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix).watchkitapp";
+				PRODUCT_MODULE_NAME = LoopFollowWatch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1095,6 +1096,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = "$(LOOP_FOLLOW_MARKETING_VERSION)";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix).watchkitapp";
+				PRODUCT_MODULE_NAME = LoopFollowWatch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1125,6 +1127,7 @@
 				);
 				MARKETING_VERSION = "$(LOOP_FOLLOW_MARKETING_VERSION)";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix).watchkitapp.widgets";
+				PRODUCT_MODULE_NAME = LoopFollowWatchWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1152,6 +1155,7 @@
 				);
 				MARKETING_VERSION = "$(LOOP_FOLLOW_MARKETING_VERSION)";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow$(app_suffix).watchkitapp.widgets";
+				PRODUCT_MODULE_NAME = LoopFollowWatchWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
