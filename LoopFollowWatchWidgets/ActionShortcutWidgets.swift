@@ -5,45 +5,45 @@ import SwiftUI
 import WidgetKit
 
 /// Static complications that open a remote command screen in one tap.
-/// `Widget` requires a no-argument initializer, hence one small type per shortcut.
+/// `Widget` requires a no-argument initializer, hence one small type per shortcut. Each
+/// declares its configuration inline: a shared helper returning `some WidgetConfiguration`
+/// trapped inside WidgetKit at launch and took the whole bundle down with it.
 struct BolusShortcutWidget: Widget {
-    var body: some WidgetConfiguration { ActionShortcut.configuration(for: .bolus) }
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "LoopFollowShortcut.bolus", provider: ActionShortcutProvider()) { _ in
+            ActionShortcutView(title: "Bolus", systemImage: "syringe")
+                .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(WatchDeepLink.bolus.url)
+        }
+        .configurationDisplayName("LoopFollow Bolus")
+        .description("Opens bolus entry.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+    }
 }
 
 struct MealShortcutWidget: Widget {
-    var body: some WidgetConfiguration { ActionShortcut.configuration(for: .meal) }
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "LoopFollowShortcut.meal", provider: ActionShortcutProvider()) { _ in
+            ActionShortcutView(title: "Meal", systemImage: "fork.knife")
+                .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(WatchDeepLink.meal.url)
+        }
+        .configurationDisplayName("LoopFollow Meal")
+        .description("Opens meal entry.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+    }
 }
 
 struct OverrideShortcutWidget: Widget {
-    var body: some WidgetConfiguration { ActionShortcut.configuration(for: .override) }
-}
-
-private enum ActionShortcut {
-    static func configuration(for link: WatchDeepLink) -> some WidgetConfiguration {
-        StaticConfiguration(kind: "LoopFollowShortcut.\(link.rawValue)", provider: ActionShortcutProvider()) { _ in
-            ActionShortcutView(title: title(for: link), systemImage: systemImage(for: link))
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "LoopFollowShortcut.override", provider: ActionShortcutProvider()) { _ in
+            ActionShortcutView(title: "Override", systemImage: "list.bullet")
                 .containerBackground(.fill.tertiary, for: .widget)
-                .widgetURL(link.url)
+                .widgetURL(WatchDeepLink.override.url)
         }
-        .configurationDisplayName("LoopFollow \(title(for: link))")
-        .description("Opens \(title(for: link).lowercased()) entry.")
+        .configurationDisplayName("LoopFollow Override")
+        .description("Opens override entry.")
         .supportedFamilies([.accessoryCircular, .accessoryCorner])
-    }
-
-    private static func title(for link: WatchDeepLink) -> String {
-        switch link {
-        case .bolus: return "Bolus"
-        case .meal: return "Meal"
-        case .override: return "Override"
-        }
-    }
-
-    private static func systemImage(for link: WatchDeepLink) -> String {
-        switch link {
-        case .bolus: return "syringe"
-        case .meal: return "fork.knife"
-        case .override: return "list.bullet"
-        }
     }
 }
 
