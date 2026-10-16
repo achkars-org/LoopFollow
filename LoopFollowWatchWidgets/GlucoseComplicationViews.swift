@@ -84,7 +84,7 @@ private struct CornerGlucoseView: View {
             .foregroundStyle(entry.color)
             .privacySensitive()
             .widgetCurvesContent()
-            .widgetLabel("\(entry.deltaOrAge(delta: entry.deltaText)) \(entry.arrowText)")
+            .widgetLabel(entry.label([entry.deltaText, entry.arrowText, entry.ageText]))
     }
 }
 

@@ -34,6 +34,11 @@ struct GlucoseEntry: TimelineEntry {
         return "\(min(Int(readingAge / 60), 99))m"
     }
 
+    /// Joins the non-empty parts with single spaces, for compact complication labels.
+    func label(_ parts: [String]) -> String {
+        parts.filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
     /// The trend arrow while the reading is fresh, its age once it has gone stale.
     func trendOrAge(arrow: String) -> String {
         isStale && !isExpired ? ageText : arrow

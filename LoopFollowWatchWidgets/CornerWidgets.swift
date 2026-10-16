@@ -41,9 +41,9 @@ private struct GaugeCornerView: View {
             .widgetCurvesContent()
             .widgetLabel {
                 Gauge(value: entry.cornerStaleness) {
-                    Text(entry.trendOrAge(arrow: entry.cornerArrowText))
+                    Text(entry.label([entry.cornerArrowText, entry.ageText]))
                 }
-                .tint(entry.cornerColor)
+                .tint(entry.ageColor)
             }
     }
 }
@@ -62,7 +62,7 @@ private struct StackCornerView: View {
             .foregroundStyle(entry.cornerColor)
             .privacySensitive()
             .widgetCurvesContent()
-            .widgetLabel("\(entry.trendOrAge(arrow: entry.cornerArrowText)) \(projectedText)")
+            .widgetLabel(entry.label([entry.cornerArrowText, projectedText, entry.ageText]))
     }
 }
 
@@ -82,9 +82,21 @@ private extension GlucoseEntry {
         return GlucoseColor.color(forMgdl: snapshot.glucose)
     }
 
-    /// 0 for a fresh reading, 1 once it is stale.
+    /// The gauge fills over 20 minutes, the point at which the age colour turns red.
+    private static let gaugeSpan: TimeInterval = 20 * 60
+
+    /// 0 for a fresh reading, 1 at 20 minutes old or more.
     var cornerStaleness: Double {
         guard let readingAge else { return 1 }
-        return min(max(readingAge / Self.staleAfter, 0), 1)
+        return min(max(readingAge / Self.gaugeSpan, 0), 1)
+    }
+
+    /// Green under 10 minutes, yellow under 20, red beyond.
+    var ageColor: Color {
+        guard let readingAge else { return .red }
+        if readingAge < 10 * 60 {
+            return .green
+        }
+        return readingAge < Self.gaugeSpan ? .yellow : .red
     }
 }
