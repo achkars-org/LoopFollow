@@ -43,7 +43,7 @@ struct ContentView: View {
                     NavigationStack { WatchRemoteCommandsView(snapshot: model.snapshot) }
                 }
                 .sheet(isPresented: $showSettings) {
-                    NavigationStack { WatchAlertSettingsView() }
+                    NavigationStack { WatchAlertSettingsView(model: model) }
                 }
 
             GlucoseChartView(points: model.history, unit: model.snapshot?.unit ?? .mgdl)
@@ -53,10 +53,6 @@ struct ContentView: View {
             ForEach(model.pages.indices, id: \.self) { idx in
                 DataGridPage(slots: model.pages[idx], snapshot: model.snapshot)
             }
-
-            SlotSelectionView(model: model)
-
-            DiagnosticsView()
         }
         .tabViewStyle(.page)
         .sheet(item: $deepLink) { link in
@@ -323,7 +319,7 @@ struct MetricCell: View {
     }
 }
 
-// MARK: - Last tab: slot selection checklist
+// MARK: - Settings > Visuals: slot selection checklist
 
 struct SlotSelectionView: View {
     @ObservedObject var model: WatchViewModel
@@ -351,6 +347,6 @@ struct SlotSelectionView: View {
                 .buttonStyle(.plain)
             }
         }
-        .navigationTitle("Data")
+        .navigationTitle("Visuals")
     }
 }
