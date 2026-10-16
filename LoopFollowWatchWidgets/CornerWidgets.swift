@@ -41,7 +41,7 @@ private struct GaugeCornerView: View {
             .widgetCurvesContent()
             .widgetLabel {
                 Gauge(value: entry.cornerStaleness) {
-                    Text(entry.cornerArrowText)
+                    Text(entry.trendOrAge(arrow: entry.cornerArrowText))
                 }
                 .tint(entry.cornerColor)
             }
@@ -62,7 +62,7 @@ private struct StackCornerView: View {
             .foregroundStyle(entry.cornerColor)
             .privacySensitive()
             .widgetCurvesContent()
-            .widgetLabel("\(entry.cornerArrowText) \(projectedText)")
+            .widgetLabel("\(entry.trendOrAge(arrow: entry.cornerArrowText)) \(projectedText)")
     }
 }
 

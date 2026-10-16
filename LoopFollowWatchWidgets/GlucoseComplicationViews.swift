@@ -41,11 +41,6 @@ private extension GlucoseEntry {
         return WatchFormat.delta(snapshot)
     }
 
-    var ageText: String {
-        guard let readingAge else { return "" }
-        return "\(min(Int(readingAge / 60), 99))m"
-    }
-
     var color: Color {
         guard let snapshot, !isStale else { return .yellow }
         return GlucoseColor.color(forMgdl: snapshot.glucose)
@@ -66,7 +61,7 @@ private struct CircularGlucoseView: View {
 
     var body: some View {
         Gauge(value: entry.staleness) {
-            Text(entry.arrowText)
+            Text(entry.trendOrAge(arrow: entry.arrowText))
         } currentValueLabel: {
             Text(entry.glucoseText)
                 .minimumScaleFactor(0.5)
@@ -89,7 +84,7 @@ private struct CornerGlucoseView: View {
             .foregroundStyle(entry.color)
             .privacySensitive()
             .widgetCurvesContent()
-            .widgetLabel("\(entry.deltaText) \(entry.arrowText)")
+            .widgetLabel("\(entry.deltaOrAge(delta: entry.deltaText)) \(entry.arrowText)")
     }
 }
 
@@ -99,7 +94,7 @@ private struct InlineGlucoseView: View {
     let entry: GlucoseEntry
 
     var body: some View {
-        Text("\(entry.glucoseText) \(entry.arrowText) \(entry.deltaText)")
+        Text("\(entry.glucoseText) \(entry.arrowText) \(entry.deltaOrAge(delta: entry.deltaText))")
             .privacySensitive()
     }
 }
@@ -127,7 +122,7 @@ private struct RectangularGlucoseView: View {
                         .font(.system(size: 16, weight: .semibold))
                 }
                 .privacySensitive()
-                Text("\(entry.deltaText) · \(entry.ageText)")
+                Text(entry.isStale ? entry.ageText : "\(entry.deltaText) · \(entry.ageText)")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }

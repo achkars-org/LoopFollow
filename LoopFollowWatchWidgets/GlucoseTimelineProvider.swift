@@ -28,6 +28,22 @@ struct GlucoseEntry: TimelineEntry {
         return readingAge >= Self.expiredAfter || snapshot?.isNotLooping == true
     }
 
+    /// Age of the reading as "22m", capped at two digits.
+    var ageText: String {
+        guard let readingAge else { return "" }
+        return "\(min(Int(readingAge / 60), 99))m"
+    }
+
+    /// The trend arrow while the reading is fresh, its age once it has gone stale.
+    func trendOrAge(arrow: String) -> String {
+        isStale && !isExpired ? ageText : arrow
+    }
+
+    /// The delta while the reading is fresh, its age once it has gone stale.
+    func deltaOrAge(delta: String) -> String {
+        isStale && !isExpired ? ageText : delta
+    }
+
     static let placeholder = GlucoseEntry(
         date: Date(),
         snapshot: GlucoseSnapshot(
