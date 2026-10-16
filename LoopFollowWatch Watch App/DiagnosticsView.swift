@@ -71,7 +71,7 @@ private struct EventLogSection: View {
 
             ForEach(Array(events.enumerated()), id: \.offset) { _, event in
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("\(event.date.formatted(date: .omitted, time: .standard)) \(event.source)")
+                    Text("\(event.date.formatted(date: .omitted, time: .standard)) \(event.source)\(event.count > 1 ? " ×\(event.count)" : "")")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
                     Text(event.detail)

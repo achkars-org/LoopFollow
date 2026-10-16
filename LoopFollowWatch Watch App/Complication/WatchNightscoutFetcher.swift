@@ -140,7 +140,7 @@ final class WatchNightscoutFetcher: NSObject {
             )
 
             guard ComplicationRefreshCounter.shared.shouldReloadAndRecord(for: snapshot) else {
-                WatchEventLog.record("ns", "no newer reading than \(Self.ageText(of: updatedAt)) ago")
+                WatchEventLog.record("ns", "no newer reading than \(Self.ageText(of: updatedAt)) ago", coalescing: true)
                 os_log(
                     "WatchNightscoutFetcher: duplicate entry at %f — skipping save",
                     log: fetchLog,

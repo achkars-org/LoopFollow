@@ -11,6 +11,8 @@ enum WatchEventLog {
         let date: Date
         let source: String
         let detail: String
+        /// How many identical occurrences this line stands for (see `record(coalescing:)`).
+        var count = 1
     }
 
     private static let key = "watch.eventLog"
@@ -22,11 +24,18 @@ enum WatchEventLog {
     }
 
     /// Appends an event, dropping the oldest beyond the capacity. Safe from any thread.
-    static func record(_ source: String, _ detail: String) {
+    /// With `coalescing`, an earlier identical event is folded into the new one (count
+    /// incremented, time refreshed) so repeated noise cannot push real events out.
+    static func record(_ source: String, _ detail: String, coalescing: Bool = false) {
         lock.lock()
         defer { lock.unlock() }
         var events = loadUnlocked()
-        events.append(Event(date: Date(), source: source, detail: detail))
+        var count = 1
+        if coalescing, let index = events.firstIndex(where: { $0.source == source && $0.detail == detail }) {
+            count = events[index].count + 1
+            events.remove(at: index)
+        }
+        events.append(Event(date: Date(), source: source, detail: detail, count: count))
         if events.count > capacity {
             events.removeFirst(events.count - capacity)
         }

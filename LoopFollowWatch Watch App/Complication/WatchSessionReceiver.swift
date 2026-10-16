@@ -201,7 +201,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
             let snapshot = try decoder.decode(GlucoseSnapshot.self, from: data)
             WatchAlertManager.shared.checkAndAlert(snapshot: snapshot)
             guard ComplicationRefreshCounter.shared.shouldReloadAndRecord(for: snapshot) else {
-                WatchEventLog.record("push", "\(source): duplicate reading, ignored")
+                WatchEventLog.record("push", "\(source): duplicate reading, ignored", coalescing: true)
                 let task = pendingConnectivityTask
                 pendingConnectivityTask = nil
                 DispatchQueue.main.async { task?.setTaskCompletedWithSnapshot(false) }
