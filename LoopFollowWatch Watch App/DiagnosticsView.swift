@@ -33,6 +33,7 @@ struct DiagnosticsView: View {
             }
             .padding(.horizontal, 8)
         }
+        .navigationTitle("Debug")
         .onAppear { loadStats() }
         .task {
             while !Task.isCancelled {

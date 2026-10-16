@@ -5,12 +5,17 @@ import SwiftUI
 
 struct WatchAlertSettingsView: View {
     @StateObject private var settings = WatchAppSettings.shared
+    @ObservedObject var model: WatchViewModel
 
     private let snoozeOptions = Array(stride(from: 30, through: 720, by: 30))
 
     var body: some View {
         List {
             Section("Display") {
+                NavigationLink("Visuals") {
+                    SlotSelectionView(model: model)
+                }
+
                 Toggle("Dynamic BG color", isOn: Binding(
                     get: { settings.dynamicBGColor },
                     set: { settings.dynamicBGColor = $0 }
@@ -65,9 +70,9 @@ struct WatchAlertSettingsView: View {
                 }
             }
 
-            Section("Diagnostics") {
-                Button("Reset refresh counter") {
-                    ComplicationRefreshCounter.shared.resetCounter()
+            Section {
+                NavigationLink("Debug") {
+                    DiagnosticsView()
                 }
             }
         }
