@@ -21,9 +21,6 @@ struct LoopFollowWatchWidgets: WidgetBundle {
     var body: some Widget {
         GlucoseComplicationWidget()
         StackCornerWidget()
-        BolusShortcutWidget()
-        MealShortcutWidget()
-        OverrideShortcutWidget()
         #if DEBUG
             DebugComplicationWidget()
         #endif
