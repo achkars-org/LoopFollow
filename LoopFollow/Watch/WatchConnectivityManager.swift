@@ -45,9 +45,11 @@ final class WatchConnectivityManager: NSObject {
 
     /// Builds the settings the Watch needs from the phone's own storage.
     func currentSettings() -> WatchSettings {
-        WatchSettings(
-            lowMgdl: Storage.shared.lowLine.value,
-            highMgdl: Storage.shared.highLine.value,
+        // Same range the phone's chart and stats use (TIR/TITR presets or custom lines).
+        let thresholds = UnitSettingsStore.shared.effectiveThresholds()
+        return WatchSettings(
+            lowMgdl: thresholds.low,
+            highMgdl: thresholds.high,
             remoteEnabled: LoopAPNSService().validateSetup(),
             maxBolus: Storage.shared.maxBolus.value.doubleValue(for: .internationalUnit()),
             maxCarbs: Storage.shared.maxCarbs.value.doubleValue(for: .gram()),
@@ -336,6 +338,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
             Storage.shared.token.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             Storage.shared.lowLine.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             Storage.shared.highLine.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            Storage.shared.timeInRangeModeRaw.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             Storage.shared.maxBolus.$value.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             Storage.shared.maxCarbs.$value.dropFirst().map { _ in () }.eraseToAnyPublisher()
         )
