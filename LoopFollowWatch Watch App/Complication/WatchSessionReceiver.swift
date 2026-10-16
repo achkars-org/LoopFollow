@@ -271,6 +271,8 @@ extension WatchSessionReceiver: WCSessionDelegate {
 
     private func reloadComplicationsOnMainThread() {
         WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.glucose)
+        WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.gaugeCorner)
+        WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.stackCorner)
         #if DEBUG
             WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.debug)
         #endif

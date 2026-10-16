@@ -21,18 +21,13 @@ struct OverrideShortcutWidget: Widget {
 private enum ActionShortcut {
     static func configuration(for link: WatchDeepLink) -> some WidgetConfiguration {
         StaticConfiguration(kind: "LoopFollowShortcut.\(link.rawValue)", provider: ActionShortcutProvider()) { _ in
-            ZStack {
-                AccessoryWidgetBackground()
-                Image(systemName: systemImage(for: link))
-                    .font(.system(size: 22, weight: .semibold))
-                    .widgetAccentable()
-            }
-            .containerBackground(.fill.tertiary, for: .widget)
-            .widgetURL(link.url)
+            ActionShortcutView(title: title(for: link), systemImage: systemImage(for: link))
+                .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(link.url)
         }
         .configurationDisplayName("LoopFollow \(title(for: link))")
         .description("Opens \(title(for: link).lowercased()) entry.")
-        .supportedFamilies([.accessoryCircular])
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 
     private static func title(for link: WatchDeepLink) -> String {
@@ -48,6 +43,28 @@ private enum ActionShortcut {
         case .bolus: return "syringe"
         case .meal: return "fork.knife"
         case .override: return "list.bullet"
+        }
+    }
+}
+
+private struct ActionShortcutView: View {
+    @Environment(\.widgetFamily) private var family
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        if family == .accessoryCorner {
+            Image(systemName: systemImage)
+                .font(.system(size: 22, weight: .semibold))
+                .widgetAccentable()
+                .widgetLabel(title)
+        } else {
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: systemImage)
+                    .font(.system(size: 22, weight: .semibold))
+                    .widgetAccentable()
+            }
         }
     }
 }
