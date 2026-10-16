@@ -56,6 +56,8 @@ struct GlucoseTimelineProvider: TimelineProvider {
         let now = Date()
         let snapshot = GlucoseSnapshotStore.shared.load()
         let history = WatchGlucoseHistory.load()?.points ?? []
+        let ageText = snapshot.map { "\(Int(now.timeIntervalSince($0.updatedAt) / 60))m old" } ?? "none"
+        WatchEventLog.record("widget", "timeline built, reading \(ageText)")
         let entries = (0 ..< Self.entryCount).map { minute in
             GlucoseEntry(date: now.addingTimeInterval(TimeInterval(minute) * 60), snapshot: snapshot, history: history)
         }

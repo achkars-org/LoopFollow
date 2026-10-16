@@ -7,6 +7,7 @@ struct DiagnosticsView: View {
     @State private var stats: [ChannelDiagnosticsStore.ChannelStats] = []
     @State private var totalHour = 0
     @State private var totalDay = 0
+    @State private var events: [WatchEventLog.Event] = []
 
     var body: some View {
         ScrollView {
@@ -21,9 +22,12 @@ struct DiagnosticsView: View {
 
                 TotalRow(hourCount: totalHour, dayCount: totalDay)
 
+                EventLogSection(events: events)
+
                 Button("Reset") {
                     ChannelDiagnosticsStore.shared.reset()
                     ComplicationRefreshCounter.shared.resetCounter()
+                    WatchEventLog.reset()
                     loadStats()
                 }
                 .font(.system(size: 13))
@@ -47,6 +51,38 @@ struct DiagnosticsView: View {
         stats = ChannelDiagnosticsStore.shared.allStats()
         totalHour = ComplicationRefreshCounter.shared.hourCount
         totalDay = ComplicationRefreshCounter.shared.dayCount
+        events = WatchEventLog.recent()
+    }
+}
+
+private struct EventLogSection: View {
+    let events: [WatchEventLog.Event]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Recent events")
+                .font(.system(size: 13, weight: .semibold))
+
+            if events.isEmpty {
+                Text("none yet")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+
+            ForEach(Array(events.enumerated()), id: \.offset) { _, event in
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("\(event.date.formatted(date: .omitted, time: .standard)) \(event.source)")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.secondary)
+                    Text(event.detail)
+                        .font(.system(size: 12))
+                }
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.15))
+        .cornerRadius(8)
     }
 }
 

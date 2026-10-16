@@ -31,6 +31,7 @@ final class WatchNightscoutFetcher: NSObject {
     func handleRefreshTask(completion: @escaping () -> Void) {
         let urlString = LAAppGroupSettings.watchNightscoutURL()
         guard !urlString.isEmpty, let baseURL = URL(string: urlString) else {
+            WatchEventLog.record("ns", "skipped: no Nightscout URL on watch")
             os_log(
                 "WatchNightscoutFetcher: NightScout URL not configured — skipping fetch",
                 log: fetchLog,
@@ -40,6 +41,7 @@ final class WatchNightscoutFetcher: NSObject {
             return
         }
         guard isHTTPS(urlString) else {
+            WatchEventLog.record("ns", "skipped: URL is not HTTPS")
             os_log(
                 "WatchNightscoutFetcher: NightScout URL is not HTTPS — skipping fetch",
                 log: fetchLog,
@@ -60,6 +62,7 @@ final class WatchNightscoutFetcher: NSObject {
                 return
             }
             if let error = error {
+                WatchEventLog.record("ns", "fetch failed: \(error.localizedDescription)")
                 os_log(
                     "WatchNightscoutFetcher: fetch failed — %{public}@",
                     log: fetchLog,
@@ -70,6 +73,7 @@ final class WatchNightscoutFetcher: NSObject {
                 return
             }
             guard let data else {
+                WatchEventLog.record("ns", "empty response")
                 os_log("WatchNightscoutFetcher: empty response", log: fetchLog, type: .error)
                 completion()
                 return
@@ -136,6 +140,7 @@ final class WatchNightscoutFetcher: NSObject {
             )
 
             guard ComplicationRefreshCounter.shared.shouldReloadAndRecord(for: snapshot) else {
+                WatchEventLog.record("ns", "no newer reading than \(Self.ageText(of: updatedAt)) ago")
                 os_log(
                     "WatchNightscoutFetcher: duplicate entry at %f — skipping save",
                     log: fetchLog,
@@ -153,12 +158,14 @@ final class WatchNightscoutFetcher: NSObject {
                 entry.sgv,
                 updatedAt.timeIntervalSince1970
             )
+            WatchEventLog.record("ns", "new reading from \(Self.ageText(of: updatedAt)) ago, saving")
             GlucoseSnapshotStore.shared.save(snapshot) {
                 ChannelDiagnosticsStore.shared.record(.watchWake)
                 WatchSessionReceiver.shared.triggerComplicationReload()
                 completion()
             }
         } catch {
+            WatchEventLog.record("ns", "decode failed")
             os_log(
                 "WatchNightscoutFetcher: decode failed — %{public}@",
                 log: fetchLog,
@@ -167,6 +174,10 @@ final class WatchNightscoutFetcher: NSObject {
             )
             completion()
         }
+    }
+
+    private static func ageText(of date: Date) -> String {
+        "\(Int(Date().timeIntervalSince(date) / 60))m"
     }
 
     private func resolveUnit() -> GlucoseSnapshot.Unit {

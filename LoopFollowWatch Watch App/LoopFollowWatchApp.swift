@@ -53,6 +53,7 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
     }
 
     private func handleRefresh(_ task: WKApplicationRefreshBackgroundTask) {
+        WatchEventLog.record("wake", "background refresh fired")
         // receivedApplicationContext always holds the last value the iPhone sent —
         // no active Bluetooth or WKWatchConnectivityRefreshBackgroundTask needed.
         // If it's newer than what's in the file store, persist it and reload complications.
@@ -66,6 +67,7 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
            ctx.updatedAt > (storeSnapshot?.updatedAt ?? .distantPast)
         {
             WatchAlertManager.shared.checkAndAlert(snapshot: ctx)
+            WatchEventLog.record("wake", "newer phone context, saving")
             GlucoseSnapshotStore.shared.save(ctx) {
                 ChannelDiagnosticsStore.shared.record(.watchWake)
                 WatchSessionReceiver.shared.triggerComplicationReload()
@@ -79,6 +81,7 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
             }
         } else {
             // No newer applicationContext — poll NightScout directly.
+            WatchEventLog.record("wake", "no newer phone context, polling Nightscout")
             WatchNightscoutFetcher.shared.handleRefreshTask {
                 DispatchQueue.main.async {
                     WatchAppDelegate.scheduleNextRefresh()
@@ -113,6 +116,9 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
         WKApplication.shared().scheduleBackgroundRefresh(
             withPreferredDate: now.addingTimeInterval(interval),
             userInfo: nil
-        ) { _ in }
+        ) { error in
+            let outcome = error.map { "failed: \($0.localizedDescription)" } ?? "ok"
+            WatchEventLog.record("sched", "next wake in \(Int(interval))s, \(outcome)")
+        }
     }
 }

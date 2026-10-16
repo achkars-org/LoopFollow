@@ -201,11 +201,13 @@ extension WatchSessionReceiver: WCSessionDelegate {
             let snapshot = try decoder.decode(GlucoseSnapshot.self, from: data)
             WatchAlertManager.shared.checkAndAlert(snapshot: snapshot)
             guard ComplicationRefreshCounter.shared.shouldReloadAndRecord(for: snapshot) else {
+                WatchEventLog.record("push", "\(source): duplicate reading, ignored")
                 let task = pendingConnectivityTask
                 pendingConnectivityTask = nil
                 DispatchQueue.main.async { task?.setTaskCompletedWithSnapshot(false) }
                 return
             }
+            WatchEventLog.record("push", "\(source): new reading, saving")
             os_log("WatchSessionReceiver: %{public}@ snapshot decoded g=%d, saving", log: watchLog, type: .debug, source, Int(snapshot.glucose))
             GlucoseSnapshotStore.shared.save(snapshot) { [weak self] in
                 os_log("WatchSessionReceiver: %{public}@ snapshot saved, reloading complications", log: watchLog, type: .debug, source)
@@ -270,6 +272,7 @@ extension WatchSessionReceiver: WCSessionDelegate {
     }
 
     private func reloadComplicationsOnMainThread() {
+        WatchEventLog.record("reload", "timelines requested")
         WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.glucose)
         WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.gaugeCorner)
         WidgetCenter.shared.reloadTimelines(ofKind: WatchWidgetKind.stackCorner)
