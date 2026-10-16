@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var model = WatchViewModel()
     @State private var showSettings = false
     @State private var showRemote = false
+    @State private var showSnoozeStatus = false
     @State private var deepLink: WatchDeepLink?
 
     var body: some View {
@@ -36,6 +37,16 @@ struct ContentView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Remote Commands")
                         }
+
+                        if model.isSnoozed {
+                            Button { showSnoozeStatus = true } label: {
+                                Image(systemName: "bell.slash.fill")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.orange)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Snooze")
+                        }
                     }
                     .padding([.top, .trailing], 4)
                 }
@@ -44,6 +55,9 @@ struct ContentView: View {
                 }
                 .sheet(isPresented: $showSettings) {
                     NavigationStack { WatchAlertSettingsView(model: model) }
+                }
+                .sheet(isPresented: $showSnoozeStatus) {
+                    SnoozeStatusView(model: model, isPresented: $showSnoozeStatus)
                 }
 
             GlucoseChartView(points: model.history, unit: model.snapshot?.unit ?? .mgdl)
@@ -227,28 +241,6 @@ struct GlucoseView: View {
                                 .foregroundColor(.yellow)
                         }
                     }
-
-                    VStack(spacing: 6) {
-                        if model.isSnoozed, let until = model.snoozeUntil {
-                            Text("Snoozed until \(until, style: .time)")
-                                .font(.system(size: 11))
-                                .foregroundColor(.orange)
-
-                            Button("Cancel Snooze") {
-                                WatchAlertManager.shared.cancelSnooze(type: nil)
-                                model.refresh()
-                            }
-                            .font(.system(size: 12))
-                            .foregroundColor(.orange)
-                        } else if model.hasActiveAlert {
-                            Button("Snooze…") {
-                                model.pendingSnoozeType = nil
-                                model.showSnoozeSheet = true
-                            }
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                        }
-                    }
                 }
                 .padding(.horizontal, 4)
             } else {
@@ -262,8 +254,61 @@ struct GlucoseView: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) {
+            if !model.isSnoozed, model.hasActiveAlert {
+                SnoozeBand {
+                    model.pendingSnoozeType = nil
+                    model.showSnoozeSheet = true
+                }
+            }
+        }
         .sheet(isPresented: $model.showSnoozeSheet, onDismiss: { model.refresh() }) {
             SnoozeView(isPresented: $model.showSnoozeSheet, alertType: model.pendingSnoozeType)
+        }
+    }
+}
+
+// MARK: - Snooze band and status
+
+/// A slim full-width strip along the bottom of the glucose page that opens the snooze sheet.
+struct SnoozeBand: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("Snooze")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.orange)
+                .frame(maxWidth: .infinity)
+                .frame(height: 22)
+                .background(Color.orange.opacity(0.2))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 4)
+        .accessibilityLabel("Snooze alerts")
+    }
+}
+
+/// Shows how long alerts are snoozed for and lets the user cancel it.
+struct SnoozeStatusView: View {
+    @ObservedObject var model: WatchViewModel
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if let until = model.snoozeUntil {
+                Text("Snoozed until \(until, style: .time)")
+                    .font(.system(size: 14))
+                    .foregroundColor(.orange)
+            }
+
+            Button("Cancel Snooze") {
+                WatchAlertManager.shared.cancelSnooze(type: nil)
+                model.refresh()
+                isPresented = false
+            }
+            .foregroundColor(.orange)
         }
     }
 }
