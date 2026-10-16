@@ -208,13 +208,19 @@ struct GlucoseView: View {
     @ObservedObject var model: WatchViewModel
 
     fileprivate static let staleThreshold: TimeInterval = 15 * 60
+    /// Length of the one-tap snooze triggered from the band's "1h" button or a double tap.
+    fileprivate static let quickSnoozeMinutes = 60
+
+    private var showsSnoozeBand: Bool {
+        !model.isSnoozed && model.hasActiveAlert
+    }
 
     var body: some View {
         Group {
             if let s = model.snapshot, s.age < GlucoseView.staleThreshold {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(WatchFormat.glucose(s)) \(WatchFormat.trendArrow(s))")
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .font(.system(size: showsSnoozeBand ? 44 : 56, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.4)
                         .lineLimit(1)
                         .foregroundColor(GlucoseColor.color(forMgdl: s.glucose))
@@ -254,12 +260,19 @@ struct GlucoseView: View {
                 }
             }
         }
-        .overlay(alignment: .bottom) {
-            if !model.isSnoozed, model.hasActiveAlert {
-                SnoozeBand {
-                    model.pendingSnoozeType = nil
-                    model.showSnoozeSheet = true
-                }
+        .safeAreaInset(edge: .bottom, spacing: 2) {
+            if showsSnoozeBand {
+                SnoozeBand(
+                    openSheet: {
+                        model.pendingSnoozeType = nil
+                        model.showSnoozeSheet = true
+                    },
+                    quickSnooze: {
+                        WatchAlertManager.shared.snooze(minutes: GlucoseView.quickSnoozeMinutes, type: nil)
+                        WKInterfaceDevice.current().play(.success)
+                        model.refresh()
+                    }
+                )
             }
         }
         .sheet(isPresented: $model.showSnoozeSheet, onDismiss: { model.refresh() }) {
@@ -270,23 +283,52 @@ struct GlucoseView: View {
 
 // MARK: - Snooze band and status
 
-/// A slim full-width strip along the bottom of the glucose page that opens the snooze sheet.
+/// A slim full-width strip along the bottom of the glucose page. The left part opens the
+/// snooze sheet; the "1h" part snoozes for an hour straight away and is also the target of
+/// the double-tap gesture on watches that support it.
 struct SnoozeBand: View {
-    let action: () -> Void
+    let openSheet: () -> Void
+    let quickSnooze: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Text("Snooze")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.orange)
-                .frame(maxWidth: .infinity)
-                .frame(height: 22)
-                .background(Color.orange.opacity(0.2))
-                .clipShape(Capsule())
+        HStack(spacing: 4) {
+            Button(action: openSheet) {
+                Text("Snooze")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.orange)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 22)
+                    .background(Color.orange.opacity(0.2))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Snooze alerts")
+
+            Button(action: quickSnooze) {
+                Text("1h")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.black)
+                    .frame(width: 40, height: 22)
+                    .background(Color.orange)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Snooze for one hour")
+            .doubleTapSnooze()
         }
-        .buttonStyle(.plain)
         .padding(.horizontal, 4)
-        .accessibilityLabel("Snooze alerts")
+    }
+}
+
+private extension View {
+    /// Lets the double-tap gesture (Series 9, Series 10 and Ultra 2, watchOS 11) trigger this button.
+    @ViewBuilder
+    func doubleTapSnooze() -> some View {
+        if #available(watchOS 11.0, *) {
+            handGestureShortcut(.primaryAction)
+        } else {
+            self
+        }
     }
 }
 
