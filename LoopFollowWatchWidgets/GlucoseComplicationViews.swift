@@ -18,7 +18,7 @@ struct GlucoseComplicationView: View {
         case .accessoryInline:
             InlineGlucoseView(entry: entry)
         default:
-            CircularGlucoseView(entry: entry)
+            EmptyView()
         }
     }
 }
@@ -44,32 +44,6 @@ private extension GlucoseEntry {
     var color: Color {
         guard let snapshot, !isStale else { return .yellow }
         return GlucoseColor.color(forMgdl: snapshot.glucose)
-    }
-
-    /// 0 for a fresh reading, 1 once it is stale.
-    var staleness: Double {
-        guard let readingAge else { return 1 }
-        return min(max(readingAge / Self.staleAfter, 0), 1)
-    }
-}
-
-// MARK: - Circular
-
-/// BG inside a ring that fills as the reading ages.
-private struct CircularGlucoseView: View {
-    let entry: GlucoseEntry
-
-    var body: some View {
-        Gauge(value: entry.staleness) {
-            Text(entry.trendOrAge(arrow: entry.arrowText))
-        } currentValueLabel: {
-            Text(entry.glucoseText)
-                .minimumScaleFactor(0.5)
-                .privacySensitive()
-        }
-        .gaugeStyle(.accessoryCircular)
-        .tint(entry.color)
-        .widgetAccentable()
     }
 }
 
@@ -110,6 +84,14 @@ private struct RectangularGlucoseView: View {
         return entry.history.filter { $0.date >= cutoff }
     }
 
+    /// Vertical range padded around the data so a flat stretch still reads as a line.
+    private var chartDomain: ClosedRange<Double> {
+        let values = sparkline.map { Double($0.mgdl) }
+        guard let low = values.min(), let high = values.max() else { return 70 ... 180 }
+        let pad = max((high - low) * 0.15, 10)
+        return (low - pad) ... (high + pad)
+    }
+
     var body: some View {
         HStack(spacing: 6) {
             VStack(alignment: .leading, spacing: 0) {
@@ -136,7 +118,17 @@ private struct RectangularGlucoseView: View {
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(entry.color)
+
+                    if point.date == sparkline.last?.date {
+                        PointMark(
+                            x: .value("time", point.date),
+                            y: .value("bg", point.mgdl)
+                        )
+                        .symbolSize(24)
+                        .foregroundStyle(entry.color)
+                    }
                 }
+                .chartYScale(domain: chartDomain)
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
                 .widgetAccentable()

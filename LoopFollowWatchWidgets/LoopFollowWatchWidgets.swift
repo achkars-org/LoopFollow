@@ -12,7 +12,7 @@ struct GlucoseComplicationWidget: Widget {
         }
         .configurationDisplayName("LoopFollow")
         .description("Current glucose, trend and recent history.")
-        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryCorner, .accessoryInline])
+        .supportedFamilies([.accessoryRectangular, .accessoryCorner, .accessoryInline])
     }
 }
 
@@ -20,7 +20,6 @@ struct GlucoseComplicationWidget: Widget {
 struct LoopFollowWatchWidgets: WidgetBundle {
     var body: some Widget {
         GlucoseComplicationWidget()
-        GaugeCornerWidget()
         StackCornerWidget()
         BolusShortcutWidget()
         MealShortcutWidget()
