@@ -8,8 +8,10 @@ struct GlucoseEntry: TimelineEntry {
     let snapshot: GlucoseSnapshot?
     let history: [WatchGlucoseHistory.Point]
 
-    /// Readings older than this render as stale ("--").
+    /// Readings older than this are dimmed and lose their trend and delta, but keep their value.
     static let staleAfter: TimeInterval = 15 * 60
+    /// Readings older than this are too old to show and render as "--".
+    static let expiredAfter: TimeInterval = 60 * 60
 
     /// Age of the reading at the time this entry is displayed.
     var readingAge: TimeInterval? {
@@ -19,6 +21,11 @@ struct GlucoseEntry: TimelineEntry {
     var isStale: Bool {
         guard let readingAge else { return true }
         return readingAge >= Self.staleAfter || snapshot?.isNotLooping == true
+    }
+
+    var isExpired: Bool {
+        guard let readingAge else { return true }
+        return readingAge >= Self.expiredAfter || snapshot?.isNotLooping == true
     }
 
     static let placeholder = GlucoseEntry(

@@ -17,8 +17,16 @@ enum WatchRefreshPolicy {
     static let daytimeCeiling: TimeInterval = readingInterval + 30
     /// Overnight wake interval, chosen to preserve the background refresh budget.
     static let overnightInterval: TimeInterval = 20 * 60
-    /// Minimum spacing between high-priority complication transfers from the phone.
-    static let complicationPushInterval: TimeInterval = 30 * 60
+    /// Minimum spacing between high-priority complication transfers from the phone by day.
+    /// The system allows about 50 a day; 25 minutes by day plus hourly overnight stays inside it.
+    static let daytimePushInterval: TimeInterval = 25 * 60
+    /// Spacing for the same transfers overnight, when fewer refreshes are needed.
+    static let overnightPushInterval: TimeInterval = 60 * 60
+
+    /// Minimum spacing between high-priority complication transfers for the given hour.
+    static func complicationPushInterval(hour: Int) -> TimeInterval {
+        isOvernight(hour: hour) ? overnightPushInterval : daytimePushInterval
+    }
 
     /// Hours 0–6 inclusive (midnight to 6:59) are treated as overnight.
     static func isOvernight(hour: Int) -> Bool {
@@ -45,7 +53,7 @@ enum WatchRefreshPolicy {
     }
 
     /// Whether the phone may spend one of the daily high-priority complication transfers.
-    static func isComplicationPushDue(now: Date, lastPush: Date, remainingTransfers: Int) -> Bool {
-        remainingTransfers > 0 && now.timeIntervalSince(lastPush) >= complicationPushInterval
+    static func isComplicationPushDue(now: Date, lastPush: Date, remainingTransfers: Int, hour: Int) -> Bool {
+        remainingTransfers > 0 && now.timeIntervalSince(lastPush) >= complicationPushInterval(hour: hour)
     }
 }

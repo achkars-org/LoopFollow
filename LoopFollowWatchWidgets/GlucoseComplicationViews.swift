@@ -27,7 +27,7 @@ struct GlucoseComplicationView: View {
 
 private extension GlucoseEntry {
     var glucoseText: String {
-        guard let snapshot, !isStale else { return "--" }
+        guard let snapshot, !isExpired else { return "--" }
         return WatchFormat.glucose(snapshot)
     }
 

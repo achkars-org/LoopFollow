@@ -68,7 +68,7 @@ private struct StackCornerView: View {
 
 private extension GlucoseEntry {
     var cornerGlucoseText: String {
-        guard let snapshot, !isStale else { return "--" }
+        guard let snapshot, !isExpired else { return "--" }
         return WatchFormat.glucose(snapshot)
     }
 

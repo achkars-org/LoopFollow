@@ -86,18 +86,25 @@ struct WatchRefreshPolicyTests {
 
     @Test("#push is due after the interval when transfers remain")
     func pushDue() {
-        let last = now.addingTimeInterval(-WatchRefreshPolicy.complicationPushInterval)
-        #expect(WatchRefreshPolicy.isComplicationPushDue(now: now, lastPush: last, remainingTransfers: 5))
+        let last = now.addingTimeInterval(-WatchRefreshPolicy.daytimePushInterval)
+        #expect(WatchRefreshPolicy.isComplicationPushDue(now: now, lastPush: last, remainingTransfers: 5, hour: 12))
     }
 
     @Test("#push is not due inside the interval")
     func pushTooSoon() {
-        let last = now.addingTimeInterval(-WatchRefreshPolicy.complicationPushInterval + 1)
-        #expect(!WatchRefreshPolicy.isComplicationPushDue(now: now, lastPush: last, remainingTransfers: 5))
+        let last = now.addingTimeInterval(-WatchRefreshPolicy.daytimePushInterval + 1)
+        #expect(!WatchRefreshPolicy.isComplicationPushDue(now: now, lastPush: last, remainingTransfers: 5, hour: 12))
     }
 
     @Test("#push is never due once the daily budget is spent")
     func pushBudgetSpent() {
-        #expect(!WatchRefreshPolicy.isComplicationPushDue(now: now, lastPush: .distantPast, remainingTransfers: 0))
+        #expect(!WatchRefreshPolicy.isComplicationPushDue(now: now, lastPush: .distantPast, remainingTransfers: 0, hour: 12))
+    }
+
+    @Test("#overnight pushes are spaced further apart than daytime ones")
+    func overnightSpacing() {
+        let last = now.addingTimeInterval(-WatchRefreshPolicy.daytimePushInterval)
+        #expect(WatchRefreshPolicy.isComplicationPushDue(now: now, lastPush: last, remainingTransfers: 5, hour: 12))
+        #expect(!WatchRefreshPolicy.isComplicationPushDue(now: now, lastPush: last, remainingTransfers: 5, hour: 3))
     }
 }

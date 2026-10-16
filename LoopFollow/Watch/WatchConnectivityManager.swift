@@ -179,7 +179,7 @@ final class WatchConnectivityManager: NSObject {
             }
 
             // Delivery cadence:
-            //   Every 30 min → transferCurrentComplicationUserInfo (high-priority wake, 50/day budget)
+            //   Every 25 min by day, hourly overnight → transferCurrentComplicationUserInfo (high-priority wake, 50/day budget)
             //   Every  5 min → transferUserInfo (queued fallback, no documented cap)
             // Outstanding transfers are cancelled above so at most one is ever pending.
             let now = Date()
@@ -189,7 +189,8 @@ final class WatchConnectivityManager: NSObject {
                WatchRefreshPolicy.isComplicationPushDue(
                    now: now,
                    lastPush: lastComplicationPushTime,
-                   remainingTransfers: session.remainingComplicationUserInfoTransfers
+                   remainingTransfers: session.remainingComplicationUserInfoTransfers,
+                   hour: Calendar.current.component(.hour, from: now)
                )
             {
                 session.transferCurrentComplicationUserInfo(payload)
