@@ -155,10 +155,7 @@ final class WatchConnectivityManager: NSObject {
         }
 
         if lastSentReadingAt == snapshot.updatedAt {
-            guard resend, Date().timeIntervalSince(lastSentAt) >= resendFloor else {
-                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: reading unchanged, skipping send")
-                return
-            }
+            guard resend, Date().timeIntervalSince(lastSentAt) >= resendFloor else { return }
         }
 
         do {
