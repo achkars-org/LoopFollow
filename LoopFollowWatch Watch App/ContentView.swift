@@ -14,10 +14,13 @@ struct ContentView: View {
     @State private var showRemote = false
     @State private var showSnoozeStatus = false
     @State private var deepLink: WatchDeepLink?
+    @State private var selectedPage = 0
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedPage) {
             GlucoseView(model: model)
+                .tag(0)
                 .overlay(alignment: .topTrailing) {
                     VStack(spacing: 8) {
                         Button { showSettings = true } label: {
@@ -61,14 +64,24 @@ struct ContentView: View {
                 }
 
             GlucoseChartView(points: model.history, unit: model.snapshot?.unit ?? .mgdl)
+                .tag(1)
 
             StatsPageView(stats: model.stats, unit: model.snapshot?.unit ?? .mgdl)
+                .tag(2)
 
             ForEach(model.pages.indices, id: \.self) { idx in
                 DataGridPage(slots: model.pages[idx], snapshot: model.snapshot)
+                    .tag(3 + idx)
             }
         }
         .tabViewStyle(.page)
+        .onChange(of: scenePhase) { _, phase in
+            // Opening from a complication should always land on the glucose page,
+            // not on whichever page was showing last time.
+            if phase == .active {
+                selectedPage = 0
+            }
+        }
         .sheet(item: $deepLink) { link in
             NavigationStack { remoteView(for: link) }
         }
