@@ -21,7 +21,7 @@ private struct StackCornerView: View {
     let entry: GlucoseEntry
 
     private var projectedText: String {
-        guard let snapshot = entry.snapshot, !entry.isStale else { return "--" }
+        guard let snapshot = entry.snapshot, !entry.isProjectionExpired else { return "--" }
         return WatchFormat.projected(snapshot)
     }
 

@@ -10,6 +10,8 @@ struct GlucoseEntry: TimelineEntry {
 
     /// Readings older than this are dimmed and lose their trend and delta, but keep their value.
     static let staleAfter: TimeInterval = 15 * 60
+    /// A projection is shown (with the reading's age beside it) until the reading is this old.
+    static let projectionExpiredAfter: TimeInterval = 30 * 60
     /// Readings older than this are too old to show and render as "--".
     static let expiredAfter: TimeInterval = 60 * 60
 
@@ -21,6 +23,11 @@ struct GlucoseEntry: TimelineEntry {
     var isStale: Bool {
         guard let readingAge else { return true }
         return readingAge >= Self.staleAfter || snapshot?.isNotLooping == true
+    }
+
+    var isProjectionExpired: Bool {
+        guard let readingAge else { return true }
+        return readingAge >= Self.projectionExpiredAfter || snapshot?.isNotLooping == true
     }
 
     var isExpired: Bool {
