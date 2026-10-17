@@ -69,7 +69,8 @@ struct GlucoseEntry: TimelineEntry {
 }
 
 /// Reads the snapshot and history the Watch app persisted in the App Group. The Watch
-/// app reloads this timeline whenever new data arrives, so the provider never fetches.
+/// app reloads this timeline whenever new data arrives; the provider only fetches from
+/// Nightscout itself when the stored reading has gone stale.
 struct GlucoseTimelineProvider: TimelineProvider {
     /// One entry per minute lets the age label and stale state advance without reloads.
     private static let entryCount = 60
@@ -84,14 +85,46 @@ struct GlucoseTimelineProvider: TimelineProvider {
 
     func getTimeline(in _: Context, completion: @escaping (Timeline<GlucoseEntry>) -> Void) {
         let now = Date()
-        let snapshot = GlucoseSnapshotStore.shared.load()
+        let stored = GlucoseSnapshotStore.shared.load()
+        guard Self.needsFetch(stored, now: now) else {
+            completion(timeline(snapshot: stored, now: now))
+            return
+        }
+        // The phone's push or the Watch's own wake did not bring a fresh reading, so ask
+        // Nightscout directly rather than let the face age.
+        WatchNightscoutClient.fetchLatest { result in
+            guard case let .success(fetched) = result, fetched.updatedAt > (stored?.updatedAt ?? .distantPast) else {
+                if case .failure = result {
+                    WatchEventLog.record("widget", "Nightscout fetch failed", coalescing: true)
+                }
+                completion(timeline(snapshot: stored, now: Date()))
+                return
+            }
+            WatchEventLog.record("widget", "fetched from Nightscout, reading \(Int(Date().timeIntervalSince(fetched.updatedAt) / 60))m old")
+            GlucoseSnapshotStore.shared.save(fetched) {
+                completion(timeline(snapshot: fetched, now: Date()))
+            }
+        }
+    }
+
+    /// A reading arrives every five minutes, so one over ten minutes old was missed.
+    private static let fetchAfter: TimeInterval = 10 * 60
+    /// How soon WidgetKit is asked to call again; it applies its own budget on top.
+    private static let refreshInterval: TimeInterval = 15 * 60
+
+    private static func needsFetch(_ snapshot: GlucoseSnapshot?, now: Date) -> Bool {
+        guard let snapshot else { return true }
+        return now.timeIntervalSince(snapshot.updatedAt) >= fetchAfter
+    }
+
+    private func timeline(snapshot: GlucoseSnapshot?, now: Date) -> Timeline<GlucoseEntry> {
         let history = WatchGlucoseHistory.load()?.points ?? []
         let ageText = snapshot.map { "\(Int(now.timeIntervalSince($0.updatedAt) / 60))m old" } ?? "none"
         WatchEventLog.record("widget", "timeline built, reading \(ageText)")
         let entries = (0 ..< Self.entryCount).map { minute in
             GlucoseEntry(date: now.addingTimeInterval(TimeInterval(minute) * 60), snapshot: snapshot, history: history)
         }
-        completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(TimeInterval(Self.entryCount) * 60))))
+        return Timeline(entries: entries, policy: .after(now.addingTimeInterval(Self.refreshInterval)))
     }
 
     private func entry(at date: Date) -> GlucoseEntry {

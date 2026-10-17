@@ -200,13 +200,17 @@ final class WatchConnectivityManager: NSObject {
             let now = Date()
             let transferLog: String
 
-            if session.isComplicationEnabled,
-               WatchRefreshPolicy.isComplicationPushDue(
-                   now: now,
-                   lastPush: lastComplicationPushTime,
-                   remainingTransfers: session.remainingComplicationUserInfoTransfers,
-                   hour: Calendar.current.component(.hour, from: now)
-               )
+            if session.isReachable {
+                // The Watch app is open and already has the reading from sendMessage, so
+                // queuing the same payload again only arrives as a duplicate.
+                transferLog = "snapshot delivered via sendMessage, no queued transfer"
+            } else if session.isComplicationEnabled,
+                      WatchRefreshPolicy.isComplicationPushDue(
+                          now: now,
+                          lastPush: lastComplicationPushTime,
+                          remainingTransfers: session.remainingComplicationUserInfoTransfers,
+                          hour: Calendar.current.component(.hour, from: now)
+                      )
             {
                 session.transferCurrentComplicationUserInfo(payload)
                 lastComplicationPushTime = now
