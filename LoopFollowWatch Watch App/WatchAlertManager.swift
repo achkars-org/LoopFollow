@@ -39,12 +39,26 @@ enum WatchAlertType: String, CaseIterable {
         }
     }
 
-    func body(bg: Double, delta: Double?) -> String {
-        let bgStr = "\(Int(bg))"
+    /// Notification text in the user's glucose unit. `bg` and `delta` (per minute) are mg/dL.
+    func body(bg: Double, delta: Double?, unit: GlucoseSnapshot.Unit) -> String {
+        let bgStr = WatchFormat.formatGlucoseValue(bg, unit: unit)
         switch self {
         case .lowBG, .urgentLow, .highBG: return bgStr
-        case .fastDrop: return delta.map { "\(bgStr) · \(Int($0))/min" } ?? bgStr
-        case .fastRise: return delta.map { "\(bgStr) · +\(Int($0))/min" } ?? bgStr
+        case .fastDrop: return delta.map { "\(bgStr) · \(Self.rateText($0, unit: unit))/min" } ?? bgStr
+        case .fastRise: return delta.map { "\(bgStr) · \(Self.rateText($0, unit: unit))/min" } ?? bgStr
+        }
+    }
+
+    /// Signed rate of change; mmol/L needs two decimals because a per-minute rate is small.
+    private static func rateText(_ mgdlPerMin: Double, unit: GlucoseSnapshot.Unit) -> String {
+        switch unit {
+        case .mgdl:
+            let v = Int(mgdlPerMin)
+            return v > 0 ? "+\(v)" : "\(v)"
+        case .mmol:
+            let v = GlucoseConversion.toMmol(mgdlPerMin)
+            let text = String(format: "%.2f", abs(v))
+            return v > 0 ? "+\(text)" : (v < 0 ? "-\(text)" : text)
         }
     }
 
@@ -209,40 +223,41 @@ final class WatchAlertManager: NSObject {
         alertQueue.sync {
             let bg = snapshot.glucose
             let delta = snapshot.deltaRate
+            let unit = snapshot.unit
 
             // UrgentLow takes full priority — nothing else fires this cycle if triggered.
             let urgentTriggered = bg <= thresholds.urgentLow // inclusive: BG == threshold fires
-            evaluate(.urgentLow, bg: bg, delta: delta, triggered: urgentTriggered)
+            evaluate(.urgentLow, bg: bg, delta: delta, unit: unit, triggered: urgentTriggered)
             guard !urgentTriggered else { return }
 
             // lowBG suppresses fastDrop — if lowBG threshold is met, fastDrop is skipped.
             let lowTriggered = bg < thresholds.low
-            evaluate(.lowBG, bg: bg, delta: delta, triggered: lowTriggered)
+            evaluate(.lowBG, bg: bg, delta: delta, unit: unit, triggered: lowTriggered)
             guard !lowTriggered else { return } // lowBG suppresses fastDrop
 
-            evaluate(.highBG, bg: bg, delta: delta, triggered: bg > thresholds.high)
-            evaluate(.fastDrop, bg: bg, delta: delta, triggered: delta.map { $0 < -thresholds.dropRate } ?? false)
-            evaluate(.fastRise, bg: bg, delta: delta, triggered: delta.map { $0 > thresholds.riseRate } ?? false)
+            evaluate(.highBG, bg: bg, delta: delta, unit: unit, triggered: bg > thresholds.high)
+            evaluate(.fastDrop, bg: bg, delta: delta, unit: unit, triggered: delta.map { $0 < -thresholds.dropRate } ?? false)
+            evaluate(.fastRise, bg: bg, delta: delta, unit: unit, triggered: delta.map { $0 > thresholds.riseRate } ?? false)
         }
     }
 
     // MARK: - Private
 
-    private func evaluate(_ type: WatchAlertType, bg: Double, delta: Double?, triggered: Bool) {
+    private func evaluate(_ type: WatchAlertType, bg: Double, delta: Double?, unit: GlucoseSnapshot.Unit, triggered: Bool) {
         guard triggered, !isSnoozed(for: type) else { return }
 
         let now = Date().timeIntervalSince1970
         let lastFired = defaults.double(forKey: type.cooldownKey)
         guard now - lastFired >= settings.cooldown(for: type) else { return }
 
-        fire(type: type, bg: bg, delta: delta)
+        fire(type: type, bg: bg, delta: delta, unit: unit)
         defaults.set(now, forKey: type.cooldownKey)
     }
 
-    private func fire(type: WatchAlertType, bg: Double, delta: Double?) {
+    private func fire(type: WatchAlertType, bg: Double, delta: Double?, unit: GlucoseSnapshot.Unit) {
         let content = UNMutableNotificationContent()
         content.title = type.title
-        content.body = type.body(bg: bg, delta: delta)
+        content.body = type.body(bg: bg, delta: delta, unit: unit)
         content.sound = nil // haptic only — no audio
         content.interruptionLevel = (type == .urgentLow) ? .timeSensitive : .active
         content.categoryIdentifier = "GLUCOSE_ALERT"

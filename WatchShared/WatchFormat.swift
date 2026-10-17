@@ -184,7 +184,7 @@ enum WatchFormat {
 
     // MARK: - Private
 
-    private static func formatGlucoseValue(_ mgdl: Double, unit: GlucoseSnapshot.Unit) -> String {
+    static func formatGlucoseValue(_ mgdl: Double, unit: GlucoseSnapshot.Unit) -> String {
         switch unit {
         case .mgdl:
             return "\(Int(round(mgdl)))"
