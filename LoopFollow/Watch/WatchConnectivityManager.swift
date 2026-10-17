@@ -165,8 +165,12 @@ final class WatchConnectivityManager: NSObject {
                 LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: snapshot sent via sendMessage (reachable)")
             }
 
-            // Cancel any pending transferUserInfo — only the latest snapshot matters.
-            session.outstandingUserInfoTransfers.forEach { $0.cancel() }
+            // Cancel any pending plain transferUserInfo — only the latest snapshot matters.
+            // A queued high-priority complication transfer is left alone: cancelling it every
+            // couple of minutes meant it was often withdrawn before the Watch could take it.
+            session.outstandingUserInfoTransfers
+                .filter { !$0.isCurrentComplicationInfo }
+                .forEach { $0.cancel() }
 
             // applicationContext: always keep latest state for the app refresh path.
             do {

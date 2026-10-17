@@ -34,6 +34,18 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
         WatchAppDelegate.scheduleNextRefresh()
     }
 
+    /// The refresh chain only continues from a fired wake, so one missed wake would end it.
+    /// Re-arming whenever the app is used or leaves the screen keeps a request pending.
+    func applicationDidBecomeActive() {
+        WatchEventLog.record("life", "app active")
+        WatchAppDelegate.scheduleNextRefresh()
+    }
+
+    func applicationDidEnterBackground() {
+        WatchEventLog.record("life", "app in background")
+        WatchAppDelegate.scheduleNextRefresh()
+    }
+
     func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {
         for task in backgroundTasks {
             switch task {
@@ -45,6 +57,7 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
                 // transferUserInfo to session(_:didReceiveUserInfo:) while the app
                 // is awake. WatchSessionReceiver completes it after saving the snapshot.
                 WatchSessionReceiver.shared.pendingConnectivityTask = connectivityTask
+                WatchAppDelegate.scheduleNextRefresh()
 
             default:
                 task.setTaskCompletedWithSnapshot(false)
