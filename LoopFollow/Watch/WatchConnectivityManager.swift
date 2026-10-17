@@ -19,6 +19,12 @@ final class WatchConnectivityManager: NSObject {
     private var lastComplicationPushTime: Date = .distantPast
     /// Timestamp of the last remote command received from the Watch.
     private var lastWatchCommandDate: Date = .distantPast
+    /// Reading time of the snapshot last sent, and when it was sent. The Watch ignores a
+    /// reading it has already seen, so resending the same one only costs battery.
+    private var lastSentReadingAt: Date?
+    private var lastSentAt: Date = .distantPast
+    /// Shortest gap before the same reading is resent on request (Watch became reachable).
+    private let resendFloor: TimeInterval = 60
     /// Settings most recently handed to WatchConnectivity, used to skip redundant pushes.
     private var lastSentSettings: WatchSettings?
     private var cancellables = Set<AnyCancellable>()
@@ -132,7 +138,8 @@ final class WatchConnectivityManager: NSObject {
     /// Sends the latest GlucoseSnapshot, with settings, history and stats, to the Watch.
     /// Call on the main thread so the payload includes the BG readings.
     /// No-ops silently if Watch is not paired or reachable.
-    func send(snapshot: GlucoseSnapshot) {
+    /// An unchanged reading is skipped unless `resend` is set, and even then at most once a minute.
+    func send(snapshot: GlucoseSnapshot, resend: Bool = false) {
         guard WCSession.isSupported() else { return }
 
         let session = WCSession.default
@@ -145,6 +152,13 @@ final class WatchConnectivityManager: NSObject {
         guard session.isPaired else {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: no paired Watch, skipping send")
             return
+        }
+
+        if lastSentReadingAt == snapshot.updatedAt {
+            guard resend, Date().timeIntervalSince(lastSentAt) >= resendFloor else {
+                LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: reading unchanged, skipping send")
+                return
+            }
         }
 
         do {
@@ -205,6 +219,8 @@ final class WatchConnectivityManager: NSObject {
                 transferLog = "snapshot sent via transferUserInfo"
             }
 
+            lastSentReadingAt = snapshot.updatedAt
+            lastSentAt = Date()
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: \(transferLog)")
         } catch {
             LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: failed to encode snapshot — \(error)")
@@ -268,7 +284,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
         guard session.isReachable else { return }
         DispatchQueue.main.async {
             if let snapshot = GlucoseSnapshotStore.shared.load() {
-                self.send(snapshot: snapshot)
+                self.send(snapshot: snapshot, resend: true)
                 LogManager.shared.log(category: .watch, message: "WatchConnectivityManager: Watch became reachable — snapshot pushed")
             } else {
                 self.pushSettings()
