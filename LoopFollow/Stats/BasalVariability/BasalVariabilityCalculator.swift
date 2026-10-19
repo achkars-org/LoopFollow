@@ -90,7 +90,7 @@ class BasalVariabilityCalculator {
         let total = Double(ratios.count)
         var s = 0, vb = 0, b = 0, ap = 0, a = 0, va = 0
         for r in ratios {
-            if r < 0 { s += 1 }           // -1.0 sentinel = suspended
+            if r < 0 { s += 1 } // -1.0 sentinel = suspended
             else if r < 0.5 { vb += 1 }
             else if r < 0.75 { b += 1 }
             else if r <= 1.25 { ap += 1 }
