@@ -17,8 +17,4 @@ class CarbMetric: Metric {
         }
         super.init(value: value, maxFractionDigits: 0, minFractionDigits: 0)
     }
-
-    init(value: Double) {
-        super.init(value: value, maxFractionDigits: 0, minFractionDigits: 0)
-    }
 }
