@@ -12,17 +12,17 @@ class InsulinVariabilityCalculator {
 
     static func calculate(
         basalData: [MainViewController.basalGraphStruct],
-        basalProfile: [MainViewController.basalProfileStruct],
+        profiles: [StatsProfile],
         automaticBoluses: [MainViewController.bolusGraphStruct],
         manualBoluses: [MainViewController.bolusGraphStruct],
         carbs: [MainViewController.carbGraphStruct],
         overrides: [StatsOverride],
-        carbRatio: (Date) -> Double?,
         startTime: TimeInterval,
         endTime: TimeInterval,
         calendar: Calendar = dateTimeUtils.displayCalendar()
     ) -> [InsulinVariabilityDataPoint] {
-        guard !basalData.isEmpty, !basalProfile.isEmpty else { return [] }
+        guard !basalData.isEmpty, !profiles.isEmpty else { return [] }
+        let profiles = profiles.sorted { $0.start < $1.start }
 
         var totals: [TIRPeriod: Totals] = [:]
         func add(at time: TimeInterval, _ update: (inout Totals) -> Void) {
@@ -34,8 +34,12 @@ class InsulinVariabilityCalculator {
             overrides.last { $0.start <= time && time < $0.end }?.insulinNeedsScaleFactor ?? 1
         }
 
+        // The profile in effect at a time; the earliest one also covers anything before it.
+        func profile(at time: TimeInterval) -> StatsProfile {
+            profiles.last { $0.start <= time } ?? profiles[0]
+        }
+
         // Basal, sampled every 5 minutes against the override-scaled schedule.
-        let sortedProfile = basalProfile.sorted { $0.timeAsSeconds < $1.timeAsSeconds }
         let sampleInterval: TimeInterval = 5 * 60
         var basalIndex = 0
         var t = startTime
@@ -43,8 +47,7 @@ class InsulinVariabilityCalculator {
             while basalIndex < basalData.count - 1, basalData[basalIndex + 1].date <= t {
                 basalIndex += 1
             }
-            let secondsInDay = t - calendar.startOfDay(for: Date(timeIntervalSince1970: t)).timeIntervalSince1970
-            let scheduledRate = sortedProfile.last { $0.timeAsSeconds <= secondsInDay }?.value ?? sortedProfile[0].value
+            let scheduledRate = profile(at: t).basalRate(at: t) ?? 0
             let hours = min(sampleInterval, endTime - t) / 3600
             let planned = scheduledRate * scaleFactor(at: t) * hours
             let delivered = basalData[basalIndex].basalRate * hours
@@ -59,7 +62,8 @@ class InsulinVariabilityCalculator {
             add(at: bolus.date) { $0.deliveredBasal += bolus.value }
         }
 
-        // Meals: each one's boluses against its carbs / carb ratio.
+        // Meals: each one's boluses against its carbs / carb ratio. Boluses
+        // with no meal nearby are corrections, all of them above plan.
         let meals = groupMeals(carbs: carbs.filter { $0.value > 0 && $0.date >= startTime && $0.date < endTime })
         var mealBoluses = Array(repeating: 0.0, count: meals.count)
         for bolus in manualBoluses {
@@ -68,13 +72,15 @@ class InsulinVariabilityCalculator {
                 .min { meals[$0].distance(to: bolus.date) < meals[$1].distance(to: bolus.date) }
             if let nearest {
                 mealBoluses[nearest] += bolus.value
+            } else if bolus.date >= startTime, bolus.date < endTime {
+                add(at: bolus.date) { $0.correctionBolus += bolus.value }
             }
         }
         for (meal, bolus) in zip(meals, mealBoluses) {
             var planned = 0.0
             var hasRatio = true
             for carb in meal.carbs {
-                guard let ratio = carbRatio(Date(timeIntervalSince1970: carb.date)), ratio > 0 else {
+                guard let ratio = profile(at: carb.date).carbRatio(at: carb.date), ratio > 0 else {
                     hasRatio = false
                     break
                 }
@@ -98,12 +104,14 @@ class InsulinVariabilityCalculator {
         var deliveredBasal = 0.0
         var plannedMealBolus = 0.0
         var mealBolus = 0.0
+        var correctionBolus = 0.0
 
         mutating func add(_ other: Totals) {
             plannedBasal += other.plannedBasal
             deliveredBasal += other.deliveredBasal
             plannedMealBolus += other.plannedMealBolus
             mealBolus += other.mealBolus
+            correctionBolus += other.correctionBolus
         }
 
         func dataPoint(period: TIRPeriod) -> InsulinVariabilityDataPoint {
@@ -112,7 +120,8 @@ class InsulinVariabilityCalculator {
                 plannedBasal: plannedBasal,
                 deliveredBasal: deliveredBasal,
                 plannedMealBolus: plannedMealBolus,
-                mealBolus: mealBolus
+                mealBolus: mealBolus,
+                correctionBolus: correctionBolus
             )
         }
     }

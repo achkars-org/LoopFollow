@@ -30,22 +30,31 @@ struct InsulinVariabilityCalculatorTests {
         .init(value: grams, date: hour(h), sgv: 0, absorptionTime: 0)
     }
 
+    private func profile(from start: TimeInterval = 0, basal: Double, carbRatio: Double?) -> StatsProfile {
+        StatsProfile(
+            start: start,
+            timeZone: calendar.timeZone,
+            basal: [.init(timeAsSeconds: 0, value: basal)],
+            carbRatio: carbRatio.map { [.init(timeAsSeconds: 0, value: $0)] } ?? []
+        )
+    }
+
     private func calculate(
         basalData: [MainViewController.basalGraphStruct],
         automaticBoluses: [MainViewController.bolusGraphStruct] = [],
         manualBoluses: [MainViewController.bolusGraphStruct] = [],
         carbs: [MainViewController.carbGraphStruct] = [],
         overrides: [StatsOverride] = [],
-        carbRatio: Double? = 10
+        carbRatio: Double? = 10,
+        profiles: [StatsProfile]? = nil
     ) -> [TIRPeriod: InsulinVariabilityDataPoint] {
         let points = InsulinVariabilityCalculator.calculate(
             basalData: basalData,
-            basalProfile: [.init(value: 1, time: "00:00", timeAsSeconds: 0)],
+            profiles: profiles ?? [profile(basal: 1, carbRatio: carbRatio)],
             automaticBoluses: automaticBoluses,
             manualBoluses: manualBoluses,
             carbs: carbs,
             overrides: overrides,
-            carbRatio: { _ in carbRatio },
             startTime: day,
             endTime: day + 24 * 3600,
             calendar: calendar
@@ -115,7 +124,7 @@ struct InsulinVariabilityCalculatorTests {
         #expect(abs(result[.day]!.mealDeviation) < 0.001)
     }
 
-    @Test("carbs without a bolus are an under-bolus; a bolus without carbs is left out")
+    @Test("carbs without a bolus are an under-bolus; a bolus without carbs is a correction")
     func unmatchedCarbsAndBoluses() {
         let result = calculate(
             basalData: [basal(1, at: 0)],
@@ -123,9 +132,49 @@ struct InsulinVariabilityCalculatorTests {
             carbs: [carbs(50, at: 19)]
         )
         #expect(result[.night]!.mealBolus == 0)
+        #expect(abs(result[.night]!.correctionBolus - 2) < 0.001)
         #expect(result[.evening]!.mealBolus == 0)
         #expect(abs(result[.evening]!.plannedMealBolus - 5) < 0.001)
-        #expect(abs(result[.average]!.variability + 5.0 / 29 * 100) < 0.001)
+        // 24 U basal + 5 U meal planned; 24 U basal + 2 U correction delivered.
+        #expect(abs(result[.average]!.correctionDeviation - 2.0 / 29 * 100) < 0.001)
+        #expect(abs(result[.average]!.variability + 3.0 / 29 * 100) < 0.001)
+    }
+
+    @Test("a bolus just outside a meal's window is a correction")
+    func correctionNearMeal() {
+        let result = calculate(
+            basalData: [basal(1, at: 0)],
+            manualBoluses: [bolus(4, at: 13), bolus(1, at: 14)],
+            carbs: [carbs(40, at: 13)]
+        )
+        #expect(abs(result[.day]!.mealBolus - 4) < 0.001)
+        #expect(abs(result[.day]!.correctionBolus - 1) < 0.001)
+    }
+
+    @Test("each time is measured against the profile in effect then")
+    func profileHistory() {
+        // Basal raised from 1 to 2 U/h and carb ratio from 1:10 to 1:5 at noon.
+        let result = calculate(
+            basalData: [basal(1, at: 0), basal(2, at: 12)],
+            manualBoluses: [bolus(4, at: 8), bolus(8, at: 13)],
+            carbs: [carbs(40, at: 8), carbs(40, at: 13)],
+            profiles: [profile(from: hour(12), basal: 2, carbRatio: 5), profile(basal: 1, carbRatio: 10)]
+        )
+        #expect(abs(result[.morning]!.plannedBasal - 6) < 0.001)
+        #expect(abs(result[.morning]!.plannedMealBolus - 4) < 0.001)
+        #expect(abs(result[.day]!.plannedBasal - 12) < 0.001)
+        #expect(abs(result[.day]!.plannedMealBolus - 8) < 0.001)
+        #expect(abs(result[.average]!.variability) < 0.001)
+    }
+
+    @Test("an override that started before the range scales the plan from the start")
+    func overrideFromBeforeRange() {
+        let result = calculate(
+            basalData: [basal(1.35, at: 0), basal(1, at: 6)],
+            overrides: [StatsOverride(start: day - 3 * 24 * 3600, end: hour(6), insulinNeedsScaleFactor: 1.35)]
+        )
+        #expect(abs(result[.night]!.plannedBasal - 8.1) < 0.001)
+        #expect(abs(result[.night]!.variability) < 0.001)
     }
 
     @Test("meals are skipped without a carb ratio")

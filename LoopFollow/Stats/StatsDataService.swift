@@ -144,6 +144,13 @@ class StatsDataService {
         return mainVC.statsOverrideData.filter { $0.end > startTime && $0.start < endTime }
     }
 
+    /// Profiles in effect during the date range, oldest first.
+    func getProfileData() -> [StatsProfile] {
+        guard let mainVC = mainViewController else { return [] }
+        let endTime = endDate.timeIntervalSince1970
+        return mainVC.statsProfileData.filter { $0.start <= endTime }
+    }
+
     func getBasalProfile() -> [MainViewController.basalProfileStruct] {
         guard let mainVC = mainViewController else { return [] }
         return mainVC.basalProfile
