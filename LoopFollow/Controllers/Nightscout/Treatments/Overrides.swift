@@ -64,6 +64,12 @@ extension MainViewController {
 
             if end - start < 300 { continue } // skip short overrides
 
+            var detail = Treatment.historyEntries(from: e, date: startDate.timeIntervalSince1970) { 0 }.entries.first
+            // A later override replaces this one, so it ended when that one started.
+            if let nextStart {
+                detail?.overrideTreatment = detail?.overrideTreatment?.ending(at: nextStart)
+            }
+
             let dot = DataStructs.overrideStruct(
                 insulNeedsScaleFactor: e["insulinNeedsScaleFactor"] as? Double ?? 1,
                 date: start,
@@ -85,7 +91,7 @@ extension MainViewController {
                     ?? (e["reason"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
                     ?? "",
                 sgv: -20,
-                detail: Treatment.historyEntries(from: e, date: startDate.timeIntervalSince1970) { 0 }.entries.first
+                detail: detail
             )
             overrideGraphData.append(dot)
 

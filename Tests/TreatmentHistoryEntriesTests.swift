@@ -55,4 +55,46 @@ struct TreatmentHistoryEntriesTests {
         #expect(history(["eventType": "Temporary Override", "duration": 60.0, "reason": "Run"]).entries.first?.type == .override)
         #expect(history(["eventType": "Temporary Target", "duration": 30.0, "targetBottom": 140.0, "targetTop": 140.0]).entries.first?.type == .tempTarget)
     }
+
+    @Test("an indefinite Loop override is listed with its parameters")
+    func indefiniteOverride() {
+        let entry = history([
+            "eventType": "Temporary Override",
+            "durationType": "indefinite",
+            "reason": "Classe AM",
+            "insulinNeedsScaleFactor": 1.55,
+            "enteredBy": "Loop (via remote command)",
+        ]).entries.first
+        #expect(entry?.subtitle == "Override • Indefinite")
+        let override = entry?.overrideTreatment
+        #expect(override?.name == "Classe AM")
+        #expect(override?.isIndefinite == true)
+        #expect(override?.insulinNeedsScaleFactor == 1.55)
+        #expect(override?.targetRange == nil)
+        #expect(override?.isActive(at: 1_000_000) == true)
+        #expect(override?.enteredBy == "Loop (via remote command)")
+    }
+
+    @Test("a finite override keeps its range and ends when replaced earlier")
+    func finiteOverride() {
+        let override = history([
+            "eventType": "Temporary Override",
+            "duration": 60.0,
+            "notes": "Run",
+            "correctionRange": [140.0, 160.0],
+        ]).entries.first?.overrideTreatment
+        #expect(override?.targetRange == 140 ... 160)
+        #expect(override?.end == 100 + 3600)
+        #expect(override?.isActive(at: 200) == true)
+        #expect(override?.isActive(at: 100 + 3600) == false)
+        #expect(override?.ending(at: 1900).end == 1900)
+        #expect(override?.ending(at: 9000).end == 100 + 3600)
+    }
+
+    @Test("Trio's 30-day override counts as indefinite")
+    func trioIndefiniteOverride() {
+        let override = history(["eventType": "Temporary Override", "duration": 43200.0, "notes": "Sick"]).entries.first?.overrideTreatment
+        #expect(override?.isIndefinite == true)
+        #expect(override?.name == "Sick")
+    }
 }

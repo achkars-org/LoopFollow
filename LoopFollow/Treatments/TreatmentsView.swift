@@ -451,6 +451,10 @@ struct TreatmentDetailView: View {
                 }
             }
 
+            if let override = treatment.overrideTreatment {
+                overrideSection(override)
+            }
+
             if let carb = treatment.loopCarb {
                 let controlActive = LoopCarbTreatment.remoteControlActive(remoteType: remoteType.value, device: device.value)
                 let actionsAvailable = LoopCarbTreatment.remoteActionsAvailable(remoteType: remoteType.value, device: device.value, remoteCommands: loopRemoteCommands.value)
@@ -656,6 +660,66 @@ struct TreatmentDetailView: View {
         default:
             EmptyView()
         }
+    }
+
+    @ViewBuilder
+    private func overrideSection(_ override: OverrideTreatment) -> some View {
+        Section(header: Text("Override")) {
+            LabeledValueRow(label: "Name", value: override.name)
+            if let factor = override.insulinNeedsScaleFactor {
+                LabeledValueRow(label: "Sensitivity", value: String(format: "%.0f%%", factor * 100))
+            }
+            LabeledValueRow(
+                label: "Target Range",
+                value: override.targetRange.map { "\(formatBG($0.lowerBound)) - \(formatBG($0.upperBound))" } ?? "Scheduled"
+            )
+            LabeledValueRow(label: "Started", value: formatTime(override.start))
+            LabeledValueRow(label: "Total Time", value: override.duration.map(formatLength) ?? "Indefinite")
+
+            let now = Date().timeIntervalSince1970
+            let active = override.isActive(at: now)
+            if active {
+                HStack {
+                    Text("Elapsed")
+                    Spacer()
+                    Text(Date(timeIntervalSince1970: override.start), style: .relative)
+                        .foregroundColor(.secondary)
+                }
+                HStack {
+                    Text("Time Remaining")
+                    Spacer()
+                    if let end = override.end {
+                        RemainingTimeText(endAt: end)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Until cancelled")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } else if let end = override.end, end <= now {
+                LabeledValueRow(label: "Ended", value: formatTime(end))
+            }
+            LabeledValueRow(label: "Status", value: active ? "Active" : (override.start > now ? "Scheduled" : "Ended"))
+            if let enteredBy = override.enteredBy {
+                LabeledValueRow(label: "Entered By", value: enteredBy)
+            }
+        }
+    }
+
+    private func formatTime(_ timeInterval: TimeInterval) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        dateTimeUtils.applyDisplayTimeZone(to: formatter)
+        return formatter.string(from: Date(timeIntervalSince1970: timeInterval))
+    }
+
+    private func formatLength(_ seconds: TimeInterval) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .abbreviated
+        formatter.allowedUnits = [.day, .hour, .minute]
+        formatter.maximumUnitCount = 2
+        return formatter.string(from: max(seconds, 60)) ?? ""
     }
 
     @ViewBuilder
@@ -1144,8 +1208,9 @@ struct Treatment: Identifiable {
     let bgValue: Int
     let trioMeal: TrioMealTreatment?
     let loopCarb: LoopCarbTreatment?
+    var overrideTreatment: OverrideTreatment?
 
-    init(id: String? = nil, type: TreatmentType, date: TimeInterval, title: String, subtitle: String?, icon: String, color: Color, bgValue: Int, trioMeal: TrioMealTreatment? = nil, loopCarb: LoopCarbTreatment? = nil) {
+    init(id: String? = nil, type: TreatmentType, date: TimeInterval, title: String, subtitle: String?, icon: String, color: Color, bgValue: Int, trioMeal: TrioMealTreatment? = nil, loopCarb: LoopCarbTreatment? = nil, overrideTreatment: OverrideTreatment? = nil) {
         self.id = id ?? "\(type)-\(date)-\(title)"
         self.type = type
         self.date = date
@@ -1156,6 +1221,7 @@ struct Treatment: Identifiable {
         self.bgValue = bgValue
         self.trioMeal = trioMeal
         self.loopCarb = loopCarb
+        self.overrideTreatment = overrideTreatment
     }
 
     var hourKey: String {
@@ -1307,28 +1373,21 @@ extension Treatment {
             }
 
         case "Temporary Override", "Exercise":
-            let durationMinutes = (entry["duration"] as? Double) ?? Double(entry["duration"] as? Int ?? 0)
-            if durationMinutes == 0 {
+            guard let override = OverrideTreatment(nightscoutEntry: entry, date: date) else {
                 return result
             }
 
-            let reason = (entry["notes"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-                ?? (entry["reason"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-                ?? ""
-
-            let subtitleParts = ["Override", durationMinutes > 0 ? "\(Int(durationMinutes))m" : nil].compactMap { $0 }
-            let subtitle = subtitleParts.joined(separator: " • ")
-            let title = reason.isEmpty ? "Temporary Override" : reason
-
+            let length = override.duration.map { "\(Int($0 / 60))m" } ?? "Indefinite"
             let treatment = Treatment(
                 id: "\(nsId)-override",
                 type: .override,
                 date: date,
-                title: title,
-                subtitle: subtitle,
+                title: override.name,
+                subtitle: "Override • \(length)",
                 icon: "slider.horizontal.3",
                 color: .purple,
-                bgValue: 0
+                bgValue: 0,
+                overrideTreatment: override
             )
             result.entries.append(treatment)
 
