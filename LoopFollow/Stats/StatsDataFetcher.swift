@@ -154,30 +154,111 @@ class StatsDataFetcher {
             "count": "\(estimatedCount)",
         ]
 
+        // Overrides started before the range and the profile history set the plan, so fetch them alongside.
+        let group = DispatchGroup()
+        var entries: [[String: AnyObject]]?
+        var earlierOverrides: [[String: AnyObject]] = []
+        var profiles: [StatsProfile] = []
+
+        group.enter()
         NightscoutUtils.executeDynamicRequest(eventType: .treatments, parameters: parameters) { (result: Result<Any, Error>) in
             switch result {
             case let .success(data):
-                if let entries = data as? [[String: AnyObject]] {
-                    DispatchQueue.main.async {
-                        self.fetchAndMergeBolusData(entries: entries, days: days, mainVC: mainVC)
-                        self.fetchAndMergeSMBData(entries: entries, days: days, mainVC: mainVC)
-                        self.fetchAndMergeCarbData(entries: entries, days: days, mainVC: mainVC)
-                        self.fetchAndMergeBasalData(entries: entries, days: days, mainVC: mainVC)
-                        self.fetchAndMergeOverrideData(entries: entries, mainVC: mainVC)
-                        completion()
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        completion()
-                    }
-                }
+                entries = data as? [[String: AnyObject]]
             case let .failure(error):
                 LogManager.shared.log(category: .nightscout, message: "Failed to fetch stats treatments data: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    completion()
+            }
+            group.leave()
+        }
+
+        group.enter()
+        fetchOverridesBefore(startDate) { overrides in
+            earlierOverrides = overrides
+            group.leave()
+        }
+
+        group.enter()
+        fetchProfiles(from: startDate, to: endDate) { fetched in
+            profiles = fetched
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            if let entries {
+                self.fetchAndMergeBolusData(entries: entries, days: days, mainVC: mainVC)
+                self.fetchAndMergeSMBData(entries: entries, days: days, mainVC: mainVC)
+                self.fetchAndMergeCarbData(entries: entries, days: days, mainVC: mainVC)
+                self.fetchAndMergeBasalData(entries: entries, days: days, mainVC: mainVC)
+                self.fetchAndMergeOverrideData(entries: earlierOverrides + entries, mainVC: mainVC)
+                mainVC.statsProfileData = profiles
+            }
+            completion()
+        }
+    }
+
+    /// The latest Loop and Trio override that started before `date`, which may still be running inside the range.
+    private func fetchOverridesBefore(_ date: Date, completion: @escaping ([[String: AnyObject]]) -> Void) {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let group = DispatchGroup()
+        var overrides: [[String: AnyObject]] = []
+        for eventType in ["Temporary Override", "Exercise"] {
+            let parameters: [String: String] = [
+                "find[eventType]": eventType,
+                "find[created_at][$lt]": formatter.string(from: date),
+                "count": "1",
+            ]
+            group.enter()
+            NightscoutUtils.executeDynamicRequest(eventType: .treatments, parameters: parameters) { (result: Result<Any, Error>) in
+                switch result {
+                case let .success(data):
+                    overrides += data as? [[String: AnyObject]] ?? []
+                case let .failure(error):
+                    LogManager.shared.log(category: .nightscout, message: "Failed to fetch override before stats range: \(error.localizedDescription)")
                 }
+                group.leave()
             }
         }
+        group.notify(queue: .main) { completion(overrides) }
+    }
+
+    /// The profile in effect at `start` and every profile that took effect up to `end`, oldest first.
+    private func fetchProfiles(from start: Date, to end: Date, completion: @escaping ([StatsProfile]) -> Void) {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let requests: [[String: String]] = [
+            [
+                "find[startDate][$lte]": formatter.string(from: start),
+                "count": "1",
+            ],
+            [
+                "find[startDate][$gt]": formatter.string(from: start),
+                "find[startDate][$lte]": formatter.string(from: end),
+                "count": "1000",
+            ],
+        ]
+        let group = DispatchGroup()
+        var profiles: [StatsProfile] = []
+        for parameters in requests {
+            group.enter()
+            NightscoutUtils.executeDynamicRequest(eventType: .profile, parameters: parameters) { (result: Result<Any, Error>) in
+                switch result {
+                case let .success(data):
+                    // Decode one at a time so a profile from another uploader doesn't drop the rest.
+                    for entry in data as? [[String: Any]] ?? [] {
+                        guard let json = try? JSONSerialization.data(withJSONObject: entry),
+                              let decoded = try? JSONDecoder().decode(NSProfile.self, from: json),
+                              let profile = StatsProfile(decoded)
+                        else { continue }
+                        profiles.append(profile)
+                    }
+                case let .failure(error):
+                    LogManager.shared.log(category: .nightscout, message: "Failed to fetch profile history for stats: \(error.localizedDescription)")
+                }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) { completion(profiles.sorted { $0.start < $1.start }) }
     }
 
     private func fetchAndMergeBolusData(entries: [[String: AnyObject]], days: Int, mainVC: MainViewController) {
@@ -308,7 +389,6 @@ class StatsDataFetcher {
     }
 
     private func fetchAndMergeOverrideData(entries: [[String: AnyObject]], mainVC: MainViewController) {
-        let cutoffTime = dataService?.startDate.timeIntervalSince1970 ?? 0
         let now = Date().timeIntervalSince1970
 
         let starts: [(date: TimeInterval, entry: [String: AnyObject])] = entries.compactMap { entry in
@@ -339,10 +419,9 @@ class StatsDataFetcher {
             ))
         }
 
-        // Overrides are edited in place when they end early, so replace the fetched span.
-        mainVC.statsOverrideData.removeAll { $0.end < cutoffTime || $0.start >= cutoffTime }
-        mainVC.statsOverrideData.append(contentsOf: overrides)
-        mainVC.statsOverrideData.sort { $0.start < $1.start }
+        // Overrides are edited in place when they end early, and the fetch covers the
+        // whole range plus the override running at its start, so replace them all.
+        mainVC.statsOverrideData = overrides
     }
 
     private func fetchAndMergeBasalData(entries: [[String: AnyObject]], days: Int, mainVC: MainViewController) {

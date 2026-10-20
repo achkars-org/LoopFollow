@@ -69,7 +69,7 @@ final class ProfileManager {
         units = store.units.lowercased() == "mg/dl" ? .milligramsPerDeciliter : .millimolesPerLiter
         defaultProfile = profileData.defaultProfile
 
-        timezone = getTimeZone(from: store.timezone)
+        timezone = Self.getTimeZone(from: store.timezone)
 
         isfSchedule = store.sens.map { TimeValue(timeAsSeconds: Int($0.timeAsSeconds), value: HKQuantity(unit: self.units, doubleValue: $0.value)) }
         basalSchedule = store.basal.map { TimeValue(timeAsSeconds: Int($0.timeAsSeconds), value: $0.value) }
@@ -189,7 +189,7 @@ final class ProfileManager {
         return lastValue
     }
 
-    private func getTimeZone(from identifier: String) -> TimeZone {
+    static func getTimeZone(from identifier: String) -> TimeZone {
         if let timeZone = TimeZone(identifier: identifier) {
             return timeZone
         }

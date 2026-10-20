@@ -10,11 +10,13 @@ struct InsulinVariabilityGraphView: View {
     enum Component: String, CaseIterable, Plottable {
         case basal = "Basal & automatic"
         case meal = "Meal boluses"
+        case correction = "Correction boluses"
 
         var color: Color {
             switch self {
             case .basal: return .blue.opacity(0.75)
             case .meal: return .orange.opacity(0.75)
+            case .correction: return .purple.opacity(0.75)
             }
         }
     }
@@ -31,6 +33,7 @@ struct InsulinVariabilityGraphView: View {
             [
                 Slice(period: point.period, component: .basal, value: point.basalDeviation),
                 Slice(period: point.period, component: .meal, value: point.mealDeviation),
+                Slice(period: point.period, component: .correction, value: point.correctionDeviation),
             ]
         }
     }

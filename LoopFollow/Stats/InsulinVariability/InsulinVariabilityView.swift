@@ -69,6 +69,13 @@ struct InsulinVariabilityView: View {
                         delivered: average.mealBolus,
                         planned: average.plannedMealBolus
                     )
+                    InsulinVariabilityLegendItem(
+                        color: InsulinVariabilityGraphView.Component.correction.color,
+                        label: InsulinVariabilityGraphView.Component.correction.rawValue,
+                        percentage: average.correctionDeviation,
+                        delivered: average.correctionBolus,
+                        planned: nil
+                    )
                 }
                 .font(.caption2)
             } else {
@@ -82,9 +89,9 @@ struct InsulinVariabilityView: View {
 
     private var planDescription: String {
         if viewModel.overrideAdjusted {
-            return "Delivered vs planned insulin. The plan is scheduled basal and carbs ÷ carb ratio, both scaled by any override."
+            return "Delivered vs planned insulin. The plan is scheduled basal and carbs ÷ carb ratio from the profile in effect at the time, both scaled by any override. Correction boluses away from meals are all above plan."
         }
-        return "Delivered vs planned insulin. The plan is scheduled basal and carbs ÷ carb ratio, so what overrides add or remove shows as variability."
+        return "Delivered vs planned insulin. The plan is scheduled basal and carbs ÷ carb ratio from the profile in effect at the time, so what overrides add or remove shows as variability. Correction boluses away from meals are all above plan."
     }
 }
 
@@ -93,7 +100,7 @@ struct InsulinVariabilityLegendItem: View {
     let label: String
     let percentage: Double
     let delivered: Double
-    let planned: Double
+    let planned: Double? // nil when nothing is planned for this part
 
     var body: some View {
         HStack(spacing: 8) {
@@ -105,7 +112,7 @@ struct InsulinVariabilityLegendItem: View {
             Text(label)
                 .foregroundColor(.secondary)
             Spacer()
-            Text(String(format: "%.1f of %.1f U", delivered, planned))
+            Text(planned.map { String(format: "%.1f of %.1f U", delivered, $0) } ?? String(format: "%.1f U", delivered))
                 .foregroundColor(.secondary)
         }
     }
