@@ -64,6 +64,14 @@ struct InsulinVariabilityCalculatorTests {
         #expect(abs(morning.variability) < 0.001)
     }
 
+    @Test("without override adjustment, what an override adds shows as variability")
+    func unadjustedShowsOverride() {
+        // 1 U/h scheduled, Loop delivering 1.35 U/h under a 35% override.
+        let result = calculate(basalData: [basal(1, at: 0), basal(1.35, at: 6), basal(1, at: 12)])
+        #expect(abs(result[.morning]!.plannedBasal - 6) < 0.001)
+        #expect(abs(result[.morning]!.variability - 35) < 0.001)
+    }
+
     @Test("basal is measured against the override-scaled rate")
     func basalDeviationUnderOverride() {
         // (2.7 / 1.35) - 1 = +100%

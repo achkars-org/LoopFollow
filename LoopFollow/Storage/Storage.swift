@@ -260,6 +260,7 @@ class Storage {
     // Statistics display preferences
     var showGMI = StorageValue<Bool>(key: "showGMI", defaultValue: true)
     var showStdDev = StorageValue<Bool>(key: "showStdDev", defaultValue: true)
+    var insulinVariabilityOverrideAdjusted = StorageValue<Bool>(key: "insulinVariabilityOverrideAdjusted", defaultValue: false)
     var showTITR = StorageValue<Bool>(key: "showTITR", defaultValue: false)
     var timeInRangeModeRaw = StorageValue<String>(key: "timeInRangeMode", defaultValue: "TIR")
 

@@ -11,9 +11,29 @@ struct InsulinVariabilityView: View {
     }
 
     var body: some View {
+        Button(action: {
+            viewModel.toggleOverrideAdjusted()
+        }) {
+            ZStack(alignment: .topTrailing) {
+                card
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundColor(.secondary.opacity(0.5))
+                    .padding(8)
+            }
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Insulin Variability")
+                Text(viewModel.overrideAdjusted ? "Insulin Variability (override-adjusted)" : "Insulin Variability")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
@@ -31,7 +51,7 @@ struct InsulinVariabilityView: View {
                     .clipped()
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Delivered vs planned insulin. The plan is scheduled basal and carbs ÷ carb ratio, both scaled by any override.")
+                    Text(planDescription)
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -58,10 +78,13 @@ struct InsulinVariabilityView: View {
                     .frame(height: 250)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+    }
+
+    private var planDescription: String {
+        if viewModel.overrideAdjusted {
+            return "Delivered vs planned insulin. The plan is scheduled basal and carbs ÷ carb ratio, both scaled by any override."
+        }
+        return "Delivered vs planned insulin. The plan is scheduled basal and carbs ÷ carb ratio, so what overrides add or remove shows as variability."
     }
 }
 
