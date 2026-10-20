@@ -6,6 +6,8 @@ import Foundation
 
 class InsulinVariabilityViewModel: ObservableObject {
     @Published var data: [InsulinVariabilityDataPoint] = []
+    /// Scale the plan by active overrides, so insulin an override adds or removes is on plan.
+    @Published var overrideAdjusted = Storage.shared.insulinVariabilityOverrideAdjusted.value
 
     private let dataService: StatsDataService
 
@@ -21,11 +23,17 @@ class InsulinVariabilityViewModel: ObservableObject {
             automaticBoluses: dataService.getSMBData(),
             manualBoluses: dataService.getBolusData(),
             carbs: dataService.getCarbData(),
-            overrides: dataService.getOverrideData(),
+            overrides: overrideAdjusted ? dataService.getOverrideData() : [],
             carbRatio: { ProfileManager.shared.carbRatio(at: $0) },
             startTime: dataService.startDate.timeIntervalSince1970,
             endTime: dataService.endDate.timeIntervalSince1970
         )
+    }
+
+    func toggleOverrideAdjusted() {
+        overrideAdjusted.toggle()
+        Storage.shared.insulinVariabilityOverrideAdjusted.value = overrideAdjusted
+        calculate()
     }
 
     func clearStats() {

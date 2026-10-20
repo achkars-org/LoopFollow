@@ -11,7 +11,7 @@ struct StatsOverride: Equatable {
 }
 
 /// Insulin delivered against plan for one period, in units.
-/// The plan is scheduled basal plus carbs / carb ratio, both scaled by any active override.
+/// The plan is scheduled basal plus carbs / carb ratio, both scaled by any override passed to the calculator.
 struct InsulinVariabilityDataPoint {
     let period: TIRPeriod
     let plannedBasal: Double // scheduled basal
