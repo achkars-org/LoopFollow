@@ -47,10 +47,15 @@ extension MainViewController {
             // write to the same Dexcom account. Dedup before any further use.
             let dedupedData = self.deduplicateBGReadings(data)
 
-            // Supplement with NS if Dex data doesn't cover the full requested window.
+            // Supplement with NS if Dex data doesn't cover the full requested window,
+            // or when Loop already has a newer reading than Dexcom Share.
             let dexCutoff = dateTimeUtils.getNowTimeIntervalUTC() - Double(graphHours) * 3600
             let dexCoversFull = dedupedData.last.map { $0.date <= dexCutoff } ?? false
-            if !dexCoversFull, IsNightscoutEnabled() {
+            let dexBehindLoop = self.latestLoopReadingDate > latestDate + 60
+            if dexBehindLoop {
+                LogManager.shared.log(category: .dexcom, message: "Dexcom data is behind Loop's latest reading, adding newer readings from NS", isDebug: true)
+            }
+            if !dexCoversFull || dexBehindLoop, IsNightscoutEnabled() {
                 self.webLoadNSBGData(dexData: dedupedData)
             } else {
                 self.ProcessDexBGData(data: dedupedData, sourceName: "Dexcom")
@@ -90,16 +95,19 @@ extension MainViewController {
 
                     var nsData2 = self.deduplicateBGReadings(nsData)
 
-                    // merge NS and Dex data if needed; use recent Dex data and older NS data
+                    // merge NS and Dex data if needed; use recent Dex data and older NS data,
+                    // plus any NS readings newer than Dexcom Share has yet
                     var sourceName = "Nightscout"
                     if !dexData.isEmpty {
+                        let newestDexDate = dexData[0].date
+                        let newerNSData = Array(nsData2.prefix { $0.date > newestDexDate + 60 })
                         let oldestDexDate = dexData[dexData.count - 1].date
                         var itemsToRemove = 0
                         while itemsToRemove < nsData2.count, nsData2[itemsToRemove].date >= oldestDexDate {
                             itemsToRemove += 1
                         }
                         nsData2.removeFirst(itemsToRemove)
-                        nsData2 = dexData + nsData2
+                        nsData2 = newerNSData + dexData + nsData2
                         sourceName = "Dexcom"
                     }
                     // trigger the processor for the data after downloading.

@@ -143,6 +143,15 @@ extension MainViewController {
                let prediction = predictdata["values"] as? [Double],
                let lastPrediction = prediction.last
             {
+                // The prediction starts at Loop's latest reading. Dexcom Share can lag behind
+                // Loop's upload, so fetch BG now when Loop has a newer reading than the chart.
+                if let startDate = (predictdata["startDate"] as? String).flatMap(DeviceStatusHistoryParser.parseDate) {
+                    latestLoopReadingDate = startDate.timeIntervalSince1970
+                    if latestLoopReadingDate > (bgData.last?.date ?? 0) + 60 {
+                        TaskScheduler.shared.rescheduleTask(id: .fetchBG, to: Date())
+                    }
+                }
+
                 Observable.shared.predictionText.value = Localizer.toDisplayUnits(String(Int(round(lastPrediction))))
                 Observable.shared.predictionColor.value = .purple
                 if Storage.shared.downloadPrediction.value, previousLastLoopTime < lastLoopTime || predictionData.isEmpty {

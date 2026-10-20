@@ -107,6 +107,8 @@ class MainViewController: UIViewController, UNUserNotificationCenterDelegate {
     var latestPumpVolume: Double?
     var latestPumpBatteryDate: Date?
     var latestIOB: InsulinMetric?
+    /// Time of the reading Loop's latest prediction starts from, 0 when unknown.
+    var latestLoopReadingDate: TimeInterval = 0
     var lastOverrideStartTime: TimeInterval = 0
     var lastOverrideEndTime: TimeInterval = 0
 
