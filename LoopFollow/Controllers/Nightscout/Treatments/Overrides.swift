@@ -66,8 +66,8 @@ extension MainViewController {
 
             var detail = Treatment.historyEntries(from: e, date: startDate.timeIntervalSince1970) { 0 }.entries.first
             // A later override replaces this one, so it ended when that one started.
-            if let nextStart {
-                detail?.overrideTreatment = detail?.overrideTreatment?.ending(at: nextStart)
+            if let nextStart, let override = detail?.overrideTreatment {
+                detail?.overrideTreatment = override.ending(at: nextStart)
             }
 
             let dot = DataStructs.overrideStruct(
