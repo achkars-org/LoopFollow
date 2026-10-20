@@ -84,6 +84,7 @@ class MainViewController: UIViewController, UNUserNotificationCenterDelegate {
     var statsSMBData: [bolusGraphStruct] = []
     var statsCarbData: [carbGraphStruct] = []
     var statsBasalData: [basalGraphStruct] = []
+    var statsOverrideData: [StatsOverride] = []
     var overrideGraphData: [DataStructs.overrideStruct] = []
     var tempTargetGraphData: [DataStructs.tempTargetStruct] = []
     var predictionData: [ShareGlucoseData] = []

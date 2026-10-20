@@ -163,6 +163,7 @@ class StatsDataFetcher {
                         self.fetchAndMergeSMBData(entries: entries, days: days, mainVC: mainVC)
                         self.fetchAndMergeCarbData(entries: entries, days: days, mainVC: mainVC)
                         self.fetchAndMergeBasalData(entries: entries, days: days, mainVC: mainVC)
+                        self.fetchAndMergeOverrideData(entries: entries, mainVC: mainVC)
                         completion()
                     }
                 } else {
@@ -304,6 +305,44 @@ class StatsDataFetcher {
         }
 
         mainVC.statsCarbData.sort { $0.date < $1.date }
+    }
+
+    private func fetchAndMergeOverrideData(entries: [[String: AnyObject]], mainVC: MainViewController) {
+        let cutoffTime = dataService?.startDate.timeIntervalSince1970 ?? 0
+        let now = Date().timeIntervalSince1970
+
+        let starts: [(date: TimeInterval, entry: [String: AnyObject])] = entries.compactMap { entry in
+            guard let eventType = entry["eventType"] as? String,
+                  eventType == "Temporary Override" || eventType == "Exercise",
+                  let date = NightscoutUtils.treatmentDate(from: entry)
+            else { return nil }
+            return (date.timeIntervalSince1970, entry)
+        }.sorted { $0.date < $1.date }
+
+        var overrides: [StatsOverride] = []
+        for (i, start) in starts.enumerated() {
+            let durationSeconds = (start.entry["duration"] as? Double ?? 0) * 60
+            // Loop marks indefinite overrides explicitly; Trio represents them
+            // as a ~30-day duration. Treat a week or longer as indefinite.
+            let isIndefinite = (start.entry["durationType"] as? String) == "indefinite"
+                || durationSeconds >= 7 * 24 * 3600
+            var end = isIndefinite ? now : start.date + durationSeconds
+            // A later override replaces this one.
+            if i + 1 < starts.count {
+                end = min(end, starts[i + 1].date)
+            }
+            guard end > start.date else { continue }
+            overrides.append(StatsOverride(
+                start: start.date,
+                end: end,
+                insulinNeedsScaleFactor: start.entry["insulinNeedsScaleFactor"] as? Double ?? 1
+            ))
+        }
+
+        // Overrides are edited in place when they end early, so replace the fetched span.
+        mainVC.statsOverrideData.removeAll { $0.end < cutoffTime || $0.start >= cutoffTime }
+        mainVC.statsOverrideData.append(contentsOf: overrides)
+        mainVC.statsOverrideData.sort { $0.start < $1.start }
     }
 
     private func fetchAndMergeBasalData(entries: [[String: AnyObject]], days: Int, mainVC: MainViewController) {

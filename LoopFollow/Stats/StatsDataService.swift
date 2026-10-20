@@ -136,6 +136,14 @@ class StatsDataService {
         return mainVC.statsBasalData.filter { $0.date >= startTime && $0.date <= endTime }
     }
 
+    /// Overrides that overlap the date range.
+    func getOverrideData() -> [StatsOverride] {
+        guard let mainVC = mainViewController else { return [] }
+        let startTime = startDate.timeIntervalSince1970
+        let endTime = endDate.timeIntervalSince1970
+        return mainVC.statsOverrideData.filter { $0.end > startTime && $0.start < endTime }
+    }
+
     func getBasalProfile() -> [MainViewController.basalProfileStruct] {
         guard let mainVC = mainViewController else { return [] }
         return mainVC.basalProfile
