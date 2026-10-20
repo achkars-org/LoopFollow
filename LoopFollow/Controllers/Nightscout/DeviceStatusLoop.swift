@@ -147,11 +147,7 @@ extension MainViewController {
                 Observable.shared.predictionColor.value = .purple
                 if Storage.shared.downloadPrediction.value, previousLastLoopTime < lastLoopTime || predictionData.isEmpty {
                     predictionData.removeAll()
-                    // The first value is the glucose the prediction starts from, so it is drawn at
-                    // that reading's time; the loop can run minutes after the last reading.
-                    var predictionTime = (predictdata["startDate"] as? String)
-                        .flatMap(DeviceStatusHistoryParser.parseDate)?
-                        .timeIntervalSince1970 ?? lastLoopTime
+                    var predictionTime = lastLoopTime
                     let toLoad = Int(Storage.shared.predictionToLoad.value * 12)
                     var i = 0
                     while i <= toLoad {
