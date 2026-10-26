@@ -71,6 +71,7 @@ struct MealEntryView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
                 .disabled(carbs <= 0 && fat <= 0 && protein <= 0)
+                .frame(maxWidth: .infinity)
             }
         }
         .navigationTitle("Meal")
