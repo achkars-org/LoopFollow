@@ -4,37 +4,47 @@
 import SwiftUI
 import WatchKit
 
-/// Pick an amount: the AID's recommendation, the phone's Quick-Pick boluses, or
-/// any amount with the Digital Crown. Every choice still needs the crown confirmation.
-struct BolusPickerView: View {
+/// The AID's recommendation and the phone's Quick-Pick boluses, opened from the
+/// amount screen. Every choice still needs the crown confirmation.
+struct BolusPresetsView: View {
     let remote: WatchRemoteConfig
 
     @EnvironmentObject private var navigator: WatchNavigator
     @State private var staleRecommendation: Double?
 
     /// Same cut-offs as the phone's bolus screens.
-    private let recommendationMaxAge: TimeInterval = 12 * 60
+    private static let recommendationMaxAge: TimeInterval = 12 * 60
     private let recommendationWarnAge: TimeInterval = 5 * 60
 
-    private var step: Double { BolusAmountView.step(remote) }
+    static func quickPicks(_ remote: WatchRemoteConfig) -> [Double] {
+        remote.quickPickBoluses.filter { $0 > 0 && $0 <= remote.maxBolus }
+    }
+
+    /// A recommendation recent enough to offer, rounded down to the watch's step.
+    static func freshRecommendation(_ remote: WatchRemoteConfig) -> (units: Double, age: TimeInterval)? {
+        guard let rec = remote.recommendedBolus, rec > 0, let at = remote.recommendedBolusAt else { return nil }
+        let age = Date().timeIntervalSince(at)
+        let stepped = BolusAmountView.roundedDown(min(rec, remote.maxBolus), step: BolusAmountView.step(remote))
+        guard age < recommendationMaxAge, stepped > 0 else { return nil }
+        return (stepped, age)
+    }
+
+    static func hasPresets(_ remote: WatchRemoteConfig) -> Bool {
+        freshRecommendation(remote) != nil || !quickPicks(remote).isEmpty
+    }
 
     var body: some View {
         List {
             recommendation
-            ForEach(remote.quickPickBoluses.filter { $0 > 0 && $0 <= remote.maxBolus }, id: \.self) { units in
+            ForEach(Self.quickPicks(remote), id: \.self) { units in
                 Button {
                     confirm(units)
                 } label: {
                     Text("\(WatchFormat.insulin(units)) U")
                 }
             }
-            Button {
-                navigator.push(.bolusAmount)
-            } label: {
-                Text("Other Amount")
-            }
         }
-        .navigationTitle("Bolus")
+        .navigationTitle("Presets")
         .alert(
             "Old Calculation Warning",
             isPresented: Binding(get: { staleRecommendation != nil }, set: { if !$0 { staleRecommendation = nil } })
@@ -50,26 +60,21 @@ struct BolusPickerView: View {
 
     @ViewBuilder
     private var recommendation: some View {
-        if let rec = remote.recommendedBolus, rec > 0, let at = remote.recommendedBolusAt {
-            let age = Date().timeIntervalSince(at)
-            if age < recommendationMaxAge {
-                let stepped = BolusAmountView.roundedDown(min(rec, remote.maxBolus), step: step)
-                Section {
-                    Button {
-                        if age >= recommendationWarnAge {
-                            staleRecommendation = stepped
-                        } else {
-                            confirm(stepped)
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Recommended \(WatchFormat.insulin(stepped)) U")
-                            Text("Calculated \(Int(age / 60)) min ago")
-                                .font(.caption2)
-                                .foregroundStyle(age >= recommendationWarnAge ? .red : .secondary)
-                        }
+        if let rec = Self.freshRecommendation(remote) {
+            Section {
+                Button {
+                    if rec.age >= recommendationWarnAge {
+                        staleRecommendation = rec.units
+                    } else {
+                        confirm(rec.units)
                     }
-                    .disabled(stepped <= 0)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Recommended \(WatchFormat.insulin(rec.units)) U")
+                        Text("Calculated \(Int(rec.age / 60)) min ago")
+                            .font(.caption2)
+                            .foregroundStyle(rec.age >= recommendationWarnAge ? .red : .secondary)
+                    }
                 }
             }
         }
@@ -80,7 +85,8 @@ struct BolusPickerView: View {
     }
 }
 
-/// Any amount, set with the Digital Crown.
+/// Any amount, set with the Digital Crown or − and +; presets one tap away when
+/// the phone has any.
 struct BolusAmountView: View {
     let remote: WatchRemoteConfig
 
@@ -102,6 +108,11 @@ struct BolusAmountView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
                 .disabled(units <= 0)
+                if BolusPresetsView.hasPresets(remote) {
+                    Button("Presets") {
+                        navigator.push(.bolusPresets)
+                    }
+                }
             }
         }
         .navigationTitle("Bolus")
