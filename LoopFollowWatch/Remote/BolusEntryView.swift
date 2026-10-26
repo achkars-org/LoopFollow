@@ -91,7 +91,7 @@ struct BolusAmountView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
-                AmountField(value: $units, unit: "U", step: Self.step(remote), buttonStep: Self.buttonStep(remote), maximum: remote.maxBolus, isHighlighted: amountFocused, format: WatchFormat.insulin)
+                AmountField(value: $units, unit: "U", step: Self.step(remote), crownSensitivity: .low, maximum: remote.maxBolus, isHighlighted: amountFocused, format: WatchFormat.insulin)
                     .focused($amountFocused)
                 Text("Max \(WatchFormat.insulin(remote.maxBolus)) U")
                     .font(.footnote)
@@ -108,13 +108,10 @@ struct BolusAmountView: View {
         .onAppear { amountFocused = true }
     }
 
+    /// 0.05 U, or the pump's increment when it is coarser: finer steps are too
+    /// hard to land on with the crown.
     static func step(_ remote: WatchRemoteConfig) -> Double {
-        max(remote.bolusIncrement, 0.025)
-    }
-
-    /// 0.05 U per press, or the pump's increment when it is coarser.
-    static func buttonStep(_ remote: WatchRemoteConfig) -> Double {
-        max(step(remote), 0.05)
+        max(remote.bolusIncrement, 0.05)
     }
 
     static func request(_ units: Double) -> CommandRequest {
@@ -133,8 +130,7 @@ struct AmountField: View {
     @Binding var value: Double
     let unit: String
     let step: Double
-    /// What one press of − or + changes; the crown's step when not set.
-    var buttonStep: Double?
+    var crownSensitivity: DigitalCrownRotationalSensitivity = .medium
     var minimum: Double = 0
     let maximum: Double
     /// The caller owns focus; this only draws the highlight.
@@ -143,7 +139,7 @@ struct AmountField: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            stepButton("minus", by: -(buttonStep ?? step))
+            stepButton("minus", by: -step)
                 .disabled(value <= minimum)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(format(value))
@@ -156,13 +152,13 @@ struct AmountField: View {
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
-            stepButton("plus", by: buttonStep ?? step)
+            stepButton("plus", by: step)
                 .disabled(value >= maximum)
         }
         .padding(4)
         .background(RoundedRectangle(cornerRadius: 8).stroke(isHighlighted ? Color.green : Color.gray.opacity(0.4), lineWidth: 1.5))
         .focusable()
-        .digitalCrownRotation($value, from: minimum, through: max(maximum, minimum + step), by: step, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+        .digitalCrownRotation($value, from: minimum, through: max(maximum, minimum + step), by: step, sensitivity: crownSensitivity, isContinuous: false, isHapticFeedbackEnabled: true)
         .onChange(of: value) { _, newValue in
             let clamped = stepped(newValue)
             if clamped != newValue { value = clamped }

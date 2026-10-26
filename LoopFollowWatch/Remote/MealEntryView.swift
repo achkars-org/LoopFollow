@@ -43,7 +43,7 @@ struct MealEntryView: View {
                 }
                 if remote.mealWithBolus {
                     field("Bolus", .bolus) {
-                        AmountField(value: $bolus, unit: "U", step: bolusStep, buttonStep: BolusAmountView.buttonStep(remote), maximum: remote.maxBolus, isHighlighted: focus == .bolus, format: WatchFormat.insulin)
+                        AmountField(value: $bolus, unit: "U", step: bolusStep, crownSensitivity: .low, maximum: remote.maxBolus, isHighlighted: focus == .bolus, format: WatchFormat.insulin)
                     }
                 }
                 if showTime {
