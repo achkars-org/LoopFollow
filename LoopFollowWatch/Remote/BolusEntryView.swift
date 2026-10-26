@@ -14,7 +14,7 @@ struct BolusPresetsView: View {
 
     /// Same cut-offs as the phone's bolus screens.
     private static let recommendationMaxAge: TimeInterval = 12 * 60
-    private let recommendationWarnAge: TimeInterval = 5 * 60
+    static let recommendationWarnAge: TimeInterval = 5 * 60
 
     static func quickPicks(_ remote: WatchRemoteConfig) -> [Double] {
         remote.quickPickBoluses.filter { $0 > 0 && $0 <= remote.maxBolus }
@@ -63,7 +63,7 @@ struct BolusPresetsView: View {
         if let rec = Self.freshRecommendation(remote) {
             Section {
                 Button {
-                    if rec.age >= recommendationWarnAge {
+                    if rec.age >= Self.recommendationWarnAge {
                         staleRecommendation = rec.units
                     } else {
                         confirm(rec.units)
@@ -73,7 +73,7 @@ struct BolusPresetsView: View {
                         Text("Recommended \(WatchFormat.insulin(rec.units)) U")
                         Text("Calculated \(Int(rec.age / 60)) min ago")
                             .font(.caption2)
-                            .foregroundStyle(rec.age >= recommendationWarnAge ? .red : .secondary)
+                            .foregroundStyle(rec.age >= Self.recommendationWarnAge ? .red : .secondary)
                     }
                 }
             }
@@ -85,13 +85,17 @@ struct BolusPresetsView: View {
     }
 }
 
-/// Any amount, set with the Digital Crown or − and +; presets one tap away when
+/// Any amount, set with the Digital Crown or − and +, starting at the AID's
+/// recommendation while it is under 5 minutes old; presets one tap away when
 /// the phone has any.
 struct BolusAmountView: View {
     let remote: WatchRemoteConfig
 
     @EnvironmentObject private var navigator: WatchNavigator
     @State private var units = 0.0
+    /// Seeded once, so coming back from the confirmation keeps the user's amount.
+    @State private var seeded = false
+    @State private var seededRecommendation: (units: Double, age: TimeInterval)?
     @FocusState private var amountFocused: Bool
 
     var body: some View {
@@ -99,6 +103,12 @@ struct BolusAmountView: View {
             VStack(spacing: 8) {
                 AmountField(value: $units, unit: "U", step: Self.step(remote), maximum: remote.maxBolus, isHighlighted: amountFocused, sensitivity: .low, format: WatchFormat.insulin)
                     .focused($amountFocused)
+                if let rec = seededRecommendation {
+                    Text("Recommended \(WatchFormat.insulin(rec.units)) U, \(Int(rec.age / 60)) min ago")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
                 Text("Max \(WatchFormat.insulin(remote.maxBolus)) U")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -116,7 +126,15 @@ struct BolusAmountView: View {
             }
         }
         .navigationTitle("Bolus")
-        .onAppear { amountFocused = true }
+        .onAppear {
+            amountFocused = true
+            guard !seeded else { return }
+            seeded = true
+            if let rec = BolusPresetsView.freshRecommendation(remote), rec.age < BolusPresetsView.recommendationWarnAge {
+                units = rec.units
+                seededRecommendation = rec
+            }
+        }
     }
 
     /// 0.05 U, or the pump's increment when it is coarser: finer steps are too
