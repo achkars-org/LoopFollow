@@ -2,6 +2,7 @@
 // BolusEntryView.swift
 
 import SwiftUI
+import WatchKit
 
 /// Pick an amount: the AID's recommendation, the phone's Quick-Pick boluses, or
 /// any amount with the Digital Crown. Every choice still needs the crown confirmation.
@@ -107,8 +108,10 @@ struct BolusAmountView: View {
         .onAppear { amountFocused = true }
     }
 
+    /// 0.05 U, or the pump's increment when it is coarser: finer steps are too
+    /// hard to land on from the watch.
     static func step(_ remote: WatchRemoteConfig) -> Double {
-        max(remote.bolusIncrement, 0.025)
+        max(remote.bolusIncrement, 0.05)
     }
 
     static func request(_ units: Double) -> CommandRequest {
@@ -174,6 +177,7 @@ struct AmountField: View {
     private func nudge(_ symbol: String, by delta: Double) -> some View {
         Button {
             steps.wrappedValue += delta
+            WKInterfaceDevice.current().play(.click)
         } label: {
             Image(systemName: symbol)
                 .font(.footnote.weight(.semibold))
