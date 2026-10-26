@@ -104,14 +104,11 @@ struct BolusAmountView: View {
                 AmountField(value: $units, unit: "U", step: Self.step(remote), maximum: remote.maxBolus, isHighlighted: amountFocused, sensitivity: .low, format: WatchFormat.insulin)
                     .focused($amountFocused)
                 if let rec = seededRecommendation {
-                    Text("Recommended \(WatchFormat.insulin(rec.units)) U, \(Int(rec.age / 60)) min ago")
+                    Label("\(WatchFormat.insulin(rec.units)) U, \(Int(rec.age / 60)) min ago", systemImage: "wand.and.stars")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                        .accessibilityLabel("Recommended \(WatchFormat.insulin(rec.units)) U, \(Int(rec.age / 60)) min ago")
                 }
-                Text("Max \(WatchFormat.insulin(remote.maxBolus)) U")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
                 Button("Continue") {
                     navigator.push(.confirm(Self.request(units)))
                 }
@@ -137,10 +134,8 @@ struct BolusAmountView: View {
         }
     }
 
-    /// 0.05 U, or the pump's increment when it is coarser: finer steps are too
-    /// hard to land on from the watch.
     static func step(_ remote: WatchRemoteConfig) -> Double {
-        max(remote.bolusIncrement, 0.05)
+        max(remote.bolusIncrement, 0.025)
     }
 
     static func request(_ units: Double) -> CommandRequest {
