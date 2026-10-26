@@ -2,6 +2,7 @@
 // BolusEntryView.swift
 
 import SwiftUI
+import WatchKit
 
 /// Pick an amount: the AID's recommendation, the phone's Quick-Pick boluses, or
 /// any amount with the Digital Crown. Every choice still needs the crown confirmation.
@@ -90,7 +91,7 @@ struct BolusAmountView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
-                AmountField(value: $units, unit: "U", step: Self.step(remote), maximum: remote.maxBolus, isHighlighted: amountFocused, format: WatchFormat.insulin)
+                AmountField(value: $units, unit: "U", step: Self.step(remote), buttonStep: Self.buttonStep(remote), maximum: remote.maxBolus, isHighlighted: amountFocused, format: WatchFormat.insulin)
                     .focused($amountFocused)
                 Text("Max \(WatchFormat.insulin(remote.maxBolus)) U")
                     .font(.footnote)
@@ -111,6 +112,11 @@ struct BolusAmountView: View {
         max(remote.bolusIncrement, 0.025)
     }
 
+    /// 0.05 U per press, or the pump's increment when it is coarser.
+    static func buttonStep(_ remote: WatchRemoteConfig) -> Double {
+        max(step(remote), 0.05)
+    }
+
     static func request(_ units: Double) -> CommandRequest {
         CommandRequest(title: "Bolus", lines: ["\(WatchFormat.insulin(units)) U"], action: .bolus(units: units), deliversInsulin: true)
     }
@@ -121,11 +127,14 @@ struct BolusAmountView: View {
     }
 }
 
-/// A value edited with the Digital Crown, in fixed steps between a minimum and a maximum.
+/// A value edited with the Digital Crown or the − and + buttons, in fixed steps
+/// between a minimum and a maximum.
 struct AmountField: View {
     @Binding var value: Double
     let unit: String
     let step: Double
+    /// What one press of − or + changes; the crown's step when not set.
+    var buttonStep: Double?
     var minimum: Double = 0
     let maximum: Double
     /// The caller owns focus; this only draws the highlight.
@@ -133,22 +142,49 @@ struct AmountField: View {
     let format: (Double) -> String
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(format(value))
-                .font(.system(size: 34, weight: .bold))
-                .monospacedDigit()
-            Text(unit)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 2) {
+            stepButton("minus", by: -(buttonStep ?? step))
+                .disabled(value <= minimum)
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(format(value))
+                    .font(.system(size: 30, weight: .bold))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(unit)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            stepButton("plus", by: buttonStep ?? step)
+                .disabled(value >= maximum)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
+        .padding(4)
         .background(RoundedRectangle(cornerRadius: 8).stroke(isHighlighted ? Color.green : Color.gray.opacity(0.4), lineWidth: 1.5))
         .focusable()
         .digitalCrownRotation($value, from: minimum, through: max(maximum, minimum + step), by: step, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
         .onChange(of: value) { _, newValue in
-            let nearest = ((newValue / step).rounded() * step * 1000).rounded() / 1000
-            let clamped = min(max(minimum, nearest), maximum)
+            let clamped = stepped(newValue)
             if clamped != newValue { value = clamped }
         }
+    }
+
+    private func stepButton(_ symbol: String, by delta: Double) -> some View {
+        Button {
+            value = stepped(value + delta)
+            WKInterfaceDevice.current().play(.click)
+        } label: {
+            Image(systemName: "\(symbol).circle.fill")
+                .font(.title2)
+                .symbolRenderingMode(.hierarchical)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.green)
+    }
+
+    /// Nearest step, kept between the minimum and the maximum.
+    private func stepped(_ newValue: Double) -> Double {
+        let nearest = ((newValue / step).rounded() * step * 1000).rounded() / 1000
+        return min(max(minimum, nearest), maximum)
     }
 }

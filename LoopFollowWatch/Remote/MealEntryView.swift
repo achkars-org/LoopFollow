@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Carbs, and for Trio fat, protein and a bolus per the phone's Meal settings,
 /// as on the phone; the time behind a button. Everything goes as one command.
-/// The crown scrolls the page until a field is tapped.
+/// The crown scrolls the page until a field is tapped; − and + work either way.
 struct MealEntryView: View {
     let remote: WatchRemoteConfig
 
@@ -43,7 +43,7 @@ struct MealEntryView: View {
                 }
                 if remote.mealWithBolus {
                     field("Bolus", .bolus) {
-                        AmountField(value: $bolus, unit: "U", step: bolusStep, maximum: remote.maxBolus, isHighlighted: focus == .bolus, format: WatchFormat.insulin)
+                        AmountField(value: $bolus, unit: "U", step: bolusStep, buttonStep: BolusAmountView.buttonStep(remote), maximum: remote.maxBolus, isHighlighted: focus == .bolus, format: WatchFormat.insulin)
                     }
                 }
                 if showTime {
@@ -103,7 +103,8 @@ struct MealEntryView: View {
                 .foregroundStyle(.secondary)
             content()
                 .focused($focus, equals: id)
-                .onTapGesture { focus = id }
+                // Simultaneous, so − and + also give the field the crown.
+                .simultaneousGesture(TapGesture().onEnded { focus = id })
         }
     }
 
