@@ -112,13 +112,14 @@ struct BolusAmountView: View {
                 Button("Continue") {
                     navigator.push(.confirm(Self.request(units)))
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(CompactButtonStyle(prominent: true))
                 .tint(.blue)
                 .disabled(units <= 0)
                 if BolusPresetsView.hasPresets(remote) {
                     Button("Presets") {
                         navigator.push(.bolusPresets)
                     }
+                    .buttonStyle(CompactButtonStyle())
                 }
             }
         }
@@ -210,5 +211,27 @@ struct AmountField: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.tint)
+    }
+}
+
+/// A full-width capsule button shorter than the system's, scaled to the screen,
+/// so an amount and two buttons fit without scrolling on every watch size.
+struct CompactButtonStyle: ButtonStyle {
+    var prominent = false
+
+    @Environment(\.isEnabled) private var isEnabled
+
+    /// About 34 pt on a 40 mm watch up to about 43 pt on the largest.
+    private static let height = min(max(WKInterfaceDevice.current().screenBounds.height * 0.17, 32), 44)
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .foregroundStyle(prominent ? AnyShapeStyle(Color.white) : AnyShapeStyle(.primary))
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: Self.height)
+            .background(Capsule().fill(prominent ? AnyShapeStyle(.tint) : AnyShapeStyle(Color.gray.opacity(0.3))))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1) : 0.4)
     }
 }
