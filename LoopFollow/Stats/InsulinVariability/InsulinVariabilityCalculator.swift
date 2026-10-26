@@ -22,12 +22,92 @@ class InsulinVariabilityCalculator {
         calendar: Calendar = dateTimeUtils.displayCalendar()
     ) -> [InsulinVariabilityDataPoint] {
         guard !basalData.isEmpty, !profiles.isEmpty else { return [] }
+        let totals = accumulate(
+            basalData: basalData,
+            profiles: profiles,
+            automaticBoluses: automaticBoluses,
+            manualBoluses: manualBoluses,
+            carbs: carbs,
+            overrides: overrides,
+            startTime: startTime,
+            endTime: endTime
+        ) { period(at: $0, calendar: calendar) }
+
+        var result = periods.map { totals[$0, default: Totals()].dataPoint(period: $0) }
+        let all = periods.reduce(into: Totals()) { $0.add(totals[$1, default: Totals()]) }
+        result.append(all.dataPoint(period: .average))
+        return result
+    }
+
+    /// Delivered vs plan for each hour of each day, as percentiles across the days for each hour of the day.
+    static func calculateHourly(
+        basalData: [MainViewController.basalGraphStruct],
+        profiles: [StatsProfile],
+        automaticBoluses: [MainViewController.bolusGraphStruct],
+        manualBoluses: [MainViewController.bolusGraphStruct],
+        carbs: [MainViewController.carbGraphStruct],
+        overrides: [StatsOverride],
+        startTime: TimeInterval,
+        endTime: TimeInterval,
+        calendar: Calendar = dateTimeUtils.displayCalendar()
+    ) -> [AGPDataPoint] {
+        guard !basalData.isEmpty, !profiles.isEmpty else { return [] }
+        let totals = accumulate(
+            basalData: basalData,
+            profiles: profiles,
+            automaticBoluses: automaticBoluses,
+            manualBoluses: manualBoluses,
+            carbs: carbs,
+            overrides: overrides,
+            startTime: startTime,
+            endTime: endTime
+        ) { time -> HourOfDay? in
+            let date = Date(timeIntervalSince1970: time)
+            return HourOfDay(day: calendar.startOfDay(for: date), hour: calendar.component(.hour, from: date))
+        }
+
+        var variabilityByHour: [Int: [Double]] = [:]
+        for (key, hourTotals) in totals {
+            guard let variability = hourTotals.variability else { continue }
+            variabilityByHour[key.hour, default: []].append(variability)
+        }
+
+        return (0 ..< 24).compactMap { hour in
+            guard let values = variabilityByHour[hour]?.sorted(), !values.isEmpty else { return nil }
+            return AGPDataPoint(
+                timeOfDay: hour * 60,
+                p5: PercentileCalculator.percentile(values, p: 0.05),
+                p25: PercentileCalculator.percentile(values, p: 0.25),
+                p50: PercentileCalculator.percentile(values, p: 0.50),
+                p75: PercentileCalculator.percentile(values, p: 0.75),
+                p95: PercentileCalculator.percentile(values, p: 0.95)
+            )
+        }
+    }
+
+    private struct HourOfDay: Hashable {
+        let day: Date
+        let hour: Int
+    }
+
+    /// Planned and delivered insulin over the range, summed into the bucket `key` gives each time.
+    private static func accumulate<Key: Hashable>(
+        basalData: [MainViewController.basalGraphStruct],
+        profiles: [StatsProfile],
+        automaticBoluses: [MainViewController.bolusGraphStruct],
+        manualBoluses: [MainViewController.bolusGraphStruct],
+        carbs: [MainViewController.carbGraphStruct],
+        overrides: [StatsOverride],
+        startTime: TimeInterval,
+        endTime: TimeInterval,
+        key: (TimeInterval) -> Key?
+    ) -> [Key: Totals] {
         let profiles = profiles.sorted { $0.start < $1.start }
 
-        var totals: [TIRPeriod: Totals] = [:]
+        var totals: [Key: Totals] = [:]
         func add(at time: TimeInterval, _ update: (inout Totals) -> Void) {
-            guard let period = period(at: time, calendar: calendar) else { return }
-            update(&totals[period, default: Totals()])
+            guard let key = key(time) else { return }
+            update(&totals[key, default: Totals()])
         }
 
         func scaleFactor(at time: TimeInterval) -> Double {
@@ -92,11 +172,7 @@ class InsulinVariabilityCalculator {
                 $0.mealBolus += bolus
             }
         }
-
-        var result = periods.map { totals[$0, default: Totals()].dataPoint(period: $0) }
-        let all = periods.reduce(into: Totals()) { $0.add(totals[$1, default: Totals()]) }
-        result.append(all.dataPoint(period: .average))
-        return result
+        return totals
     }
 
     private struct Totals {
@@ -105,6 +181,13 @@ class InsulinVariabilityCalculator {
         var plannedMealBolus = 0.0
         var mealBolus = 0.0
         var correctionBolus = 0.0
+
+        /// Delivered / planned - 1, as a %, or nil when nothing is planned.
+        var variability: Double? {
+            let planned = plannedBasal + plannedMealBolus
+            guard planned > 0 else { return nil }
+            return (deliveredBasal + mealBolus + correctionBolus - planned) / planned * 100
+        }
 
         mutating func add(_ other: Totals) {
             plannedBasal += other.plannedBasal

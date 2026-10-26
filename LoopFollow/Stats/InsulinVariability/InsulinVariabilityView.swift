@@ -78,6 +78,33 @@ struct InsulinVariabilityView: View {
                     )
                 }
                 .font(.caption2)
+
+                if !viewModel.hourlyData.isEmpty {
+                    Divider()
+
+                    Text("By hour of day")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    InsulinVariabilityHourlyGraphView(data: viewModel.hourlyData)
+                        .frame(height: 200)
+                        .padding(.top, 10)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 4)
+                        .allowsHitTesting(false)
+
+                    HStack(spacing: 16) {
+                        LegendItem(color: .gray.opacity(0.6), label: "5th-95th")
+                        LegendItem(color: .blue.opacity(0.7), label: "25th-75th")
+                        LegendItem(color: .blue, label: "Median")
+                    }
+                    .font(.caption2)
+
+                    Text("Each hour's delivered vs planned insulin, spread across the days in the range.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 Text("No insulin data available")
                     .font(.caption)

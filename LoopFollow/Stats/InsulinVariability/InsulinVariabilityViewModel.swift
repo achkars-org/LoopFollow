@@ -6,6 +6,7 @@ import Foundation
 
 class InsulinVariabilityViewModel: ObservableObject {
     @Published var data: [InsulinVariabilityDataPoint] = []
+    @Published var hourlyData: [AGPDataPoint] = []
     /// Scale the plan by active overrides, so insulin an override adds or removes is on plan.
     @Published var overrideAdjusted = Storage.shared.insulinVariabilityOverrideAdjusted.value
 
@@ -17,15 +18,34 @@ class InsulinVariabilityViewModel: ObservableObject {
     }
 
     func calculate() {
+        let basalData = dataService.getBasalData()
+        let profiles = profiles()
+        let automaticBoluses = dataService.getSMBData()
+        let manualBoluses = dataService.getBolusData()
+        let carbs = dataService.getCarbData()
+        let overrides = overrideAdjusted ? dataService.getOverrideData() : []
+        let startTime = dataService.startDate.timeIntervalSince1970
+        let endTime = dataService.endDate.timeIntervalSince1970
+
         data = InsulinVariabilityCalculator.calculate(
-            basalData: dataService.getBasalData(),
-            profiles: profiles(),
-            automaticBoluses: dataService.getSMBData(),
-            manualBoluses: dataService.getBolusData(),
-            carbs: dataService.getCarbData(),
-            overrides: overrideAdjusted ? dataService.getOverrideData() : [],
-            startTime: dataService.startDate.timeIntervalSince1970,
-            endTime: dataService.endDate.timeIntervalSince1970
+            basalData: basalData,
+            profiles: profiles,
+            automaticBoluses: automaticBoluses,
+            manualBoluses: manualBoluses,
+            carbs: carbs,
+            overrides: overrides,
+            startTime: startTime,
+            endTime: endTime
+        )
+        hourlyData = InsulinVariabilityCalculator.calculateHourly(
+            basalData: basalData,
+            profiles: profiles,
+            automaticBoluses: automaticBoluses,
+            manualBoluses: manualBoluses,
+            carbs: carbs,
+            overrides: overrides,
+            startTime: startTime,
+            endTime: endTime
         )
     }
 
@@ -52,5 +72,6 @@ class InsulinVariabilityViewModel: ObservableObject {
 
     func clearStats() {
         data = []
+        hourlyData = []
     }
 }

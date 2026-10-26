@@ -188,4 +188,29 @@ struct InsulinVariabilityCalculatorTests {
         #expect(result[.day]!.plannedMealBolus == 0)
         #expect(result[.day]!.mealBolus == 0)
     }
+
+    @Test("the hourly chart spreads each hour's variability across the days")
+    func hourlyPercentilesAcrossDays() throws {
+        // Two days at 1 U/h with a 40 g meal at 13:00: on plan on day one, 2 U over on day two.
+        let points = InsulinVariabilityCalculator.calculateHourly(
+            basalData: [basal(1, at: 0)],
+            profiles: [profile(basal: 1, carbRatio: 10)],
+            automaticBoluses: [],
+            manualBoluses: [bolus(4, at: 13), bolus(6, at: 37)],
+            carbs: [carbs(40, at: 13), carbs(40, at: 37)],
+            overrides: [],
+            startTime: day,
+            endTime: day + 48 * 3600,
+            calendar: calendar
+        )
+        #expect(points.count == 24)
+        let lunch = try #require(points.first { $0.timeOfDay == 13 * 60 })
+        // 1 U basal + 4 U meal planned: 0% and +40%.
+        #expect(abs(lunch.p5 - 2) < 0.001)
+        #expect(abs(lunch.p50 - 20) < 0.001)
+        #expect(abs(lunch.p95 - 38) < 0.001)
+        let morning = try #require(points.first { $0.timeOfDay == 8 * 60 })
+        #expect(abs(morning.p5) < 0.001)
+        #expect(abs(morning.p95) < 0.001)
+    }
 }
