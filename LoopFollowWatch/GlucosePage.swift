@@ -47,7 +47,7 @@ struct GlucosePage: View {
                 // The arrow hangs off the number's trailing edge so the digits, and the delta under them, stay centered.
                 Text(WatchFormat.glucose(snapshot.glucose, unit: snapshot.unit))
                     .font(.system(size: 56, weight: .black))
-                    .foregroundStyle(WatchFormat.bgColor(snapshot.glucose, lowMgdl: state.lowMgdl, highMgdl: state.highMgdl, colored: state.colorBGText))
+                    .foregroundStyle(state.bgColor(snapshot.glucose, colored: state.colorBGText))
                     .strikethrough(isStale, pattern: .solid, color: .red)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
@@ -212,7 +212,7 @@ struct Sparkline: View {
             ForEach(readings, id: \.t) { reading in
                 PointMark(x: .value("Time", reading.date), y: .value("BG", reading.v))
                     .symbolSize(12)
-                    .foregroundStyle(WatchFormat.bgColor(reading.v, lowMgdl: state.lowMgdl, highMgdl: state.highMgdl))
+                    .foregroundStyle(state.bgColor(reading.v))
             }
         }
         .chartXScale(domain: start ... now)

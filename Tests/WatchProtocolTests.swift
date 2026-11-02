@@ -94,11 +94,33 @@ struct WatchProtocolTests {
         #expect(!WatchFormat.delta(0.5, unit: .mmol).hasPrefix("+"))
     }
 
-    @Test("Range colors match the phone: red at or below low, yellow at or above high")
+    @Test("Range colors match the phone: a reading on a line is in range")
     func rangeColors() {
-        #expect(WatchFormat.bgColor(70, lowMgdl: 70, highMgdl: 180) == .red)
-        #expect(WatchFormat.bgColor(71, lowMgdl: 70, highMgdl: 180) == .green)
-        #expect(WatchFormat.bgColor(180, lowMgdl: 70, highMgdl: 180) == .yellow)
-        #expect(WatchFormat.bgColor(250, lowMgdl: 70, highMgdl: 180, colored: false) == .primary)
+        #expect(WatchFormat.bgColor(69, lowMgdl: 70, highMgdl: 180, unit: .mgdl) == .red)
+        #expect(WatchFormat.bgColor(70, lowMgdl: 70, highMgdl: 180, unit: .mgdl) == .green)
+        #expect(WatchFormat.bgColor(180, lowMgdl: 70, highMgdl: 180, unit: .mgdl) == .green)
+        #expect(WatchFormat.bgColor(181, lowMgdl: 70, highMgdl: 180, unit: .mgdl) == .yellow)
+        #expect(WatchFormat.bgColor(250, lowMgdl: 70, highMgdl: 180, unit: .mgdl, colored: false) == .primary)
+    }
+
+    @Test("mmol/L colors follow the displayed number")
+    func rangeColorsAtDisplayedPrecision() {
+        // 70 and 71 mg/dL both show as 3.9; 180 and 181 both show as 10.0.
+        #expect(WatchFormat.bgColor(70, lowMgdl: 71, highMgdl: 180, unit: .mgdl) == .red)
+        #expect(WatchFormat.bgColor(70, lowMgdl: 71, highMgdl: 180, unit: .mmol) == .green)
+        #expect(WatchFormat.bgColor(181, lowMgdl: 70, highMgdl: 180, unit: .mgdl) == .yellow)
+        #expect(WatchFormat.bgColor(181, lowMgdl: 70, highMgdl: 180, unit: .mmol) == .green)
+        // 69 shows as 3.8 and 182 as 10.1, past the lines.
+        #expect(WatchFormat.bgColor(69, lowMgdl: 70, highMgdl: 180, unit: .mmol) == .red)
+        #expect(WatchFormat.bgColor(182, lowMgdl: 70, highMgdl: 180, unit: .mmol) == .yellow)
+    }
+
+    @Test("A state colors readings in its snapshot's unit, or mg/dL without a snapshot")
+    func stateColorsUseDisplayedUnit() {
+        var mmolState = state()
+        #expect(mmolState.bgColor(181) == .green)
+        #expect(mmolState.bgColor(181, colored: false) == .primary)
+        mmolState.snapshot = nil
+        #expect(mmolState.bgColor(181) == .yellow)
     }
 }
