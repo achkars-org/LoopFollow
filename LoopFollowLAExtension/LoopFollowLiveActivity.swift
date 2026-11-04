@@ -50,7 +50,7 @@ private func makeDynamicIsland(context: ActivityViewContext<GlucoseLiveActivityA
 struct LoopFollowLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: GlucoseLiveActivityAttributes.self) { context in
-            LockScreenFamilyAdaptiveView(state: context.state)
+            LockScreenFamilyAdaptiveView(state: context.state, isStale: context.isStale)
                 .id(context.state.seq)
                 .background(
                     LALivenessMarker(
@@ -75,12 +75,13 @@ struct LoopFollowLiveActivityWidget: Widget {
 /// - everything else → full lock screen layout
 private struct LockScreenFamilyAdaptiveView: View {
     let state: GlucoseLiveActivityAttributes.ContentState
+    let isStale: Bool
 
     @Environment(\.activityFamily) private var activityFamily
 
     var body: some View {
         if activityFamily == .small {
-            SmallFamilyView(snapshot: state.snapshot)
+            SmallFamilyView(snapshot: state.snapshot, isStale: isStale || state.snapshot.isStale())
                 .activityBackgroundTint(Color.black.opacity(0.25))
         } else {
             LockScreenLiveActivityView(state: state)
@@ -93,6 +94,7 @@ private struct LockScreenFamilyAdaptiveView: View {
 
 private struct SmallFamilyView: View {
     let snapshot: GlucoseSnapshot
+    let isStale: Bool
 
     /// Unit label for the right slot — ISF appends "/U", other glucose slots
     /// use the plain glucose unit, non-glucose slots return nil.
@@ -102,80 +104,129 @@ private struct SmallFamilyView: View {
         return snapshot.unit.displayName
     }
 
+    /// Stale readings lose their range colour: it no longer describes the
+    /// present, and a low's red would hide the red strikethrough.
+    private var glucoseColor: Color {
+        isStale ? .white.opacity(0.55) : LAColors.keyline(for: snapshot)
+    }
+
     var body: some View {
         let rightSlot = LAAppGroupSettings.smallWidgetSlot()
 
-        HStack(alignment: .center, spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(LAFormat.glucose(snapshot))
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(LAColors.keyline(for: snapshot))
-
-                    Text(LAFormat.trendArrow(snapshot))
-                        .font(.system(size: 22, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LAColors.keyline(for: snapshot))
-                }
-
-                Text("\(LAFormat.delta(snapshot)) \(snapshot.unit.displayName)")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-            .layoutPriority(1)
-
-            Spacer()
-
-            if rightSlot != .none {
-                if let unitLabel = rightSlotUnitLabel(for: rightSlot) {
-                    // Use ViewThatFits so the unit label appears on surfaces with
-                    // enough vertical space (CarPlay) and is omitted where it doesn't
-                    // fit (Watch Smart Stack).
-                    ViewThatFits(in: .vertical) {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text(rightSlot.gridLabel)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.65))
-                            Text(slotFormattedValue(option: rightSlot, snapshot: snapshot))
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            Text(unitLabel)
-                                .font(.system(size: 11, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.55))
-                        }
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text(rightSlot.gridLabel)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.65))
-                            Text(slotFormattedValue(option: rightSlot, snapshot: snapshot))
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
-                    }
-                } else {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(rightSlot.gridLabel)
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
-                        Text(slotFormattedValue(option: rightSlot, snapshot: snapshot))
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: 0) {
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(LAFormat.glucose(snapshot))
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
                             .monospacedDigit()
-                            .foregroundStyle(.white)
+                            .foregroundStyle(glucoseColor)
+                            .strikethrough(isStale, pattern: .solid, color: .red)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .minimumScaleFactor(0.85)
+
+                        Text(LAFormat.trendArrow(snapshot))
+                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                            .foregroundStyle(glucoseColor)
+                    }
+
+                    Text("\(LAFormat.delta(snapshot)) \(snapshot.unit.displayName)")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .layoutPriority(1)
+
+                Spacer(minLength: 4)
+
+                if rightSlot != .none {
+                    if let unitLabel = rightSlotUnitLabel(for: rightSlot) {
+                        // Use ViewThatFits so the unit label appears on surfaces with
+                        // enough vertical space (CarPlay) and is omitted where it doesn't
+                        // fit (Watch Smart Stack).
+                        ViewThatFits(in: .vertical) {
+                            VStack(alignment: .trailing, spacing: 1) {
+                                rightSlotValue(rightSlot)
+                                Text(unitLabel)
+                                    .font(.system(size: 10, weight: .regular, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.55))
+                            }
+                            VStack(alignment: .trailing, spacing: 1) {
+                                rightSlotValue(rightSlot)
+                            }
+                        }
+                    } else {
+                        VStack(alignment: .trailing, spacing: 1) {
+                            rightSlotValue(rightSlot)
+                        }
                     }
                 }
             }
+
+            SmallFamilyStatusLine(snapshot: snapshot, isStale: isStale)
+                .layoutPriority(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+    }
+
+    @ViewBuilder
+    private func rightSlotValue(_ slot: LiveActivitySlotOption) -> some View {
+        Text(slot.gridLabel)
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white.opacity(0.65))
+        Text(slotFormattedValue(option: slot, snapshot: snapshot))
+            .font(.system(size: 18, weight: .bold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+    }
+}
+
+/// Update time, IOB and COB, and the running override, using the watch's icons.
+/// The override takes whatever width is left and truncates first, so the time
+/// and values always show on the narrowest surfaces.
+private struct SmallFamilyStatusLine: View {
+    let snapshot: GlucoseSnapshot
+    let isStale: Bool
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(LAFormat.updated(snapshot))
+                .foregroundStyle(isStale ? Color.red : Color.white.opacity(0.7))
+                .fixedSize()
+                .accessibilityLabel("Updated \(LAFormat.updated(snapshot))")
+
+            if snapshot.isNotLooping {
+                Text("\(Image(systemName: "exclamationmark.triangle.fill")) Not Looping")
+                    .foregroundStyle(.red)
+                    .fixedSize()
+            } else {
+                if snapshot.iob != nil {
+                    Text("\(Image(systemName: "syringe")) \(LAFormat.iob(snapshot))")
+                        .fixedSize()
+                        .accessibilityLabel("Insulin on board \(LAFormat.iob(snapshot))")
+                }
+                if snapshot.cob != nil {
+                    Text("\(Image(systemName: "fork.knife")) \(LAFormat.cob(snapshot))")
+                        .fixedSize()
+                        .accessibilityLabel("Carbs on board \(LAFormat.cob(snapshot))")
+                }
+            }
+
+            if let name = LAFormat.activeOverrideName(snapshot) {
+                Text("\(Image(systemName: "slider.horizontal.3")) \(name)")
+                    .foregroundStyle(.green)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .accessibilityLabel("Override \(name)")
+            }
+        }
+        .font(.system(size: 11, weight: .semibold, design: .rounded))
+        .monospacedDigit()
+        .foregroundStyle(.white.opacity(0.85))
     }
 }
 
@@ -410,12 +461,8 @@ private struct ActiveAdjustmentsView: View {
         return Date(timeIntervalSince1970: t)
     }
 
-    /// nil end with a non-nil name means indefinite — keep showing the name;
-    /// a timed override whose end has passed is hidden entirely.
     private var overrideName: String? {
-        guard let name = snapshot.override else { return nil }
-        if snapshot.overrideEndAt != nil, overrideEnd == nil { return nil }
-        return name
+        LAFormat.activeOverrideName(snapshot)
     }
 
     private var tempTargetText: String? {
@@ -770,6 +817,14 @@ private enum LAFormat {
 
     static func override(_ s: GlucoseSnapshot) -> String {
         s.override ?? "—"
+    }
+
+    /// nil end with a non-nil name means indefinite — keep showing the name;
+    /// a timed override whose end has passed is hidden entirely.
+    static func activeOverrideName(_ s: GlucoseSnapshot) -> String? {
+        guard let name = s.override else { return nil }
+        if let end = s.overrideEndAt, end <= Date().timeIntervalSince1970 { return nil }
+        return name
     }
 
     static func tempTargetValue(_ s: GlucoseSnapshot) -> String? {
