@@ -217,6 +217,24 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
         Date().timeIntervalSince(updatedAt)
     }
 
+    /// A reading this old is shown struck through, as on the main screen and the watch.
+    static let staleAfter: TimeInterval = 12 * 60
+
+    /// True once the reading is old enough to be shown struck through.
+    func isStale(at now: Date = Date()) -> Bool {
+        now.timeIntervalSince(updatedAt) >= Self.staleAfter
+    }
+
+    /// The date to give ActivityKit, so the system redraws the Live Activity as
+    /// out of date even when no further update can reach it: no network, or the
+    /// app was killed. A reading that is already stale gets a date just ahead of
+    /// `now` rather than one in the past, whose handling Apple does not document.
+    /// Views rely on `isStale(at:)` for that case.
+    func staleDate(now: Date = Date()) -> Date {
+        let date = updatedAt.addingTimeInterval(Self.staleAfter)
+        return date > now ? date : now.addingTimeInterval(60)
+    }
+
     /// Returns a copy of this snapshot with `showRenewalOverlay` set to the given value.
     /// All other fields are preserved exactly. Use this instead of manually copying
     /// every field when only the overlay flag needs to change.

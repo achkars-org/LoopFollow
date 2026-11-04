@@ -223,6 +223,7 @@ class APNSClient {
             "aps": [
                 "timestamp": Int(Date().timeIntervalSince1970),
                 "event": "update",
+                "stale-date": Int(state.snapshot.staleDate().timeIntervalSince1970),
                 "content-state": contentState,
             ],
         ]
