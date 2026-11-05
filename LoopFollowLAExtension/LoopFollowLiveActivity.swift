@@ -92,6 +92,30 @@ private struct LockScreenFamilyAdaptiveView: View {
 
 // MARK: - Small family view (CarPlay Dashboard + Watch Smart Stack)
 
+/// The status line takes height from the glucose rows, so they only use the
+/// smaller sizes while it is showing.
+private struct SmallFamilyMetrics {
+    let glucose: CGFloat
+    let arrow: CGFloat
+    let delta: CGFloat
+    let slotLabel: CGFloat
+    let slotValue: CGFloat
+    let slotUnit: CGFloat
+    let textSpacing: CGFloat
+    let verticalPadding: CGFloat
+
+    static let withStatusLine = SmallFamilyMetrics(
+        glucose: 26, arrow: 20, delta: 12,
+        slotLabel: 11, slotValue: 18, slotUnit: 10,
+        textSpacing: 1, verticalPadding: 6
+    )
+    static let withoutStatusLine = SmallFamilyMetrics(
+        glucose: 28, arrow: 22, delta: 14,
+        slotLabel: 12, slotValue: 20, slotUnit: 11,
+        textSpacing: 2, verticalPadding: 10
+    )
+}
+
 private struct SmallFamilyView: View {
     let snapshot: GlucoseSnapshot
     let isStale: Bool
@@ -111,31 +135,64 @@ private struct SmallFamilyView: View {
     }
 
     var body: some View {
+        let showStatusLine = LAAppGroupSettings.showSmallWidgetStatusLine()
+        let metrics: SmallFamilyMetrics = showStatusLine ? .withStatusLine : .withoutStatusLine
+        let tightLayoutEnabled = LAAppGroupSettings.smallWidgetTightLayout()
+
+        GeometryReader { geometry in
+            let usesTightLayout = SmallWidgetLayout.usesTightLayout(enabled: tightLayoutEnabled, width: geometry.size.width)
+
+            Group {
+                if usesTightLayout {
+                    tightLayout(metrics: metrics, showStatusLine: showStatusLine, height: geometry.size.height)
+                } else {
+                    slotLayout(metrics: metrics, showStatusLine: showStatusLine)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            // The stack needs the height whether or not the status line is showing.
+            .padding(.vertical, usesTightLayout ? SmallFamilyMetrics.withStatusLine.verticalPadding : metrics.verticalPadding)
+        }
+    }
+
+    /// Wide CarPlay with the setting on: the stack takes the full height on the
+    /// right, and the bottom row under the glucose is just the update time, or
+    /// the warning in its place while not looping.
+    private func tightLayout(metrics: SmallFamilyMetrics, showStatusLine: Bool, height: CGFloat) -> some View {
+        HStack(alignment: .center, spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
+                glucoseColumn(metrics: metrics)
+
+                if showStatusLine {
+                    Group {
+                        if snapshot.isNotLooping {
+                            SmallFamilyNotLooping()
+                        } else {
+                            SmallFamilyUpdateTime(snapshot: snapshot, isStale: isStale)
+                        }
+                    }
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            SmallFamilyStack(snapshot: snapshot, fontSize: height >= 90 ? 15 : 12)
+                .fixedSize()
+        }
+    }
+
+    /// Watch, narrow CarPlay, and wide CarPlay with the tight layout off: the
+    /// single configurable right slot.
+    private func slotLayout(metrics: SmallFamilyMetrics, showStatusLine: Bool) -> some View {
         let rightSlot = LAAppGroupSettings.smallWidgetSlot()
 
-        VStack(alignment: .leading, spacing: 2) {
+        return VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .center, spacing: 0) {
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(LAFormat.glucose(snapshot))
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(glucoseColor)
-                            .strikethrough(isStale, pattern: .solid, color: .red)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-
-                        Text(LAFormat.trendArrow(snapshot))
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
-                            .foregroundStyle(glucoseColor)
-                    }
-
-                    Text("\(LAFormat.delta(snapshot)) \(snapshot.unit.displayName)")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-                .layoutPriority(1)
+                glucoseColumn(metrics: metrics)
+                    .layoutPriority(1)
 
                 Spacer(minLength: 4)
 
@@ -145,39 +202,61 @@ private struct SmallFamilyView: View {
                         // enough vertical space (CarPlay) and is omitted where it doesn't
                         // fit (Watch Smart Stack).
                         ViewThatFits(in: .vertical) {
-                            VStack(alignment: .trailing, spacing: 1) {
-                                rightSlotValue(rightSlot)
+                            VStack(alignment: .trailing, spacing: metrics.textSpacing) {
+                                rightSlotValue(rightSlot, metrics: metrics)
                                 Text(unitLabel)
-                                    .font(.system(size: 10, weight: .regular, design: .rounded))
+                                    .font(.system(size: metrics.slotUnit, weight: .regular, design: .rounded))
                                     .foregroundStyle(.white.opacity(0.55))
                             }
-                            VStack(alignment: .trailing, spacing: 1) {
-                                rightSlotValue(rightSlot)
+                            VStack(alignment: .trailing, spacing: metrics.textSpacing) {
+                                rightSlotValue(rightSlot, metrics: metrics)
                             }
                         }
                     } else {
-                        VStack(alignment: .trailing, spacing: 1) {
-                            rightSlotValue(rightSlot)
+                        VStack(alignment: .trailing, spacing: metrics.textSpacing) {
+                            rightSlotValue(rightSlot, metrics: metrics)
                         }
                     }
                 }
             }
 
-            SmallFamilyStatusLine(snapshot: snapshot, isStale: isStale)
-                .layoutPriority(1)
+            if showStatusLine {
+                SmallFamilyStatusLine(snapshot: snapshot, isStale: isStale, rightSlot: rightSlot)
+                    .layoutPriority(1)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+    }
+
+    private func glucoseColumn(metrics: SmallFamilyMetrics) -> some View {
+        VStack(alignment: .leading, spacing: metrics.textSpacing) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(LAFormat.glucose(snapshot))
+                    .font(.system(size: metrics.glucose, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(glucoseColor)
+                    .strikethrough(isStale, pattern: .solid, color: .red)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+
+                Text(LAFormat.trendArrow(snapshot))
+                    .font(.system(size: metrics.arrow, weight: .semibold, design: .rounded))
+                    .foregroundStyle(glucoseColor)
+            }
+
+            Text("\(LAFormat.delta(snapshot)) \(snapshot.unit.displayName)")
+                .font(.system(size: metrics.delta, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(0.85))
+        }
     }
 
     @ViewBuilder
-    private func rightSlotValue(_ slot: LiveActivitySlotOption) -> some View {
+    private func rightSlotValue(_ slot: LiveActivitySlotOption, metrics: SmallFamilyMetrics) -> some View {
         Text(slot.gridLabel)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .font(.system(size: metrics.slotLabel, weight: .semibold, design: .rounded))
             .foregroundStyle(.white.opacity(0.65))
         Text(slotFormattedValue(option: slot, snapshot: snapshot))
-            .font(.system(size: 18, weight: .bold, design: .rounded))
+            .font(.system(size: metrics.slotValue, weight: .bold, design: .rounded))
             .monospacedDigit()
             .foregroundStyle(.white)
             .lineLimit(1)
@@ -185,31 +264,110 @@ private struct SmallFamilyView: View {
     }
 }
 
-/// Update time, IOB and COB, and the running override, using the watch's icons.
-/// The override takes whatever width is left and truncates first, so the time
-/// and values always show on the narrowest surfaces.
-private struct SmallFamilyStatusLine: View {
+/// Projected BG, IOB, COB and the basal rate running now, one per row with an
+/// icon instead of a label. Icons and values each line up in their own column.
+private struct SmallFamilyStack: View {
+    let snapshot: GlucoseSnapshot
+    let fontSize: CGFloat
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            row(value: LAFormat.projected(snapshot), label: "Projected glucose") {
+                Image(systemName: "target")
+            }
+            row(value: LAFormat.iob(snapshot), label: "Insulin on board") {
+                Image(systemName: "syringe")
+            }
+            row(value: LAFormat.cob(snapshot), label: "Carbs on board") {
+                Image(systemName: "fork.knife")
+            }
+            row(value: LAFormat.activeBasal(snapshot), label: "Basal rate") {
+                BasalStepIcon()
+                    .stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                    .frame(width: fontSize, height: fontSize * 0.7)
+            }
+        }
+        .font(.system(size: fontSize, weight: .semibold, design: .rounded))
+    }
+
+    private func row(value: String, label: String, @ViewBuilder icon: () -> some View) -> some View {
+        HStack(spacing: 4) {
+            icon()
+                .foregroundStyle(.white.opacity(0.65))
+                .frame(width: fontSize + 2)
+                .accessibilityHidden(true)
+
+            // Wide enough for four digits, so the icons line up across rows.
+            Text(value)
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .frame(minWidth: fontSize * 2.6, alignment: .trailing)
+                .accessibilityLabel("\(label) \(value)")
+        }
+    }
+}
+
+/// A square step, drawn because SF Symbols has no square wave.
+private struct BasalStepIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        let step = rect.width / 4
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + step, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + step, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX + step * 2, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX + step * 2, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + step * 3, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + step * 3, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        return path
+    }
+}
+
+/// The reading's time, red once it is stale.
+private struct SmallFamilyUpdateTime: View {
     let snapshot: GlucoseSnapshot
     let isStale: Bool
 
     var body: some View {
+        Text(LAFormat.updated(snapshot))
+            .foregroundStyle(isStale ? Color.red : Color.white.opacity(0.7))
+            .fixedSize()
+            .accessibilityLabel("Updated \(LAFormat.updated(snapshot))")
+    }
+}
+
+private struct SmallFamilyNotLooping: View {
+    var body: some View {
+        Text("\(Image(systemName: "exclamationmark.triangle.fill")) Not Looping")
+            .foregroundStyle(.red)
+            .fixedSize()
+    }
+}
+
+/// Update time, IOB and COB, and the running override, using the watch's icons.
+/// IOB or COB is left out when the right slot already shows it. The override
+/// takes whatever width is left and truncates first, so the time and values
+/// always show on the narrowest surfaces.
+private struct SmallFamilyStatusLine: View {
+    let snapshot: GlucoseSnapshot
+    let isStale: Bool
+    let rightSlot: LiveActivitySlotOption
+
+    var body: some View {
         HStack(spacing: 5) {
-            Text(LAFormat.updated(snapshot))
-                .foregroundStyle(isStale ? Color.red : Color.white.opacity(0.7))
-                .fixedSize()
-                .accessibilityLabel("Updated \(LAFormat.updated(snapshot))")
+            SmallFamilyUpdateTime(snapshot: snapshot, isStale: isStale)
 
             if snapshot.isNotLooping {
-                Text("\(Image(systemName: "exclamationmark.triangle.fill")) Not Looping")
-                    .foregroundStyle(.red)
-                    .fixedSize()
+                SmallFamilyNotLooping()
             } else {
-                if snapshot.iob != nil {
+                if snapshot.iob != nil, rightSlot != .iob {
                     Text("\(Image(systemName: "syringe")) \(LAFormat.iob(snapshot))")
                         .fixedSize()
                         .accessibilityLabel("Insulin on board \(LAFormat.iob(snapshot))")
                 }
-                if snapshot.cob != nil {
+                if snapshot.cob != nil, rightSlot != .cob {
                     Text("\(Image(systemName: "fork.knife")) \(LAFormat.cob(snapshot))")
                         .fixedSize()
                         .accessibilityLabel("Carbs on board \(LAFormat.cob(snapshot))")
@@ -227,6 +385,7 @@ private struct SmallFamilyStatusLine: View {
         .font(.system(size: 11, weight: .semibold, design: .rounded))
         .monospacedDigit()
         .foregroundStyle(.white.opacity(0.85))
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 
@@ -769,6 +928,10 @@ private enum LAFormat {
 
     static func basal(_ s: GlucoseSnapshot) -> String {
         s.basalRate.isEmpty ? "—" : s.basalRate
+    }
+
+    static func activeBasal(_ s: GlucoseSnapshot) -> String {
+        s.activeBasalRate.isEmpty ? "—" : s.activeBasalRate
     }
 
     static func pump(_ s: GlucoseSnapshot) -> String {

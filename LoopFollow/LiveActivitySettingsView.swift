@@ -10,6 +10,8 @@
         @State private var restartConfirmed = false
         @State private var slots: [LiveActivitySlotOption] = LAAppGroupSettings.slots()
         @State private var smallWidgetSlot: LiveActivitySlotOption = LAAppGroupSettings.smallWidgetSlot()
+        @State private var showSmallWidgetStatusLine: Bool = LAAppGroupSettings.showSmallWidgetStatusLine()
+        @State private var smallWidgetTightLayout: Bool = LAAppGroupSettings.smallWidgetTightLayout()
         @State private var keyId: String = Storage.shared.lfKeyId.value
         @State private var apnsKey: String = Storage.shared.lfApnsKey.value
 
@@ -66,7 +68,10 @@
                     }
                 }
 
-                Section(header: Text("Grid Slot - CarPlay / Watch")) {
+                Section(
+                    header: Text("Grid Slot - CarPlay / Watch"),
+                    footer: Text("The status line shows the update time, IOB, COB and any active override. IOB or COB is left out when the right slot already shows it. The tight layout replaces the right slot with projected BG, IOB, COB and basal, and reduces the status line to the time. It only applies to wide CarPlay screens. Changes appear with the next Live Activity update.")
+                ) {
                     Picker("Right slot", selection: Binding(
                         get: { smallWidgetSlot },
                         set: { newValue in
@@ -75,10 +80,28 @@
                             LiveActivityManager.shared.refreshFromCurrentState(reason: "small widget slot changed")
                         }
                     )) {
-                        ForEach(LiveActivitySlotOption.allCases, id: \.self) { option in
+                        ForEach(LiveActivitySlotOption.gridCases, id: \.self) { option in
                             Text(option.displayName).tag(option)
                         }
                     }
+
+                    Toggle("Status Line", isOn: Binding(
+                        get: { showSmallWidgetStatusLine },
+                        set: { newValue in
+                            showSmallWidgetStatusLine = newValue
+                            LAAppGroupSettings.setShowSmallWidgetStatusLine(newValue)
+                            LiveActivityManager.shared.refreshFromCurrentState(reason: "small widget status line changed")
+                        }
+                    ))
+
+                    Toggle("Tight CarPlay Layout", isOn: Binding(
+                        get: { smallWidgetTightLayout },
+                        set: { newValue in
+                            smallWidgetTightLayout = newValue
+                            LAAppGroupSettings.setSmallWidgetTightLayout(newValue)
+                            LiveActivityManager.shared.refreshFromCurrentState(reason: "small widget tight layout changed")
+                        }
+                    ))
                 }
             }
             .onReceive(Storage.shared.laEnabled.$value) { newValue in

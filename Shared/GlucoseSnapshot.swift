@@ -235,6 +235,12 @@ struct GlucoseSnapshot: Codable, Equatable, Hashable {
         return date > now ? date : now.addingTimeInterval(60)
     }
 
+    /// The rate running now. `basalRate` reads "scheduled → actual" while a temp
+    /// basal differs from the schedule.
+    var activeBasalRate: String {
+        basalRate.components(separatedBy: "→").last?.trimmingCharacters(in: .whitespaces) ?? basalRate
+    }
+
     /// Returns a copy of this snapshot with `showRenewalOverlay` set to the given value.
     /// All other fields are preserved exactly. Use this instead of manually copying
     /// every field when only the overlay flag needs to change.
