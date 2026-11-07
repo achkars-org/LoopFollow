@@ -8,5 +8,6 @@ import WidgetKit
 struct LoopFollowLABundle: WidgetBundle {
     var body: some Widget {
         LoopFollowLiveActivityWidget()
+        CarPlayWidget()
     }
 }
