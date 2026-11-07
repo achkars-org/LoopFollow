@@ -68,10 +68,7 @@
                     }
                 }
 
-                Section(
-                    header: Text("Grid Slot - CarPlay / Watch"),
-                    footer: Text("The status line shows the update time and any active override with its insulin needs, range and time left. The tight layout replaces the right slot with projected BG, IOB, COB and basal, and reduces the status line to the time. It only applies to wide CarPlay screens. Changes appear with the next Live Activity update.")
-                ) {
+                Section(header: Text("Grid Slot - CarPlay / Watch")) {
                     Picker("Right slot", selection: Binding(
                         get: { smallWidgetSlot },
                         set: { newValue in
@@ -85,23 +82,27 @@
                         }
                     }
 
-                    Toggle("Status Line", isOn: Binding(
+                    Toggle(isOn: Binding(
                         get: { showSmallWidgetStatusLine },
                         set: { newValue in
                             showSmallWidgetStatusLine = newValue
                             LAAppGroupSettings.setShowSmallWidgetStatusLine(newValue)
                             LiveActivityManager.shared.refreshFromCurrentState(reason: "small widget status line changed")
                         }
-                    ))
+                    )) {
+                        InfoLabel(title: "Status Line", info: Self.statusLineInfo)
+                    }
 
-                    Toggle("Tight CarPlay Layout", isOn: Binding(
+                    Toggle(isOn: Binding(
                         get: { smallWidgetTightLayout },
                         set: { newValue in
                             smallWidgetTightLayout = newValue
                             LAAppGroupSettings.setSmallWidgetTightLayout(newValue)
                             LiveActivityManager.shared.refreshFromCurrentState(reason: "small widget tight layout changed")
                         }
-                    ))
+                    )) {
+                        InfoLabel(title: "Tight CarPlay Layout", info: Self.tightLayoutInfo)
+                    }
                 }
             }
             .onReceive(Storage.shared.laEnabled.$value) { newValue in
@@ -126,6 +127,10 @@
             .navigationBarTitleDisplayMode(.inline)
         }
 
+        private static let statusLineInfo = "Shows the update time under the reading, or Not Looping when Loop stops reporting, followed by any active override with its insulin needs, range and time left. Changes appear with the next Live Activity update."
+
+        private static let tightLayoutInfo = "Replaces the right slot with projected BG, IOB, COB and basal stacked on the right, and reduces the status line to the time. It only applies to wide CarPlay screens; the Watch and narrow CarPlay screens keep the regular layout. Changes appear with the next Live Activity update."
+
         /// Selects an option for the given slot index, enforcing uniqueness:
         /// if the chosen option is already in another slot, that slot is cleared to `.none`.
         private func selectSlot(_ option: LiveActivitySlotOption, at index: Int) {
@@ -137,6 +142,36 @@
             slots[index] = option
             LAAppGroupSettings.setSlots(slots)
             LiveActivityManager.shared.refreshFromCurrentState(reason: "slot config changed")
+        }
+    }
+
+    /// A setting's title followed by an info button that explains it in a popover.
+    private struct InfoLabel: View {
+        let title: String
+        let info: String
+        @State private var showInfo = false
+
+        var body: some View {
+            HStack(spacing: 6) {
+                Text(title)
+                Button {
+                    showInfo = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(Color.accentColor)
+                }
+                // Borderless keeps the tap on the icon instead of the whole row.
+                .buttonStyle(.borderless)
+                .accessibilityLabel("About \(title)")
+                .popover(isPresented: $showInfo) {
+                    Text(info)
+                        .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: 280, alignment: .leading)
+                        .padding()
+                        .presentationCompactAdaptation(.popover)
+                }
+            }
         }
     }
 #endif
