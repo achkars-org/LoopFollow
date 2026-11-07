@@ -13,16 +13,14 @@
         private static var lastPublished: Data?
 
         static func publish(alarmData: AlarmData, readings: [ShareGlucoseData], now: Date = Date()) {
-            let snapshot = GlucoseSnapshotBuilder.build(from: StorageCurrentGlucoseStateProvider())
+            let unit = PreferredGlucoseUnit.snapshotUnit()
+            let alerts = AlarmManager.shared.carPlayAlarms(data: alarmData, now: now).map {
+                CarPlayAlert(alarm: $0.alarm, title: $0.title, data: alarmData, unit: unit)
+            }
             let state = CarPlayWidgetState(
-                snapshot: snapshot,
+                snapshot: GlucoseSnapshotBuilder.build(from: StorageCurrentGlucoseStateProvider()),
                 history: history(from: readings, now: now),
-                alertInputs: WidgetAlertInputs(
-                    alarmData: alarmData,
-                    alarms: Storage.shared.alarms.value,
-                    unit: PreferredGlucoseUnit.snapshotUnit(),
-                    now: now
-                )
+                alerts: alerts
             )
 
             guard let data = CarPlayWidgetStore.encode(state), data != lastPublished else { return }
@@ -31,7 +29,7 @@
             WidgetCenter.shared.reloadTimelines(ofKind: CarPlayWidgetStore.kind)
         }
 
-        /// Readings inside the Trend page's window, oldest first.
+        /// Readings inside the 3 h page's window, oldest first.
         static func history(from readings: [ShareGlucoseData], now: Date) -> [GlucosePoint] {
             let start = now.timeIntervalSince1970 - CarPlayWidgetState.historyWindow
             return readings
@@ -43,76 +41,90 @@
 
 #endif
 
-extension WidgetAlertInputs {
-    /// Looks ahead this far for a low when the low alarm has no look-ahead of its own.
-    static let defaultLowLookaheadMinutes = 30
+extension CarPlayAlert {
+    /// A triggered alarm, worded for the widget with the icon LoopFollow uses
+    /// for its type. Times are clock times rather than countdowns, so the
+    /// text stays the same between checks.
+    init(alarm: Alarm, title: String, data: AlarmData, unit: GlucoseSnapshot.Unit) {
+        self.init(
+            id: alarm.id,
+            title: title,
+            detail: Self.detail(for: alarm, data: data, unit: unit),
+            symbol: alarm.type.icon,
+            isUrgent: Self.isUrgent(alarm.type)
+        )
+    }
 
-    /// Inputs from the values the alarms check, with each threshold taken
-    /// from the user's first enabled alarm of that type, or the alarm's
-    /// default when none is enabled. Snoozes and day/night limits are
-    /// ignored: they silence an alarm, but the condition still holds.
-    init(alarmData data: AlarmData, alarms: [Alarm], unit: GlucoseSnapshot.Unit, now: Date) {
-        func settings(_ type: AlarmType) -> Alarm {
-            alarms.first { $0.type == type && $0.isEnabled } ?? Alarm(type: type)
+    /// Red rather than orange: the alarms about glucose or the loop that
+    /// need attention now.
+    static func isUrgent(_ type: AlarmType) -> Bool {
+        switch type {
+        case .low, .fastDrop, .missedReading, .notLooping, .temporary:
+            true
+        default:
+            false
+        }
+    }
+
+    /// The value behind the alarm. Missed reading and not looping use the
+    /// alarm notification's own text when the CGM reported a state.
+    static func detail(for alarm: Alarm, data: AlarmData, unit: GlucoseSnapshot.Unit) -> String? {
+        if let body = alarm.notificationBody {
+            return body
         }
 
-        func positive(_ value: Double?) -> Double? {
-            guard let value, value > 0 else { return nil }
-            return value
+        switch alarm.type {
+        case .low, .high, .fastDrop, .fastRise, .temporary:
+            guard let sgv = data.bgReadings.last?.sgv, sgv > 0 else { return nil }
+            return glucose(Double(sgv), unit: unit)
+        case .missedReading:
+            return data.bgReadings.last.map { "Last reading \(clock($0.date))" }
+        case .notLooping:
+            guard let loop = data.lastLoopTime, loop > 0 else { return nil }
+            return "Last loop \(clock(Date(timeIntervalSince1970: loop)))"
+        case .sensorChange:
+            guard let inserted = data.sageInsertTime, inserted > 0 else { return nil }
+            let lifetime = Double(alarm.sensorLifetimeDays ?? 10) * 86400
+            return "Expires \(clock(Date(timeIntervalSince1970: inserted + lifetime)))"
+        case .pumpChange:
+            // The same 3-day site life the pump change alarm uses.
+            guard let inserted = data.pumpInsertTime, inserted > 0 else { return nil }
+            return "Expires \(clock(Date(timeIntervalSince1970: inserted + 3 * 86400)))"
+        case .pump:
+            return data.latestPumpVolume.map { "\(Int($0.rounded())) U left" }
+        case .pumpBattery:
+            return data.latestPumpBattery.map { "\(Int($0.rounded()))%" }
+        case .battery, .batteryDrop:
+            return data.latestBattery.map { "\(Int($0.rounded()))%" }
+        case .iob:
+            return data.IOB.map { "\($0.formatted(.number.precision(.fractionLength(1)))) U" }
+        case .cob:
+            return data.COB.map { "\(Int($0.rounded())) g" }
+        case .recBolus:
+            return data.recBolus.map { "\($0.formatted(.number.precision(.fractionLength(2)))) U" }
+        case .buildExpire:
+            return data.expireDate.map { "Expires \($0.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))" }
+        case .dbSize:
+            return data.dbSizePercentage.map { "\(Int($0.rounded()))% full" }
+        case .missedBolus, .futureCarbs, .overrideStart, .overrideEnd, .tempTargetStart, .tempTargetEnd:
+            return nil
         }
+    }
 
-        func date(_ timestamp: TimeInterval?) -> Date? {
-            guard let timestamp, timestamp > 0 else { return nil }
-            return Date(timeIntervalSince1970: timestamp)
+    /// "14:05" today, "Sat 14:05" on another day, in the user's clock format.
+    static func clock(_ date: Date, now: Date = Date()) -> String {
+        if Calendar.current.isDate(date, inSameDayAs: now) {
+            return date.formatted(date: .omitted, time: .shortened)
         }
+        return date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+    }
 
-        self.init()
-        self.unit = unit
-
-        if let last = data.bgReadings.last, last.sgv > 0 {
-            latestReadingAt = last.date
-            latestMgdl = Double(last.sgv)
+    private static func glucose(_ mgdl: Double, unit: GlucoseSnapshot.Unit) -> String {
+        switch unit {
+        case .mgdl:
+            "\(Int(mgdl.rounded())) mg/dL"
+        case .mmol:
+            "\(GlucoseConversion.toMmol(mgdl).formatted(.number.precision(.fractionLength(1)))) mmol/L"
         }
-        missedReadingMinutes = positive(settings(.missedReading).threshold) ?? missedReadingMinutes
-
-        let low = settings(.low)
-        lowMgdl = positive(low.belowBG) ?? lowMgdl
-        let lookahead = (low.predictiveMinutes ?? 0) > 0 ? low.predictiveMinutes! : Self.defaultLowLookaheadMinutes
-        let threshold = lowMgdl
-        predictedLowAt = data.predictionData
-            .prefix(LowBGCondition.forecastPoints(forMinutes: lookahead))
-            .first { $0.sgv > 0 && Double($0.sgv) <= threshold }?
-            .date
-
-        isDroppingFast = FastDropCondition().evaluate(alarm: settings(.fastDrop), data: data, now: now)
-        highMgdl = positive(settings(.high).aboveBG)
-
-        lastLoopAt = date(data.lastLoopTime)
-        notLoopingMinutes = positive(settings(.notLooping).threshold) ?? notLoopingMinutes
-
-        let sensor = settings(.sensorChange)
-        if let inserted = date(data.sageInsertTime) {
-            sensorExpiresAt = inserted.addingTimeInterval(Double(sensor.sensorLifetimeDays ?? 10) * 86400)
-        }
-        sensorWarnHours = positive(sensor.threshold) ?? sensorWarnHours
-
-        // The same 3-day site life the pump change alarm uses.
-        siteExpiresAt = date(data.pumpInsertTime)?.addingTimeInterval(3 * 86400)
-        siteWarnHours = positive(settings(.pumpChange).threshold) ?? siteWarnHours
-
-        reservoirUnits = data.latestPumpVolume
-        reservoirWarnUnits = positive(settings(.pump).threshold) ?? reservoirWarnUnits
-
-        pumpBatteryPercent = data.latestPumpBattery
-        pumpBatteryWarnPercent = positive(settings(.pumpBattery).threshold) ?? pumpBatteryWarnPercent
-
-        // The looping phone's battery, as uploaded. A phone that's charging
-        // needs no warning, whatever the alarm does.
-        phoneBatteryPercent = data.latestBattery
-        phoneBatteryWarnPercent = positive(settings(.battery).threshold) ?? phoneBatteryWarnPercent
-        phoneCharging = data.latestBatteryIsCharging == true
-
-        appExpiresAt = data.expireDate
-        appWarnDays = positive(settings(.buildExpire).threshold) ?? appWarnDays
     }
 }

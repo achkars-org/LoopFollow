@@ -14,7 +14,7 @@ struct CarPlayWidget: Widget {
             CarPlayWidgetView(entry: entry)
         }
         .configurationDisplayName("LoopFollow")
-        .description("Glucose, trend, override and alerts, one page at a time.")
+        .description("Glucose with any override, alerts when there are any, and the last 3 hours.")
         .supportedFamilies([.systemSmall])
     }
 }
@@ -27,7 +27,8 @@ struct NextCarPlayWidgetPageIntent: AppIntent {
     static var isDiscoverable = false
 
     func perform() async throws -> some IntentResult {
-        CarPlayWidgetStore.page = CarPlayWidgetStore.page.next
+        let hasAlerts = CarPlayWidgetStore.load()?.hasAlerts ?? false
+        CarPlayWidgetStore.page = CarPlayWidgetStore.page.next(hasAlerts: hasAlerts)
         return .result()
     }
 }
@@ -70,23 +71,20 @@ struct CarPlayWidgetProvider: TimelineProvider {
 struct CarPlayWidgetView: View {
     let entry: CarPlayWidgetEntry
 
-    private var alerts: [WidgetAlert] {
-        entry.state?.alertInputs.alerts(at: entry.date) ?? []
-    }
-
     var body: some View {
+        let alerts = entry.state?.alerts ?? []
+        let page = entry.page.resolved(hasAlerts: !alerts.isEmpty)
+
         VStack(alignment: .leading, spacing: 4) {
             Group {
                 if let state = entry.state, let snapshot = state.snapshot {
-                    switch entry.page {
+                    switch page {
                     case .now:
-                        CarPlayNowPage(snapshot: snapshot, date: entry.date)
-                    case .trend:
-                        CarPlayTrendPage(snapshot: snapshot, history: state.history, date: entry.date)
-                    case .override:
-                        CarPlayOverridePage(snapshot: snapshot, date: entry.date)
+                        CarPlayNowPage(snapshot: snapshot, date: entry.date, hasAlerts: !alerts.isEmpty)
                     case .alerts:
                         CarPlayAlertsPage(alerts: alerts)
+                    case .trend:
+                        CarPlayTrendPage(snapshot: snapshot, history: state.history, date: entry.date)
                     }
                 } else {
                     CarPlayNoDataPage()
@@ -95,18 +93,20 @@ struct CarPlayWidgetView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .invalidatableContent()
 
-            CarPlayWidgetFooter(page: entry.page, alerts: alerts)
+            CarPlayWidgetFooter(page: page, hasAlerts: !alerts.isEmpty)
         }
         .foregroundStyle(.white)
         .containerBackground(Color(white: 0.17), for: .widget)
     }
 }
 
-/// The reading, trend and age, then projected BG, IOB, COB and basal with the
-/// same icons as the tight CarPlay layout.
+/// The reading, trend and age, any running override, then projected BG, IOB,
+/// COB and basal with the same icons as the tight CarPlay layout. A yellow
+/// warning sign to the right of the reading means the next page is Alerts.
 private struct CarPlayNowPage: View {
     let snapshot: GlucoseSnapshot
     let date: Date
+    let hasAlerts: Bool
 
     var body: some View {
         let isStale = snapshot.isStale(at: date)
@@ -114,33 +114,50 @@ private struct CarPlayNowPage: View {
 
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(LAFormat.glucose(snapshot))
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .strikethrough(isStale, pattern: .solid, color: .red)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Text(LAFormat.trendArrow(snapshot))
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-            }
-            .foregroundStyle(color)
+                Group {
+                    Text(LAFormat.glucose(snapshot))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .strikethrough(isStale, pattern: .solid, color: .red)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text(LAFormat.trendArrow(snapshot))
+                        .font(.system(size: 19, weight: .semibold, design: .rounded))
+                }
+                .foregroundStyle(color)
 
-            Text("\(LAFormat.delta(snapshot)) \(snapshot.unit.displayName) · \(WidgetAlertInputs.ago(date.timeIntervalSince(snapshot.updatedAt)))")
+                Spacer(minLength: 2)
+
+                if hasAlerts {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.yellow)
+                        .accessibilityLabel("Alerts on the next page")
+                }
+            }
+
+            Text("\(LAFormat.delta(snapshot)) \(snapshot.unit.displayName) · \(CarPlayWidgetState.ago(date.timeIntervalSince(snapshot.updatedAt)))")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(isStale ? Color.red : Color.white.opacity(0.75))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
-            Spacer(minLength: 6)
+            if let name = LAFormat.activeOverrideName(snapshot) {
+                SmallFamilyOverride(name: name, details: snapshot.overrideDetails(now: date))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+            }
+
+            Spacer(minLength: 4)
 
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     metric(LAFormat.projected(snapshot), label: "Projected glucose") { Image(systemName: "target") }
                     metric(LAFormat.cob(snapshot), label: "Carbs on board") { Image(systemName: "fork.knife") }
                 }
                 Spacer(minLength: 4)
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     metric(LAFormat.iob(snapshot), label: "Insulin on board") { Image(systemName: "syringe") }
                     metric(LAFormat.activeBasal(snapshot), label: "Basal rate") {
                         BasalStepIcon()
@@ -244,101 +261,35 @@ private struct CarPlayTrendPage: View {
     }
 }
 
-/// The running override with its insulin needs, range and time left, then
-/// the basal rate. Without an override, the temp target if any.
-private struct CarPlayOverridePage: View {
-    let snapshot: GlucoseSnapshot
-    let date: Date
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let name = LAFormat.activeOverrideName(snapshot) {
-                Text("\(Image(systemName: "slider.horizontal.3")) \(name)")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.green)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-
-                let details = snapshot.overrideDetails(now: date)
-                if !details.isEmpty {
-                    Text(details.joined(separator: " · "))
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                }
-            } else {
-                Text("No override")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
-            }
-
-            if let target = LAFormat.tempTargetValue(snapshot) {
-                Text("Temp target \(target)")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-
-            Spacer(minLength: 4)
-
-            HStack(spacing: 5) {
-                BasalStepIcon()
-                    .stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                    .frame(width: 13, height: 9)
-                    .foregroundStyle(.white.opacity(0.65))
-                    .accessibilityHidden(true)
-                Text("\(LAFormat.basal(snapshot)) U/h")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .accessibilityLabel("Basal rate \(LAFormat.basal(snapshot)) units per hour")
-            }
-        }
-    }
-}
-
-/// A large thumbs-up when nothing needs attention, otherwise the alerts,
-/// urgent first.
+/// The triggered alarms marked for CarPlay, most important first. Only in
+/// the cycle while there are any.
 private struct CarPlayAlertsPage: View {
-    let alerts: [WidgetAlert]
+    let alerts: [CarPlayAlert]
 
     var body: some View {
-        if alerts.isEmpty {
-            VStack(spacing: 6) {
-                Image(systemName: "hand.thumbsup.fill")
-                    .font(.system(size: 54))
-                    .foregroundStyle(.green)
-                Text("All good")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+        // Three rows fit; with more, two and a count of the rest.
+        let shown = alerts.count > 3 ? Array(alerts.prefix(2)) : alerts
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(shown) { alert in
+                CarPlayAlertRow(alert: alert)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .accessibilityElement(children: .combine)
-        } else {
-            // Three rows fit; with more, two and a count of the rest.
-            let shown = alerts.count > 3 ? Array(alerts.prefix(2)) : alerts
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(shown) { alert in
-                    CarPlayAlertRow(alert: alert)
-                }
-                if alerts.count > shown.count {
-                    Text("+\(alerts.count - shown.count) more")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
-                }
+            if alerts.count > shown.count {
+                Text("+\(alerts.count - shown.count) more")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
             }
         }
     }
 }
 
 private struct CarPlayAlertRow: View {
-    let alert: WidgetAlert
+    let alert: CarPlayAlert
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
-            Image(systemName: Self.symbol(for: alert.kind))
+            Image(systemName: alert.symbol)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(alert.severity == .urgent ? Color.red : Color.orange)
+                .foregroundStyle(alert.isUrgent ? Color.red : Color.orange)
                 .frame(width: 16)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
@@ -358,23 +309,6 @@ private struct CarPlayAlertRow: View {
         }
         .accessibilityElement(children: .combine)
     }
-
-    static func symbol(for kind: WidgetAlert.Kind) -> String {
-        switch kind {
-        case .noReadings: "wifi.slash"
-        case .notLooping: "arrow.triangle.2.circlepath"
-        case .low: "arrow.down.circle.fill"
-        case .lowSoon: "arrow.down.right.circle.fill"
-        case .droppingFast: "arrow.down.circle"
-        case .high: "arrow.up.circle.fill"
-        case .sensorExpiry: "dot.radiowaves.left.and.right"
-        case .siteExpiry: "bandage.fill"
-        case .lowInsulin: "syringe.fill"
-        case .pumpBattery: "battery.25"
-        case .phoneBattery: "iphone"
-        case .appExpiry: "app.badge"
-        }
-    }
 }
 
 private struct CarPlayNoDataPage: View {
@@ -389,20 +323,22 @@ private struct CarPlayNoDataPage: View {
     }
 }
 
-/// The page name and dots, a count of alerts when on another page, and the
-/// button to the next page.
+/// The page name and dots, and the button to the next page, yellow when it
+/// leads to Alerts.
 private struct CarPlayWidgetFooter: View {
     let page: CarPlayWidgetPage
-    let alerts: [WidgetAlert]
+    let hasAlerts: Bool
 
     var body: some View {
+        let leadsToAlerts = page.next(hasAlerts: hasAlerts) == .alerts
+
         HStack(spacing: 5) {
             Text(page.title)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.7))
 
             HStack(spacing: 3) {
-                ForEach(CarPlayWidgetPage.allCases, id: \.self) { item in
+                ForEach(CarPlayWidgetPage.sequence(hasAlerts: hasAlerts), id: \.self) { item in
                     Circle()
                         .fill(item == page ? Color.white : Color.white.opacity(0.35))
                         .frame(width: 5, height: 5)
@@ -410,24 +346,17 @@ private struct CarPlayWidgetFooter: View {
             }
             .accessibilityHidden(true)
 
-            if page != .alerts, !alerts.isEmpty {
-                let urgent = alerts.contains { $0.severity == .urgent }
-                Text("\(Image(systemName: "exclamationmark.triangle.fill")) \(alerts.count)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(urgent ? Color.red : Color.orange)
-                    .accessibilityLabel("\(alerts.count) alerts")
-            }
-
             Spacer(minLength: 0)
 
             Button(intent: NextCarPlayWidgetPageIntent()) {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .bold))
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color.white.opacity(0.2)))
+                    .foregroundStyle(leadsToAlerts ? Color.black : Color.white)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(leadsToAlerts ? Color.yellow : Color.white.opacity(0.2)))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Next page")
+            .accessibilityLabel(leadsToAlerts ? "Show alerts" : "Next page")
         }
     }
 }

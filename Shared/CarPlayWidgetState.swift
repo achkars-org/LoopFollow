@@ -12,12 +12,23 @@ struct CarPlayWidgetState: Codable, Equatable {
     /// Readings from the last `historyWindow`, oldest first.
     var history: [GlucosePoint]
 
-    /// What the Alerts page checks. Kept as inputs rather than finished alerts
-    /// so the widget can evaluate them again at every timeline date.
-    var alertInputs: WidgetAlertInputs
+    /// The user's alarms marked for CarPlay that are triggered, most
+    /// important first.
+    var alerts: [CarPlayAlert]
 
-    /// How far back the Trend page reaches.
+    /// How far back the 3 h page reaches.
     static let historyWindow: TimeInterval = 3 * 3600
+
+    var hasAlerts: Bool {
+        !alerts.isEmpty
+    }
+
+    /// "18 min ago", "2 h ago": rounded down, as clocks count.
+    static func ago(_ seconds: TimeInterval) -> String {
+        let minutes = max(1, Int(seconds / 60))
+        if minutes < 90 { return "\(minutes) min ago" }
+        return "\(minutes / 60) h ago"
+    }
 }
 
 /// One CGM reading, in mg/dL.
@@ -26,25 +37,56 @@ struct GlucosePoint: Codable, Equatable {
     let mgdl: Double
 }
 
+/// One line on the Alerts page: a triggered alarm, already worded. The text
+/// holds no countdowns, so it only changes when the alarm's state does and
+/// the widget isn't reloaded every minute.
+struct CarPlayAlert: Codable, Equatable, Identifiable {
+    /// The alarm's id.
+    let id: UUID
+    /// The alarm's name, or the phase it announces ("Override Ending Soon").
+    let title: String
+    /// The value behind it: the reading, units left, an expiry time.
+    let detail: String?
+    /// SF Symbol for the alarm's type.
+    let symbol: String
+    /// Shown in red rather than orange.
+    let isUrgent: Bool
+}
+
 /// The widget's pages, in the order the page button steps through them.
+/// Alerts is only in the cycle while there is something to report.
 enum CarPlayWidgetPage: Int, CaseIterable, Codable {
     case now
-    case trend
-    case override
     case alerts
+    case trend
 
     var title: String {
         switch self {
         case .now: "Now"
-        case .trend: "Trend"
-        case .override: "Override"
         case .alerts: "Alerts"
+        case .trend: "3 h"
         }
     }
 
-    /// The page after this one, wrapping round to the first.
-    var next: CarPlayWidgetPage {
-        Self(rawValue: (rawValue + 1) % Self.allCases.count) ?? .now
+    /// The pages in the cycle.
+    static func sequence(hasAlerts: Bool) -> [CarPlayWidgetPage] {
+        hasAlerts ? [.now, .alerts, .trend] : [.now, .trend]
+    }
+
+    /// This page if it is in the cycle; Alerts with nothing to report falls
+    /// back to Now.
+    func resolved(hasAlerts: Bool) -> CarPlayWidgetPage {
+        Self.sequence(hasAlerts: hasAlerts).contains(self) ? self : .now
+    }
+
+    /// The page the button leads to, wrapping round to Now. From an Alerts
+    /// page whose alerts have cleared, that is the page after it.
+    func next(hasAlerts: Bool) -> CarPlayWidgetPage {
+        let pages = Self.sequence(hasAlerts: hasAlerts)
+        if let index = pages.firstIndex(of: self) {
+            return pages[(index + 1) % pages.count]
+        }
+        return pages.first { $0.rawValue > rawValue } ?? .now
     }
 }
 
@@ -82,179 +124,5 @@ enum CarPlayWidgetStore {
     static var page: CarPlayWidgetPage {
         get { CarPlayWidgetPage(rawValue: defaults?.integer(forKey: Keys.page) ?? 0) ?? .now }
         set { defaults?.set(newValue.rawValue, forKey: Keys.page) }
-    }
-}
-
-// MARK: - Alerts
-
-/// One line on the Alerts page.
-struct WidgetAlert: Equatable, Identifiable {
-    enum Kind: String, CaseIterable {
-        case noReadings
-        case notLooping
-        case low
-        case lowSoon
-        case droppingFast
-        case high
-        case sensorExpiry
-        case siteExpiry
-        case lowInsulin
-        case pumpBattery
-        case phoneBattery
-        case appExpiry
-    }
-
-    enum Severity: Int, Comparable {
-        case urgent
-        case warning
-
-        static func < (lhs: Severity, rhs: Severity) -> Bool {
-            lhs.rawValue < rhs.rawValue
-        }
-    }
-
-    let kind: Kind
-    let severity: Severity
-    let title: String
-    let detail: String?
-
-    var id: Kind { kind }
-}
-
-/// Everything the Alerts page needs, with the thresholds taken from the
-/// user's alarms. Times are absolute, so the same inputs give the right
-/// alerts at any later date without the app running.
-struct WidgetAlertInputs: Codable, Equatable {
-    var unit: GlucoseSnapshot.Unit = .mgdl
-
-    // Glucose
-    var latestReadingAt: Date?
-    var latestMgdl: Double?
-    var missedReadingMinutes: Double = 16
-    var lowMgdl: Double = 80
-    /// The first forecast point at or below `lowMgdl`, if any.
-    var predictedLowAt: Date?
-    var isDroppingFast = false
-    /// Nil leaves out the high alert.
-    var highMgdl: Double?
-
-    // Loop
-    var lastLoopAt: Date?
-    var notLoopingMinutes: Double = 16
-
-    // Devices
-    var sensorExpiresAt: Date?
-    var sensorWarnHours: Double = 12
-    var siteExpiresAt: Date?
-    var siteWarnHours: Double = 12
-    var reservoirUnits: Double?
-    var reservoirWarnUnits: Double = 20
-    var pumpBatteryPercent: Double?
-    var pumpBatteryWarnPercent: Double = 20
-    var phoneBatteryPercent: Double?
-    var phoneBatteryWarnPercent: Double = 20
-    var phoneCharging = false
-    var appExpiresAt: Date?
-    var appWarnDays: Double = 7
-
-    /// The alerts that apply at `now`, urgent ones first, each group in a
-    /// fixed order. Glucose alerts need a reading recent enough to trust;
-    /// without one, "No new readings" stands in for them.
-    func alerts(at now: Date) -> [WidgetAlert] {
-        var list: [WidgetAlert] = []
-
-        let readingAge = latestReadingAt.map { now.timeIntervalSince($0) }
-        let readingIsFresh = readingAge.map { $0 < missedReadingMinutes * 60 } ?? false
-
-        if let age = readingAge, !readingIsFresh {
-            list.append(WidgetAlert(kind: .noReadings, severity: .urgent, title: "No new readings", detail: "Last one \(Self.ago(age))"))
-        }
-
-        if let lastLoopAt {
-            let sinceLoop = now.timeIntervalSince(lastLoopAt)
-            if sinceLoop >= notLoopingMinutes * 60 {
-                list.append(WidgetAlert(kind: .notLooping, severity: .urgent, title: "Not looping", detail: "Last loop \(Self.ago(sinceLoop))"))
-            }
-        }
-
-        if readingIsFresh, let bg = latestMgdl {
-            if bg <= lowMgdl {
-                list.append(WidgetAlert(kind: .low, severity: .urgent, title: "Low", detail: formatGlucose(bg)))
-            } else if let lowAt = predictedLowAt {
-                let detail = lowAt > now ? "In about \(Self.duration(lowAt.timeIntervalSince(now)))" : nil
-                list.append(WidgetAlert(kind: .lowSoon, severity: .urgent, title: "Low soon", detail: detail))
-            }
-
-            if isDroppingFast {
-                list.append(WidgetAlert(kind: .droppingFast, severity: .warning, title: "Dropping fast", detail: formatGlucose(bg)))
-            }
-
-            if let high = highMgdl, bg >= high {
-                list.append(WidgetAlert(kind: .high, severity: .warning, title: "High", detail: formatGlucose(bg)))
-            }
-        }
-
-        if let alert = Self.expiry(sensorExpiresAt, warnAhead: sensorWarnHours * 3600, kind: .sensorExpiry, name: "Sensor", now: now) {
-            list.append(alert)
-        }
-        if let alert = Self.expiry(siteExpiresAt, warnAhead: siteWarnHours * 3600, kind: .siteExpiry, name: "Pump site", now: now) {
-            list.append(alert)
-        }
-
-        if let units = reservoirUnits, units <= reservoirWarnUnits {
-            list.append(WidgetAlert(kind: .lowInsulin, severity: .warning, title: "Low insulin", detail: "\(Int(units.rounded())) U left"))
-        }
-        if let percent = pumpBatteryPercent, percent <= pumpBatteryWarnPercent {
-            list.append(WidgetAlert(kind: .pumpBattery, severity: .warning, title: "Pump battery low", detail: "\(Int(percent.rounded()))%"))
-        }
-        if let percent = phoneBatteryPercent, percent <= phoneBatteryWarnPercent, !phoneCharging {
-            list.append(WidgetAlert(kind: .phoneBattery, severity: .warning, title: "Loop phone battery", detail: "\(Int(percent.rounded()))%"))
-        }
-
-        if let alert = Self.expiry(appExpiresAt, warnAhead: appWarnDays * 86400, kind: .appExpiry, name: "Loop app", now: now) {
-            list.append(alert)
-        }
-
-        // Urgent first; the order above is kept within each severity.
-        return list.enumerated()
-            .sorted { ($0.element.severity, $0.offset) < ($1.element.severity, $1.offset) }
-            .map(\.element)
-    }
-
-    /// "Sensor expires · In 6 h" inside the warning window, "Sensor expired"
-    /// once past it, nothing before.
-    private static func expiry(_ date: Date?, warnAhead: TimeInterval, kind: WidgetAlert.Kind, name: String, now: Date) -> WidgetAlert? {
-        guard let date else { return nil }
-        let remaining = date.timeIntervalSince(now)
-        if remaining <= 0 {
-            return WidgetAlert(kind: kind, severity: .urgent, title: "\(name) expired", detail: nil)
-        }
-        guard remaining <= warnAhead else { return nil }
-        return WidgetAlert(kind: kind, severity: .warning, title: "\(name) expires", detail: "In \(duration(remaining))")
-    }
-
-    /// "45 min", "6 h", "3 days": rounded up, so it never reads 0.
-    static func duration(_ seconds: TimeInterval) -> String {
-        let minutes = max(1, Int((seconds / 60).rounded(.up)))
-        if minutes < 60 { return "\(minutes) min" }
-        let hours = Int((Double(minutes) / 60).rounded(.up))
-        if hours < 48 { return "\(hours) h" }
-        return "\(Int((Double(hours) / 24).rounded(.up))) days"
-    }
-
-    /// "18 min ago", "2 h ago": rounded down, as clocks count.
-    static func ago(_ seconds: TimeInterval) -> String {
-        let minutes = max(1, Int(seconds / 60))
-        if minutes < 90 { return "\(minutes) min ago" }
-        return "\(minutes / 60) h ago"
-    }
-
-    private func formatGlucose(_ mgdl: Double) -> String {
-        switch unit {
-        case .mgdl:
-            "\(Int(mgdl.rounded())) mg/dL"
-        case .mmol:
-            "\(GlucoseConversion.toMmol(mgdl).formatted(.number.precision(.fractionLength(1)))) mmol/L"
-        }
     }
 }

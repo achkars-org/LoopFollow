@@ -173,6 +173,55 @@ class AlarmManager {
         }
     }
 
+    /// The alarms the CarPlay widget shows: each enabled alarm marked for
+    /// CarPlay that is triggered now, the first of each type, most important
+    /// first, with the title to show.
+    ///
+    /// Conditions that only read their inputs are checked again here, so an
+    /// alarm stays listed while its condition holds, snoozed or not. One-time
+    /// alarms (override and temp target start and end, COB, recommended
+    /// bolus, missed bolus, future carbs) record that they fired when checked,
+    /// so checking them again would use them up: they are listed only while
+    /// LoopFollow is sounding them.
+    func carPlayAlarms(data: AlarmData, now: Date) -> [(alarm: Alarm, title: String)] {
+        let config = Storage.shared.alarmConfiguration.value
+        let sounding = Observable.shared.currentAlarm.value
+
+        // Between readings the latest is up to 5 minutes old; allow until it
+        // is stale so BG alerts don't flicker off while waiting for the next.
+        let readingIsCurrent = data.bgReadings.last.map {
+            now.timeIntervalSince($0.date) < GlucoseSnapshot.staleAfter
+        } ?? false
+
+        var result: [(alarm: Alarm, title: String)] = []
+        var listedTypes = Set<AlarmType>()
+
+        for alarm in Storage.shared.alarms.value.sorted(by: Alarm.byPriorityThenSpec) {
+            // A temporary alarm disables itself as it fires, so the one
+            // sounding counts even when disabled.
+            guard alarm.showInCarPlay, alarm.isEnabled || alarm.id == sounding,
+                  !listedTypes.contains(alarm.type) else { continue }
+
+            var title: String?
+            if alarm.id == sounding {
+                title = Observable.shared.currentAlarmTitleOverride.value ?? alarm.name
+            } else if alarm.type.isStateCondition, let checker = evaluators[alarm.type] {
+                if alarm.type.isBGBased, alarm.type != .missedReading, !readingIsCurrent { continue }
+                var unsnoozed = alarm
+                unsnoozed.snoozedUntil = nil
+                if checker.shouldFire(alarm: unsnoozed, data: data, now: now, config: config) {
+                    title = alarm.name
+                }
+            }
+
+            if let title {
+                result.append((alarm, title))
+                listedTypes.insert(alarm.type)
+            }
+        }
+        return result
+    }
+
     func performSnooze(_ snoozeUnits: Int? = nil) {
         guard let alarmID = Observable.shared.currentAlarm.value else { return }
         var alarms = Storage.shared.alarms.value

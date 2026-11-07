@@ -351,7 +351,7 @@ private struct SmallFamilyUpdateTime: View {
 
 /// "Name · 80% · 140–160 · 1h 20m". When space runs out the name truncates
 /// first, then the details shrink, so the percentage, range and time left stay.
-private struct SmallFamilyOverride: View {
+struct SmallFamilyOverride: View {
     let name: String
     let details: [String]
 
