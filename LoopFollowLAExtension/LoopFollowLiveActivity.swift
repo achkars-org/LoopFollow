@@ -157,24 +157,18 @@ private struct SmallFamilyView: View {
     }
 
     /// Wide CarPlay with the setting on: the stack takes the full height on the
-    /// right, and the bottom row under the glucose is just the update time, or
-    /// the warning in its place while not looping.
+    /// right, and the bottom row is just the update time, or the warning in its
+    /// place while not looping.
     private func tightLayout(metrics: SmallFamilyMetrics, showStatusLine: Bool, height: CGFloat) -> some View {
         HStack(alignment: .center, spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
                 glucoseColumn(metrics: metrics)
 
+                // Keeps the bottom row's height under the glucose. The row itself
+                // is drawn over the full width, so it is centred on the widget
+                // rather than on this column; it is short enough to clear the stack.
                 if showStatusLine {
-                    Group {
-                        if snapshot.isNotLooping {
-                            SmallFamilyNotLooping()
-                        } else {
-                            SmallFamilyUpdateTime(snapshot: snapshot, isStale: isStale)
-                        }
-                    }
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    tightBottomRow.hidden()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -182,6 +176,23 @@ private struct SmallFamilyView: View {
             SmallFamilyStack(snapshot: snapshot, fontSize: height >= 90 ? 15 : 12)
                 .fixedSize()
         }
+        .overlay(alignment: .bottom) {
+            if showStatusLine {
+                tightBottomRow
+            }
+        }
+    }
+
+    private var tightBottomRow: some View {
+        Group {
+            if snapshot.isNotLooping {
+                SmallFamilyNotLooping()
+            } else {
+                SmallFamilyUpdateTime(snapshot: snapshot, isStale: isStale)
+            }
+        }
+        .font(.system(size: 11, weight: .semibold, design: .rounded))
+        .monospacedDigit()
     }
 
     /// Watch, narrow CarPlay, and wide CarPlay with the tight layout off: the
@@ -221,7 +232,7 @@ private struct SmallFamilyView: View {
             }
 
             if showStatusLine {
-                SmallFamilyStatusLine(snapshot: snapshot, isStale: isStale, rightSlot: rightSlot)
+                SmallFamilyStatusLine(snapshot: snapshot, isStale: isStale)
                     .layoutPriority(1)
             }
         }
@@ -338,6 +349,30 @@ private struct SmallFamilyUpdateTime: View {
     }
 }
 
+/// "Name · 80% · 140–160 · 1h 20m". When space runs out the name truncates
+/// first, then the details shrink, so the percentage, range and time left stay.
+private struct SmallFamilyOverride: View {
+    let name: String
+    let details: [String]
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Text("\(Image(systemName: "slider.horizontal.3")) \(name)")
+                .lineLimit(1)
+
+            if !details.isEmpty {
+                Text("· " + details.joined(separator: " · "))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .layoutPriority(1)
+            }
+        }
+        .foregroundStyle(.green)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel((["Override \(name)"] + details).joined(separator: ", "))
+    }
+}
+
 private struct SmallFamilyNotLooping: View {
     var body: some View {
         Text("\(Image(systemName: "exclamationmark.triangle.fill")) Not Looping")
@@ -346,40 +381,22 @@ private struct SmallFamilyNotLooping: View {
     }
 }
 
-/// Update time, IOB and COB, and the running override, using the watch's icons.
-/// IOB or COB is left out when the right slot already shows it. The override
-/// takes whatever width is left and truncates first, so the time and values
-/// always show on the narrowest surfaces.
+/// The update time, or the warning in its place while not looping, then the
+/// running override if any. IOB and COB are left to the watch app.
 private struct SmallFamilyStatusLine: View {
     let snapshot: GlucoseSnapshot
     let isStale: Bool
-    let rightSlot: LiveActivitySlotOption
 
     var body: some View {
         HStack(spacing: 5) {
-            SmallFamilyUpdateTime(snapshot: snapshot, isStale: isStale)
-
             if snapshot.isNotLooping {
                 SmallFamilyNotLooping()
             } else {
-                if snapshot.iob != nil, rightSlot != .iob {
-                    Text("\(Image(systemName: "syringe")) \(LAFormat.iob(snapshot))")
-                        .fixedSize()
-                        .accessibilityLabel("Insulin on board \(LAFormat.iob(snapshot))")
-                }
-                if snapshot.cob != nil, rightSlot != .cob {
-                    Text("\(Image(systemName: "fork.knife")) \(LAFormat.cob(snapshot))")
-                        .fixedSize()
-                        .accessibilityLabel("Carbs on board \(LAFormat.cob(snapshot))")
-                }
+                SmallFamilyUpdateTime(snapshot: snapshot, isStale: isStale)
             }
 
             if let name = LAFormat.activeOverrideName(snapshot) {
-                Text("\(Image(systemName: "slider.horizontal.3")) \(name)")
-                    .foregroundStyle(.green)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .accessibilityLabel("Override \(name)")
+                SmallFamilyOverride(name: name, details: snapshot.overrideDetails())
             }
         }
         .font(.system(size: 11, weight: .semibold, design: .rounded))

@@ -70,7 +70,7 @@
 
                 Section(
                     header: Text("Grid Slot - CarPlay / Watch"),
-                    footer: Text("The status line shows the update time, IOB, COB and any active override. IOB or COB is left out when the right slot already shows it. The tight layout replaces the right slot with projected BG, IOB, COB and basal, and reduces the status line to the time. It only applies to wide CarPlay screens. Changes appear with the next Live Activity update.")
+                    footer: Text("The status line shows the update time and any active override with its insulin needs, range and time left. The tight layout replaces the right slot with projected BG, IOB, COB and basal, and reduces the status line to the time. It only applies to wide CarPlay screens. Changes appear with the next Live Activity update.")
                 ) {
                     Picker("Right slot", selection: Binding(
                         get: { smallWidgetSlot },
