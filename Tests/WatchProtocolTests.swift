@@ -94,6 +94,21 @@ struct WatchProtocolTests {
         #expect(!WatchFormat.delta(0.5, unit: .mmol).hasPrefix("+"))
     }
 
+    @Test("Directions without a trend show no arrow", arguments: [nil, "", "NONE", "None", "NOT COMPUTABLE", "RATE OUT OF RANGE", "NotComputable"])
+    func noTrendShowsNoArrow(code: String?) {
+        let trend = GlucoseSnapshot.Trend(code: code)
+        #expect(trend == .unknown)
+        #expect(WatchFormat.trendArrow(trend) == "")
+    }
+
+    @Test("Known directions keep their arrows")
+    func knownTrendArrows() {
+        #expect(GlucoseSnapshot.Trend(code: "Flat") == .flat)
+        #expect(GlucoseSnapshot.Trend(code: "FortyFiveUp") == .upSlight)
+        #expect(GlucoseSnapshot.Trend(code: "DoubleDown") == .downFast)
+        #expect(WatchFormat.trendArrow(.flat) == "→")
+    }
+
     @Test("Range colors match the phone: red at or below low, yellow at or above high")
     func rangeColors() {
         #expect(WatchFormat.bgColor(70, lowMgdl: 70, highMgdl: 180) == .red)

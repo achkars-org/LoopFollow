@@ -365,6 +365,7 @@ extension GlucoseSnapshot {
         }
 
         /// Maps a Nightscout or Dexcom direction string, e.g. "FortyFiveUp".
+        /// "NONE", "NOT COMPUTABLE" and missing directions mean the CGM has no trend, so they map to `.unknown`.
         init(code: String?) {
             let raw = code?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
             if raw.contains("doubleup") || raw.contains("rapidrise") || raw == "up2" || raw == "upfast" {
@@ -373,7 +374,7 @@ extension GlucoseSnapshot {
                 self = .upSlight
             } else if raw.contains("singleup") || raw == "up" || raw == "up1" || raw == "rising" {
                 self = .up
-            } else if raw.contains("flat") || raw == "steady" || raw == "none" {
+            } else if raw.contains("flat") || raw == "steady" {
                 self = .flat
             } else if raw.contains("doubledown") || raw.contains("rapidfall") || raw == "down2" || raw == "downfast" {
                 self = .downFast

@@ -122,11 +122,11 @@ struct GlucoseComplicationView: View {
             .foregroundStyle(bgColor)
             .widgetCurvesContent()
             .widgetLabel {
-                Text("\(trendText) \(deltaText) \(ageText)")
+                Text([trendText, deltaText, ageText].filter { !$0.isEmpty }.joined(separator: " "))
             }
     }
 
     private var inline: some View {
-        Text(snapshot == nil ? "LoopFollow --" : "\(bgText) \(trendText) \(deltaText) · \(ageText)")
+        Text(snapshot == nil ? "LoopFollow --" : "\([bgText, trendText, deltaText].filter { !$0.isEmpty }.joined(separator: " ")) · \(ageText)")
     }
 }

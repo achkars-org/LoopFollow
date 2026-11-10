@@ -672,7 +672,7 @@ private enum LAFormat {
         case .downSlight: "↘︎"
         case .down: "↓"
         case .downFast: "↓↓"
-        case .unknown: "–"
+        case .unknown: "" // Like Dexcom, show no arrow when there is no trend.
         }
     }
 
