@@ -44,8 +44,11 @@ struct BGDisplayView: View {
                     .minimumScaleFactor(0.5)
 
                 HStack {
-                    Text(snapshot?.directionText ?? directionText.value)
-                        .font(.system(size: 60, weight: .black))
+                    let arrow = snapshot?.directionText ?? directionText.value
+                    if !arrow.isEmpty {
+                        Text(arrow)
+                            .font(.system(size: 60, weight: .black))
+                    }
                     Text(snapshot?.deltaText ?? deltaText.value)
                         .font(.system(size: 32))
                 }

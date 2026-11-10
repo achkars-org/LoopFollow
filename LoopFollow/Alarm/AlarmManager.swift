@@ -201,9 +201,11 @@ class AlarmManager {
 
         let content = UNMutableNotificationContent()
         content.title = title
-        content.subtitle += Observable.shared.bgText.value + " "
-        content.subtitle += Observable.shared.directionText.value + " "
-        content.subtitle += Observable.shared.deltaText.value
+        content.subtitle += [
+            Observable.shared.bgText.value,
+            Observable.shared.directionText.value,
+            Observable.shared.deltaText.value,
+        ].filter { !$0.isEmpty }.joined(separator: " ")
         if let body {
             content.body = body
         }

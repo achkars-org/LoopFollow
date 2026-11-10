@@ -162,7 +162,7 @@ class ContactImageUpdater {
         var extraValues: [String] = []
         for field in includedFields {
             switch field {
-            case .Trend: extraValues.append(trend)
+            case .Trend: if !trend.isEmpty { extraValues.append(trend) }
             case .Delta: extraValues.append(delta)
             case .IOB: extraValues.append(iob)
             case .BG: break

@@ -25,7 +25,7 @@ class Observable {
     var bg = ObservableValue<Int?>(default: nil)
     var bgStale = ObservableValue<Bool>(default: true)
     var bgTextColor = ObservableValue<Color>(default: .primary)
-    var directionText = ObservableValue<String>(default: "-")
+    var directionText = ObservableValue<String>(default: "")
     var deltaText = ObservableValue<String>(default: "+0")
     var iobText = ObservableValue<String>(default: "--")
 

@@ -216,8 +216,10 @@ struct SnoozerView: View {
 
             if isLandscape {
                 HStack(alignment: .firstTextBaseline, spacing: 20) {
-                    Text(directionText.value)
-                        .font(.system(size: 90, weight: .black))
+                    if !directionText.value.isEmpty {
+                        Text(directionText.value)
+                            .font(.system(size: 90, weight: .black))
+                    }
                     Text(deltaText.value)
                         .font(.system(size: 70).monospacedDigit())
                 }
